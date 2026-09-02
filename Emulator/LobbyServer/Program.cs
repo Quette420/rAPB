@@ -15,6 +15,11 @@ namespace LobbyServer
         [STAThread]
         static void Main(string[] args)
         {
+            Console.WriteLine("======================================");
+            Console.WriteLine("NEW LOBBY BUILD TEST");
+            Console.WriteLine("LOGIN_PROOF = {0} / 0x{0:X}", (int)Opcodes.LOGIN_PROOF);
+            Console.WriteLine("======================================");
+
             Log.Info("LobbyServer", "Starting...");
             if (!EasyServer.InitLog("Lobby", "Configs/Logs.conf") || !EasyServer.InitConfig("Configs/Lobby.xml", "Lobby") || !EasyServer.InitConfig("Configs/Database.xml", "Database")) return;
             if (!EasyServer.Listen<TcpServer>(EasyServer.GetConfValue<int>("Lobby", "LoginServer", "Port"), "LoginServer")) return;

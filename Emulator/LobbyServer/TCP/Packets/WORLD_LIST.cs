@@ -1,40 +1,90 @@
 ﻿using FrameWork.NetWork;
+using FrameWork.Logger;
 using System.Collections.Generic;
 
-namespace LobbyServer
+namespace LobbyServer.TCP.Packets
 {
-    [PacketHandlerAttribute(PacketHandlerType.TCP, (int)Opcodes.ASK_WORLD_LIST, "onAskWorldList")]
+    [PacketHandlerAttribute(
+        PacketHandlerType.TCP,
+        (int)Opcodes.ASK_WORLD_LIST,
+        "onAskWorldList"
+    )]
     public class WORLD_LIST : IPacketHandler
     {
-        public int HandlePacket(BaseClient client, PacketIn packet)
+        public int HandlePacket(
+            BaseClient client,
+            PacketIn packet
+        )
         {
-            LobbyClient cclient = client as LobbyClient;
-            Send(cclient);
+            LobbyClient cclient =
+                (LobbyClient)client;
+
+            SendWorldList(cclient);
+
             return 0;
         }
 
-        public static void Send(LobbyClient cclient)
+        public static void SendWorldList(
+            LobbyClient cclient
+        )
         {
-            PacketOut Out = new PacketOut((uint)Opcodes.WORLD_LIST);
-            Out.WriteInt32Reverse((int)ResponseCodes.RC_SUCCESS);
+            PacketOut Out =
+                new PacketOut(
+                    (uint)Opcodes.WORLD_LIST
+                );
+
+            Out.WriteInt32Reverse(
+                (int)ResponseCodes.RC_SUCCESS
+            );
+
             lock (Program.worldListener.Worlds)
             {
-                Out.WriteUInt16Reverse((ushort)Program.worldListener.Worlds.Count);
-                foreach (KeyValuePair<uint, World.World> info in Program.worldListener.Worlds)
+                Out.WriteUInt16Reverse(
+                    (ushort)
+                    Program.worldListener.Worlds.Count
+                );
+
+                foreach (
+                    KeyValuePair<uint, World.World> entry
+                    in Program.worldListener.Worlds)
                 {
-                    Out.WriteUInt32Reverse(info.Key);
-                    Out.WriteParsedString(info.Value.Name, 32);
-                    Out.WriteByte((byte)info.Value.Id);
-                    Out.WriteByte(0); //m_nPopulation %d
-                    Out.WriteByte(0); //m_nEnfFaction %d
-                    Out.WriteByte(0); //m_nCrimFaction %d
-                    Out.WriteByte(0); //m_nPremiumOnly %d
-                    Out.WriteByte(info.Value.IP1);
-                    Out.WriteByte(info.Value.IP2);
-                    Out.WriteByte(info.Value.IP3);
-                    Out.WriteByte(info.Value.IP4);
+                    World.World info =
+                        entry.Value;
+
+                    Log.Info(
+                        "WORLD_LIST",
+                        "UID=" + entry.Key +
+                        ", Name=" + info.Name +
+                        ", Address=" +
+                        info.IP1 + "." +
+                        info.IP2 + "." +
+                        info.IP3 + "." +
+                        info.IP4 + ":" +
+                        info.Port
+                    );
+
+                    Out.WriteUInt32Reverse(
+                        entry.Key
+                    );
+
+                    Out.WriteParsedString(
+                        info.Name,
+                        32
+                    );
+
+                    Out.WriteByte(
+                        (byte)info.Id
+                    );
+
+                    Out.WriteByte(
+                        info.Population
+                    );
+
+                    Out.WriteByte(1);
+                    Out.WriteByte(1);
                 }
             }
+
             cclient.Send(Out);
         }
     }

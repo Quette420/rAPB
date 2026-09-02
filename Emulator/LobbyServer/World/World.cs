@@ -18,6 +18,7 @@ namespace LobbyServer.World
         public byte IP3;
         public byte IP4;
         public uint Port;
+        public byte Population;
 
         public World(TcpClient client)
         {
