@@ -4,52 +4,46 @@ int32_t Index;
 int32_t Number;
 };
 
-class UObject
+class UObject                    // sizeof 0x40
 {
-public:
 void*     VTable;            // 0x00
+UObject*  HashNext;          // 0x04
+uint64_t  ObjectFlags;       // 0x08
+UObject*  HashOuterNext;     // 0x10
 
-    UObject*  HashNext;          // 0x04
-
-    uint64_t  ObjectFlags;       // 0x08
-
-    UObject*  HashOuterNext;     // 0x10
-
-    uint8_t   Unknown14[0x0C];   // 0x14
+    uint8_t   Unknown14[0x0C];
 
     int32_t   InternalIndex;     // 0x20
-
     uint32_t  Unknown24;         // 0x24
-
-    int32_t   DynRefsIndex;      // 0x28
-                                  // exact original name still inferred
+    int32_t   DynRefsIndex;      // 0x28 exact name inferred
 
     UObject*  Outer;             // 0x2C
-
     FName     Name;              // 0x30
-
     UClass*   Class;             // 0x38
-
     uint32_t  Unknown3C;         // 0x3C
 };
-// sizeof = 0x40
 
 class UField : public UObject
 {
-public:
-UField* Next;                // 0x40
+UField* Next;                // 0x40 CONFIRMED
 };
-// sizeof = 0x44
 
 class UStruct : public UField
 {
-public:
 uint8_t  Unknown44[0x08];    // 0x44
+UStruct* SuperField;         // 0x4C CONFIRMED
+UField*  Children;           // 0x50 CONFIRMED
+uint32_t PropertySize;       // 0x54 CONFIRMED
+};
 
-    UStruct* SuperField;         // 0x4C
-    UField*  Children;           // 0x50
+class UProperty : public UField
+{
+int32_t ArrayDim;            // 0x44 CONFIRMED
+int32_t ElementSize;         // 0x48 CONFIRMED
 
-    uint32_t PropertySize;       // 0x54 ? NEEDS PROOF
+    uint8_t Unknown4C[0x18];
+
+    int32_t Offset;              // 0x64 CONFIRMED semantics
 };
 
 APB 1.13.1 UObject
@@ -88,4 +82,5 @@ UObject::InternalIndex = +0x20
 
 
 
--app 113400 -depot 113401 -manifest 6826695581950117729 26 September 2012 
+-app 113400 -depot 113401 -manifest 6826695581950117729 26 September 2012
+-app 113400 -depot 113401 -manifest 1597958902417542989 8.02.13
