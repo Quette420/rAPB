@@ -1,0 +1,8277 @@
+{
+ "_note": [
+  "Net cache, прочитанный из живого клиента APB.",
+  "Источник: UClass+0x10C (NetFields), UStruct+0x40 (SuperField).",
+  "index = fields_base + position. Одна запись = один индекс,",
+  "ArrayDim слоты не разворачивает.",
+  "fieldMax класса = граница для WriteBoundedInt на его канале."
+ ],
+ "classes": {
+  "Actor": {
+   "super": "Object",
+   "fields_base": 0,
+   "count": 21,
+   "field_max": 21,
+   "fields": [
+    {
+     "index": 0,
+     "position": 0,
+     "name": "APBCollision",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 1,
+     "position": 1,
+     "name": "DrawScale",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 2,
+     "position": 2,
+     "name": "RelativeRotation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 3,
+     "position": 3,
+     "name": "RelativeLocation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 4,
+     "position": 4,
+     "name": "Velocity",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 5,
+     "position": 5,
+     "name": "Rotation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 6,
+     "position": 6,
+     "name": "Location",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 7,
+     "position": 7,
+     "name": "Instigator",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 8,
+     "position": 8,
+     "name": "Base",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 9,
+     "position": 9,
+     "name": "Owner",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 10,
+     "position": 10,
+     "name": "Role",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 11,
+     "position": 11,
+     "name": "RemoteRole",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 12,
+     "position": 12,
+     "name": "Physics",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 13,
+     "position": 13,
+     "name": "bNetOwner",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 14,
+     "position": 14,
+     "name": "bProjTarget",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 15,
+     "position": 15,
+     "name": "bBlockActors",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 16,
+     "position": 16,
+     "name": "bCollideWorld",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 17,
+     "position": 17,
+     "name": "bCollideActors",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 18,
+     "position": 18,
+     "name": "bHardAttach",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 19,
+     "position": 19,
+     "name": "bTearOff",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 20,
+     "position": 20,
+     "name": "bHidden",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "CameraActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 2,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "FOVAngle",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "AspectRatio",
+     "kind": "FloatProperty"
+    }
+   ]
+  },
+  "cEngineClientServerDebugManager": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_bDisplayLCActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "Controller": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 5,
+   "field_max": 26,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "PlayerReplicationInfo",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "Pawn",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "ClientSetLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "ClientSetRotation",
+     "kind": "Function"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "ServerRestartPlayer",
+     "kind": "Function"
+    }
+   ]
+  },
+  "PlayerController": {
+   "super": "Controller",
+   "fields_base": 26,
+   "count": 97,
+   "field_max": 123,
+   "fields": [
+    {
+     "index": 26,
+     "position": 0,
+     "name": "TargetEyeHeight",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 27,
+     "position": 1,
+     "name": "TargetViewRotation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 2,
+     "name": "m_nPing",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 29,
+     "position": 3,
+     "name": "ClientDrawCoordinateSystem",
+     "kind": "Function"
+    },
+    {
+     "index": 30,
+     "position": 4,
+     "name": "ClientTravel",
+     "kind": "Function"
+    },
+    {
+     "index": 31,
+     "position": 5,
+     "name": "ClientConvolve",
+     "kind": "Function"
+    },
+    {
+     "index": 32,
+     "position": 6,
+     "name": "ServerProcessConvolve",
+     "kind": "Function"
+    },
+    {
+     "index": 33,
+     "position": 7,
+     "name": "ServerShortTimeout",
+     "kind": "Function"
+    },
+    {
+     "index": 34,
+     "position": 8,
+     "name": "ClientReset",
+     "kind": "Function"
+    },
+    {
+     "index": 35,
+     "position": 9,
+     "name": "ServerSetUniquePlayerId",
+     "kind": "Function"
+    },
+    {
+     "index": 36,
+     "position": 10,
+     "name": "ClientInitializeDataStores",
+     "kind": "Function"
+    },
+    {
+     "index": 37,
+     "position": 11,
+     "name": "ClientGotoState",
+     "kind": "Function"
+    },
+    {
+     "index": 38,
+     "position": 12,
+     "name": "AskForPawn",
+     "kind": "Function"
+    },
+    {
+     "index": 39,
+     "position": 13,
+     "name": "GivePawn",
+     "kind": "Function"
+    },
+    {
+     "index": 40,
+     "position": 14,
+     "name": "ServerAcknowledgePossession",
+     "kind": "Function"
+    },
+    {
+     "index": 41,
+     "position": 15,
+     "name": "ClientSetHUD",
+     "kind": "Function"
+    },
+    {
+     "index": 42,
+     "position": 16,
+     "name": "ReceiveLocalizedMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 43,
+     "position": 17,
+     "name": "ClientPlaySound",
+     "kind": "Function"
+    },
+    {
+     "index": 44,
+     "position": 18,
+     "name": "ClientHearSound",
+     "kind": "Function"
+    },
+    {
+     "index": 45,
+     "position": 19,
+     "name": "Kismet_ClientPlaySound",
+     "kind": "Function"
+    },
+    {
+     "index": 46,
+     "position": 20,
+     "name": "Kismet_ClientStopSound",
+     "kind": "Function"
+    },
+    {
+     "index": 47,
+     "position": 21,
+     "name": "ClientPlayActorFaceFXAnim",
+     "kind": "Function"
+    },
+    {
+     "index": 48,
+     "position": 22,
+     "name": "ClientMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 49,
+     "position": 23,
+     "name": "TeamMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 50,
+     "position": 24,
+     "name": "ServerMutate",
+     "kind": "Function"
+    },
+    {
+     "index": 51,
+     "position": 25,
+     "name": "ServerCamera",
+     "kind": "Function"
+    },
+    {
+     "index": 52,
+     "position": 26,
+     "name": "ClientSetCameraMode",
+     "kind": "Function"
+    },
+    {
+     "index": 53,
+     "position": 27,
+     "name": "DualServerMove",
+     "kind": "Function"
+    },
+    {
+     "index": 54,
+     "position": 28,
+     "name": "OldServerMove",
+     "kind": "Function"
+    },
+    {
+     "index": 55,
+     "position": 29,
+     "name": "ServerMove",
+     "kind": "Function"
+    },
+    {
+     "index": 56,
+     "position": 30,
+     "name": "VeryShortClientAdjustPosition",
+     "kind": "Function"
+    },
+    {
+     "index": 57,
+     "position": 31,
+     "name": "ShortClientAdjustPosition",
+     "kind": "Function"
+    },
+    {
+     "index": 58,
+     "position": 32,
+     "name": "ClientCapBandwidth",
+     "kind": "Function"
+    },
+    {
+     "index": 59,
+     "position": 33,
+     "name": "ClientAckGoodMove",
+     "kind": "Function"
+    },
+    {
+     "index": 60,
+     "position": 34,
+     "name": "ClientAdjustPosition",
+     "kind": "Function"
+    },
+    {
+     "index": 61,
+     "position": 35,
+     "name": "ServerSetNetSpeed",
+     "kind": "Function"
+    },
+    {
+     "index": 62,
+     "position": 36,
+     "name": "LongClientAdjustPosition",
+     "kind": "Function"
+    },
+    {
+     "index": 63,
+     "position": 37,
+     "name": "ServerUpdatePing",
+     "kind": "Function"
+    },
+    {
+     "index": 64,
+     "position": 38,
+     "name": "ServerRestartGame",
+     "kind": "Function"
+    },
+    {
+     "index": 65,
+     "position": 39,
+     "name": "ServerSpeech",
+     "kind": "Function"
+    },
+    {
+     "index": 66,
+     "position": 40,
+     "name": "ServerPause",
+     "kind": "Function"
+    },
+    {
+     "index": 67,
+     "position": 41,
+     "name": "ServerUTrace",
+     "kind": "Function"
+    },
+    {
+     "index": 68,
+     "position": 42,
+     "name": "ServerSuicide",
+     "kind": "Function"
+    },
+    {
+     "index": 69,
+     "position": 43,
+     "name": "ServerChangeName",
+     "kind": "Function"
+    },
+    {
+     "index": 70,
+     "position": 44,
+     "name": "ClientClearProgressMessages",
+     "kind": "Function"
+    },
+    {
+     "index": 71,
+     "position": 45,
+     "name": "ClientSetProgressMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 72,
+     "position": 46,
+     "name": "ClientSetProgressTime",
+     "kind": "Function"
+    },
+    {
+     "index": 73,
+     "position": 47,
+     "name": "ServerNotifyLoadedWorld",
+     "kind": "Function"
+    },
+    {
+     "index": 74,
+     "position": 48,
+     "name": "ClientRestart",
+     "kind": "Function"
+    },
+    {
+     "index": 75,
+     "position": 49,
+     "name": "ClientGameEnded",
+     "kind": "Function"
+    },
+    {
+     "index": 76,
+     "position": 50,
+     "name": "ClientSetViewTarget",
+     "kind": "Function"
+    },
+    {
+     "index": 77,
+     "position": 51,
+     "name": "ServerVerifyViewTarget",
+     "kind": "Function"
+    },
+    {
+     "index": 78,
+     "position": 52,
+     "name": "ServerSetSpectatorLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 79,
+     "position": 53,
+     "name": "ServerViewNextPlayer",
+     "kind": "Function"
+    },
+    {
+     "index": 80,
+     "position": 54,
+     "name": "ServerViewPrevPlayer",
+     "kind": "Function"
+    },
+    {
+     "index": 81,
+     "position": 55,
+     "name": "ServerViewSelf",
+     "kind": "Function"
+    },
+    {
+     "index": 82,
+     "position": 56,
+     "name": "ClientIgnoreMoveInput",
+     "kind": "Function"
+    },
+    {
+     "index": 83,
+     "position": 57,
+     "name": "ClientIgnoreLookInput",
+     "kind": "Function"
+    },
+    {
+     "index": 84,
+     "position": 58,
+     "name": "ServerCauseEvent",
+     "kind": "Function"
+    },
+    {
+     "index": 85,
+     "position": 59,
+     "name": "ClientPlayForceFeedbackWaveform",
+     "kind": "Function"
+    },
+    {
+     "index": 86,
+     "position": 60,
+     "name": "ClientStopForceFeedbackWaveform",
+     "kind": "Function"
+    },
+    {
+     "index": 87,
+     "position": 61,
+     "name": "ClientSetCinematicMode",
+     "kind": "Function"
+    },
+    {
+     "index": 88,
+     "position": 62,
+     "name": "ClientForceGarbageCollection",
+     "kind": "Function"
+    },
+    {
+     "index": 89,
+     "position": 63,
+     "name": "ClientUpdateLevelStreamingStatus",
+     "kind": "Function"
+    },
+    {
+     "index": 90,
+     "position": 64,
+     "name": "ServerUpdateLevelVisibility",
+     "kind": "Function"
+    },
+    {
+     "index": 91,
+     "position": 65,
+     "name": "ClientPrepareMapChange",
+     "kind": "Function"
+    },
+    {
+     "index": 92,
+     "position": 66,
+     "name": "ClientCommitMapChange",
+     "kind": "Function"
+    },
+    {
+     "index": 93,
+     "position": 67,
+     "name": "ClientFlushLevelStreaming",
+     "kind": "Function"
+    },
+    {
+     "index": 94,
+     "position": 68,
+     "name": "ClientSetBlockOnAsyncLoading",
+     "kind": "Function"
+    },
+    {
+     "index": 95,
+     "position": 69,
+     "name": "ClientSetOnlineStatus",
+     "kind": "Function"
+    },
+    {
+     "index": 96,
+     "position": 70,
+     "name": "ClientMutePlayer",
+     "kind": "Function"
+    },
+    {
+     "index": 97,
+     "position": 71,
+     "name": "ClientUnmutePlayer",
+     "kind": "Function"
+    },
+    {
+     "index": 98,
+     "position": 72,
+     "name": "ServerMutePlayer",
+     "kind": "Function"
+    },
+    {
+     "index": 99,
+     "position": 73,
+     "name": "ServerUnmutePlayer",
+     "kind": "Function"
+    },
+    {
+     "index": 100,
+     "position": 74,
+     "name": "ClientWasKicked",
+     "kind": "Function"
+    },
+    {
+     "index": 101,
+     "position": 75,
+     "name": "ClientRegisterForArbitration",
+     "kind": "Function"
+    },
+    {
+     "index": 102,
+     "position": 76,
+     "name": "ServerRegisteredForArbitration",
+     "kind": "Function"
+    },
+    {
+     "index": 103,
+     "position": 77,
+     "name": "ClientWriteArbitrationEndGameData",
+     "kind": "Function"
+    },
+    {
+     "index": 104,
+     "position": 78,
+     "name": "ServerWritenArbitrationEndGameData",
+     "kind": "Function"
+    },
+    {
+     "index": 105,
+     "position": 79,
+     "name": "ClientArbitratedMatchEnded",
+     "kind": "Function"
+    },
+    {
+     "index": 106,
+     "position": 80,
+     "name": "ClientWriteOnlinePlayerScores",
+     "kind": "Function"
+    },
+    {
+     "index": 107,
+     "position": 81,
+     "name": "ClientSetHostUniqueId",
+     "kind": "Function"
+    },
+    {
+     "index": 108,
+     "position": 82,
+     "name": "ClientStopNetworkedVoice",
+     "kind": "Function"
+    },
+    {
+     "index": 109,
+     "position": 83,
+     "name": "ClientStartNetworkedVoice",
+     "kind": "Function"
+    },
+    {
+     "index": 110,
+     "position": 84,
+     "name": "ServerSendMusicInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 111,
+     "position": 85,
+     "name": "ClientCrossFadeMusicTrack_PlayTrack",
+     "kind": "Function"
+    },
+    {
+     "index": 112,
+     "position": 86,
+     "name": "ClientFadeOutMusicTrack",
+     "kind": "Function"
+    },
+    {
+     "index": 113,
+     "position": 87,
+     "name": "ClientAdjustMusicTrackVolume",
+     "kind": "Function"
+    },
+    {
+     "index": 114,
+     "position": 88,
+     "name": "AddDebugText",
+     "kind": "Function"
+    },
+    {
+     "index": 115,
+     "position": 89,
+     "name": "CommandManagerBridge_Client",
+     "kind": "Function"
+    },
+    {
+     "index": 116,
+     "position": 90,
+     "name": "CommandManagerBridge_Server",
+     "kind": "Function"
+    },
+    {
+     "index": 117,
+     "position": 91,
+     "name": "RemoveDebugText",
+     "kind": "Function"
+    },
+    {
+     "index": 118,
+     "position": 92,
+     "name": "ClientRegisterHostStatGuid",
+     "kind": "Function"
+    },
+    {
+     "index": 119,
+     "position": 93,
+     "name": "ServerRegisterClientStatGuid",
+     "kind": "Function"
+    },
+    {
+     "index": 120,
+     "position": 94,
+     "name": "ClientShowSurvey",
+     "kind": "Function"
+    },
+    {
+     "index": 121,
+     "position": 95,
+     "name": "ClientTravelToSession",
+     "kind": "Function"
+    },
+    {
+     "index": 122,
+     "position": 96,
+     "name": "ClientReturnToParty",
+     "kind": "Function"
+    }
+   ]
+  },
+  "Light": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bEnabled",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "DynamicSMActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 5,
+   "field_max": 26,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "ReplicatedMeshScale3D",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "ReplicatedMeshRotation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "ReplicatedMeshTranslation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "ReplicatedMaterial",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "ReplicatedMesh",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "GameReplicationInfo": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 26,
+   "field_max": 47,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_fServerSpikeThresholdMS",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nServerSpikesPrev",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nServerSpikesCurrent",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_fServerMaxFrameTime",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_fServerAvgFrameTime",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_pEngineClientServerDebugManager",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "MatchID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "Winner",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "MessageOfTheDay",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "ServerRegion",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "AdminEmail",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "AdminName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "ShortName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "ServerName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "MaxLives",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 36,
+     "position": 15,
+     "name": "TimeLimit",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 37,
+     "position": 16,
+     "name": "GoalScore",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 38,
+     "position": 17,
+     "name": "RemainingMinute",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 39,
+     "position": 18,
+     "name": "ElapsedTime",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 40,
+     "position": 19,
+     "name": "RemainingTime",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 41,
+     "position": 20,
+     "name": "bTrackStats",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 42,
+     "position": 21,
+     "name": "bIsArbitrated",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 43,
+     "position": 22,
+     "name": "bMatchIsOver",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 44,
+     "position": 23,
+     "name": "bMatchHasBegun",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 45,
+     "position": 24,
+     "name": "bStopCountDown",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 46,
+     "position": 25,
+     "name": "GameClass",
+     "kind": "ClassProperty"
+    }
+   ]
+  },
+  "Inventory": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 3,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "InvManager",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "Inventory",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "ClientGivenTo",
+     "kind": "Function"
+    }
+   ]
+  },
+  "InventoryManager": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 4,
+   "field_max": 25,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "InventoryChain",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "SetCurrentWeapon",
+     "kind": "Function"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "ServerSetCurrentWeapon",
+     "kind": "Function"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "ClientSyncWeapon",
+     "kind": "Function"
+    }
+   ]
+  },
+  "MatineeActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 6,
+   "field_max": 27,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "Position",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "PlayRate",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "bPaused",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "bReversePlayback",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "bIsPlaying",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "InterpAction",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "Pawn": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 22,
+   "field_max": 43,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "FlashLocation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "TearOffMomentum",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "HitDamageType",
+     "kind": "ClassProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "TakeHitLocation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "PlayerReplicationInfo",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "Health",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "CrouchedPct",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "WalkingPct",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "AirControl",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "JumpZ",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "AccelRate",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "AirSpeed",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "WaterSpeed",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "GroundSpeed",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "FiringMode",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 36,
+     "position": 15,
+     "name": "FlashCount",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 37,
+     "position": 16,
+     "name": "RemoteViewPitch",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 38,
+     "position": 17,
+     "name": "bSimulateGravity",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 39,
+     "position": 18,
+     "name": "bIsCrouched",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 40,
+     "position": 19,
+     "name": "bWantsToCrouch",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 41,
+     "position": 20,
+     "name": "bIsWalking",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 42,
+     "position": 21,
+     "name": "Controller",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "PickupFactory": {
+   "super": "NavigationPoint",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bPickupHidden",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "PlayerReplicationInfo": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 23,
+   "field_max": 44,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "UniqueId",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "StartTime",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "bControllerVibrationAllowed",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "bIsInactive",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "bHasFlag",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "bBot",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "bOutOfLives",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "bReadyToPlay",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "bWaitingPlayer",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "bOnlySpectator",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "bIsSpectator",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "bIsFemale",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "bAdmin",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "TeamID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "Team",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 36,
+     "position": 15,
+     "name": "PlayerID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 37,
+     "position": 16,
+     "name": "PlayerAlias",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 38,
+     "position": 17,
+     "name": "PlayerName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 39,
+     "position": 18,
+     "name": "PlayerLocationHint",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 40,
+     "position": 19,
+     "name": "PacketLoss",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 41,
+     "position": 20,
+     "name": "Ping",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 42,
+     "position": 21,
+     "name": "Deaths",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 43,
+     "position": 22,
+     "name": "Score",
+     "kind": "FloatProperty"
+    }
+   ]
+  },
+  "PostProcessVolume": {
+   "super": "Volume",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bEnabled",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "TeamInfo": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 3,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "TeamIndex",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "Score",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "TeamName",
+     "kind": "StrProperty"
+    }
+   ]
+  },
+  "Teleporter": {
+   "super": "NavigationPoint",
+   "fields_base": 21,
+   "count": 8,
+   "field_max": 29,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "TargetVelocity",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "bEnabled",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "bReversesZ",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "bReversesY",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "bReversesX",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "bChangesYaw",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "bChangesVelocity",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "URL",
+     "kind": "StrProperty"
+    }
+   ]
+  },
+  "Vehicle": {
+   "super": "Pawn",
+   "fields_base": 43,
+   "count": 2,
+   "field_max": 45,
+   "fields": [
+    {
+     "index": 43,
+     "position": 0,
+     "name": "bDriving",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 44,
+     "position": 1,
+     "name": "Driver",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "Weapon": {
+   "super": "Inventory",
+   "fields_base": 24,
+   "count": 4,
+   "field_max": 28,
+   "fields": [
+    {
+     "index": 24,
+     "position": 0,
+     "name": "ClientWeaponThrown",
+     "kind": "Function"
+    },
+    {
+     "index": 25,
+     "position": 1,
+     "name": "ClientWeaponSet",
+     "kind": "Function"
+    },
+    {
+     "index": 26,
+     "position": 2,
+     "name": "ServerStartFire",
+     "kind": "Function"
+    },
+    {
+     "index": 27,
+     "position": 3,
+     "name": "ServerStopFire",
+     "kind": "Function"
+    }
+   ]
+  },
+  "WorldInfo": {
+   "super": "ZoneInfo",
+   "fields_base": 21,
+   "count": 7,
+   "field_max": 28,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "WorldGravityZ",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_ePhysCorrectMode",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "Pauser",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "TimeDilation",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "bHighPriorityLoading",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "bLCCollidesLC",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "bPlayerCollidesLC",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "SkeletalMeshActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "ReplicatedMesh",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "FogVolumeDensityInfo": {
+   "super": "Info",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bEnabled",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "Emitter": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bCurrentlyActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "PhysXEmitterSpawnable": {
+   "super": "Emitter",
+   "fields_base": 22,
+   "count": 1,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "ParticleTemplate",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "KActor": {
+   "super": "DynamicSMActor",
+   "fields_base": 26,
+   "count": 5,
+   "field_max": 31,
+   "fields": [
+    {
+     "index": 26,
+     "position": 0,
+     "name": "DrawScaleZ",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 27,
+     "position": 1,
+     "name": "DrawScaleY",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 28,
+     "position": 2,
+     "name": "DrawScaleX",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 29,
+     "position": 3,
+     "name": "RBState",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 4,
+     "name": "bWakeOnLevelStart",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "KAsset": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 2,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "ReplicatedPhysAsset",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "ReplicatedMesh",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "RB_LineImpulseActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "ImpulseCount",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "RB_RadialImpulseActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "ImpulseCount",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "SVehicle": {
+   "super": "Vehicle",
+   "fields_base": 45,
+   "count": 3,
+   "field_max": 48,
+   "fields": [
+    {
+     "index": 45,
+     "position": 0,
+     "name": "VState",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 46,
+     "position": 1,
+     "name": "m_NonLocalVehicleState",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 47,
+     "position": 2,
+     "name": "m_bNonLocalVehicleReplication",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "NxForceField": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bForceActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "RB_CylindricalForceActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bForceActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "RB_RadialForceActor": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bForceActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "cActorProxiesManager": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "stParams_replicated",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "LensFlareSource": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bCurrentlyActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "cTaskDescription": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 30,
+   "field_max": 51,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_OppositionJustification",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_OwnerJustification",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nMissionTimeLimit",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_nOppositionObjectivesMirrorLength",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_OppositionObjectivesMirror",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_nOwnerObjectivesMirrorLength",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "m_OwnerObjectivesMirror",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "m_nMissionTimeRemaining",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "m_nVIPOppositionTakeoutLimit",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "m_nVIPOwnerTakeoutLimit",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "m_nOppositionTakeoutLimit",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "m_nOwnerTakeoutLimit",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "m_nOppositionTakeouts",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "m_nOwnerTakeouts",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "m_nOppositionObjectivePoints",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 36,
+     "position": 15,
+     "name": "m_nOwnerObjectivePoints",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 37,
+     "position": 16,
+     "name": "m_nStageObjectivesCompleted",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 38,
+     "position": 17,
+     "name": "m_nCurrentStage",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 39,
+     "position": 18,
+     "name": "m_nConcurrentObjective",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 40,
+     "position": 19,
+     "name": "m_nCurrentObjective",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 41,
+     "position": 20,
+     "name": "m_nOpposingSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 42,
+     "position": 21,
+     "name": "m_nOwningSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 43,
+     "position": 22,
+     "name": "m_bInstigated",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 44,
+     "position": 23,
+     "name": "m_nMissionTemplateID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 45,
+     "position": 24,
+     "name": "m_nUniqueID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 46,
+     "position": 25,
+     "name": "m_OpposingSideVIPState",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 47,
+     "position": 26,
+     "name": "m_OwningSideVIPState",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 48,
+     "position": 27,
+     "name": "m_nOfferTimer",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 49,
+     "position": 28,
+     "name": "m_TaskStatus",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 50,
+     "position": 29,
+     "name": "m_eMovingTargetPossession",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cAPBPawnAnimation": {
+   "super": "Pawn",
+   "fields_base": 43,
+   "count": 1,
+   "field_max": 44,
+   "fields": [
+    {
+     "index": 43,
+     "position": 0,
+     "name": "m_AnimationRequest",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cAPBPawn": {
+   "super": "cAPBPawnAnimation",
+   "fields_base": 44,
+   "count": 66,
+   "field_max": 110,
+   "fields": [
+    {
+     "index": 44,
+     "position": 0,
+     "name": "DoPayForHeatServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 45,
+     "position": 1,
+     "name": "OnPayForHeat",
+     "kind": "Function"
+    },
+    {
+     "index": 46,
+     "position": 2,
+     "name": "ClientNotifyBeginInventoryAccess",
+     "kind": "Function"
+    },
+    {
+     "index": 47,
+     "position": 3,
+     "name": "ClientNotifyEndInventoryAccess",
+     "kind": "Function"
+    },
+    {
+     "index": 48,
+     "position": 4,
+     "name": "ServerNotifyPlayerClosedInventory",
+     "kind": "Function"
+    },
+    {
+     "index": 49,
+     "position": 5,
+     "name": "ServerSetStrafeFiring",
+     "kind": "Function"
+    },
+    {
+     "index": 50,
+     "position": 6,
+     "name": "ClientRemoveStrafeFiring",
+     "kind": "Function"
+    },
+    {
+     "index": 51,
+     "position": 7,
+     "name": "ClientPlaySound",
+     "kind": "Function"
+    },
+    {
+     "index": 52,
+     "position": 8,
+     "name": "OpenPlayerInteractionMenu",
+     "kind": "Function"
+    },
+    {
+     "index": 53,
+     "position": 9,
+     "name": "ReplicateVFX",
+     "kind": "Function"
+    },
+    {
+     "index": 54,
+     "position": 10,
+     "name": "ServerRespawn",
+     "kind": "Function"
+    },
+    {
+     "index": 55,
+     "position": 11,
+     "name": "ServerNotifyLeftVCP",
+     "kind": "Function"
+    },
+    {
+     "index": 56,
+     "position": 12,
+     "name": "ServerForceEndPerformCSA",
+     "kind": "Function"
+    },
+    {
+     "index": 57,
+     "position": 13,
+     "name": "ClientNotifyEmoteAnimationEnd",
+     "kind": "Function"
+    },
+    {
+     "index": 58,
+     "position": 14,
+     "name": "m_PvPFlags",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 59,
+     "position": 15,
+     "name": "m_fHeatAmount",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 60,
+     "position": 16,
+     "name": "m_MissionSideInfo",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 61,
+     "position": 17,
+     "name": "m_sClanName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 62,
+     "position": 18,
+     "name": "m_nControllerCharacterUID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 63,
+     "position": 19,
+     "name": "m_nRating",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 64,
+     "position": 20,
+     "name": "m_RemoteClientJumpAnimCount",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 65,
+     "position": 21,
+     "name": "m_fDespawnDelayMax",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 66,
+     "position": 22,
+     "name": "m_fDespawnDelay",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 67,
+     "position": 23,
+     "name": "m_WeaponAimDirn",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 68,
+     "position": 24,
+     "name": "m_CustomisationGuids",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 69,
+     "position": 25,
+     "name": "m_fRunningPct",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 70,
+     "position": 26,
+     "name": "m_ItemAttachmentData",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 71,
+     "position": 27,
+     "name": "m_StrafeFiring",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 72,
+     "position": 28,
+     "name": "m_fWitnessableCrimeServerTimestamp",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 73,
+     "position": 29,
+     "name": "m_fArrestTimeRemaining",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 74,
+     "position": 30,
+     "name": "m_fAmmoResupplyProgress",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 75,
+     "position": 31,
+     "name": "m_Stamina",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 76,
+     "position": 32,
+     "name": "m_ShieldHealth",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 77,
+     "position": 33,
+     "name": "m_MaxHealth",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 78,
+     "position": 34,
+     "name": "m_VehicleUseData",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 79,
+     "position": 35,
+     "name": "m_VehicleUseReplicated",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 80,
+     "position": 36,
+     "name": "m_AimRotation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 81,
+     "position": 37,
+     "name": "m_CurrentCSAData",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 82,
+     "position": 38,
+     "name": "m_nCSAVFXSuccess",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 83,
+     "position": 39,
+     "name": "m_nHeatLevel",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 84,
+     "position": 40,
+     "name": "m_LocomotionOnPhysFalling",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 85,
+     "position": 41,
+     "name": "m_pendingVFX",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 86,
+     "position": 42,
+     "name": "m_eChatState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 87,
+     "position": 43,
+     "name": "m_eGender",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 88,
+     "position": 44,
+     "name": "m_eFaction",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 89,
+     "position": 45,
+     "name": "m_eWantsToLean",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 90,
+     "position": 46,
+     "name": "m_nThreat",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 91,
+     "position": 47,
+     "name": "m_GrenadeWeaponState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 92,
+     "position": 48,
+     "name": "m_bCanDoResupplyOperations",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 93,
+     "position": 49,
+     "name": "m_bApplyAntiCarSurfingSideForce",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 94,
+     "position": 50,
+     "name": "m_bIsCustomising",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 95,
+     "position": 51,
+     "name": "m_bIsWinded",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 96,
+     "position": 52,
+     "name": "m_bMarksManShipMode",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 97,
+     "position": 53,
+     "name": "m_bIsRunning",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 98,
+     "position": 54,
+     "name": "m_bIsVIP",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 99,
+     "position": 55,
+     "name": "m_bArrested",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 100,
+     "position": 56,
+     "name": "m_bUnconscious",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 101,
+     "position": 57,
+     "name": "m_bIsAmmoCarrierDepotDeployed",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 102,
+     "position": 58,
+     "name": "m_bShowAmmoResupplyProgressBar",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 103,
+     "position": 59,
+     "name": "m_bIsResupplyingAmmo",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 104,
+     "position": 60,
+     "name": "m_bImmuneToDamage",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 105,
+     "position": 61,
+     "name": "m_bStunned",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 106,
+     "position": 62,
+     "name": "m_bBlocking",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 107,
+     "position": 63,
+     "name": "m_bEjectLaterNetInitial",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 108,
+     "position": 64,
+     "name": "m_HitReactionInfo",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 109,
+     "position": 65,
+     "name": "m_DyingData",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cAPBDummyPawn": {
+   "super": "cAPBPawn",
+   "fields_base": 110,
+   "count": 4,
+   "field_max": 114,
+   "fields": [
+    {
+     "index": 110,
+     "position": 0,
+     "name": "m_bSimulateControllerTraffic",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 111,
+     "position": 1,
+     "name": "FakeServerMove",
+     "kind": "Function"
+    },
+    {
+     "index": 112,
+     "position": 2,
+     "name": "FakeServerUpdateViewRotation",
+     "kind": "Function"
+    },
+    {
+     "index": 113,
+     "position": 3,
+     "name": "FakeMoveAck",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cFlythroughSkeletalMeshActor": {
+   "super": "SkeletalMeshActor",
+   "fields_base": 22,
+   "count": 2,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "m_meshIndex",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 1,
+     "name": "m_ActorType",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cAPBVehicleBase": {
+   "super": "SVehicle",
+   "fields_base": 48,
+   "count": 65,
+   "field_max": 113,
+   "fields": [
+    {
+     "index": 48,
+     "position": 0,
+     "name": "serverIndicateLeft",
+     "kind": "Function"
+    },
+    {
+     "index": 49,
+     "position": 1,
+     "name": "serverIndicateRight",
+     "kind": "Function"
+    },
+    {
+     "index": 50,
+     "position": 2,
+     "name": "serverToggleSpecialLights",
+     "kind": "Function"
+    },
+    {
+     "index": 51,
+     "position": 3,
+     "name": "serverStartVehicleHorn",
+     "kind": "Function"
+    },
+    {
+     "index": 52,
+     "position": 4,
+     "name": "serverStopVehicleHorn",
+     "kind": "Function"
+    },
+    {
+     "index": 53,
+     "position": 5,
+     "name": "TakeVisualDamage",
+     "kind": "Function"
+    },
+    {
+     "index": 54,
+     "position": 6,
+     "name": "ExplodeWreck",
+     "kind": "Function"
+    },
+    {
+     "index": 55,
+     "position": 7,
+     "name": "TookExternalDamage",
+     "kind": "Function"
+    },
+    {
+     "index": 56,
+     "position": 8,
+     "name": "ServerEmptyVehicle",
+     "kind": "Function"
+    },
+    {
+     "index": 57,
+     "position": 9,
+     "name": "m_PvPFlags",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 58,
+     "position": 10,
+     "name": "m_AmmoRadiusIncreaseModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 59,
+     "position": 11,
+     "name": "m_QuickResupplyModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 60,
+     "position": 12,
+     "name": "m_CriticalTimerModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 61,
+     "position": 13,
+     "name": "m_CriticalThresholdModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 62,
+     "position": 14,
+     "name": "m_EngineOverhaulModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 63,
+     "position": 15,
+     "name": "m_QuickRepairModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 64,
+     "position": 16,
+     "name": "m_MatesRatesModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 65,
+     "position": 17,
+     "name": "m_DeployedOwner",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 66,
+     "position": 18,
+     "name": "m_NPCDriverData",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 67,
+     "position": 19,
+     "name": "m_nIncrementalID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 68,
+     "position": 20,
+     "name": "m_CustomisationGuids",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 69,
+     "position": 21,
+     "name": "m_MusicNameInfo",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 70,
+     "position": 22,
+     "name": "m_MusicPlaybackInfo",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 71,
+     "position": 23,
+     "name": "m_fOffsetFromLaneCenter",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 72,
+     "position": 24,
+     "name": "m_PositionAndOrientation_Replicated",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 73,
+     "position": 25,
+     "name": "m_PositionAndOrientation_ReplicatedInitial",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 74,
+     "position": 26,
+     "name": "m_SpeedData_ReplicatedInitial",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 75,
+     "position": 27,
+     "name": "m_SpeedData_Replicated",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 76,
+     "position": 28,
+     "name": "m_nVehicleCategory",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 77,
+     "position": 29,
+     "name": "m_ReactionID_Replicated",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 78,
+     "position": 30,
+     "name": "m_fLocomotionSpeed",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 79,
+     "position": 31,
+     "name": "m_nTypeID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 80,
+     "position": 32,
+     "name": "m_nID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 81,
+     "position": 33,
+     "name": "m_fRepairPercentage",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 82,
+     "position": 34,
+     "name": "InitialRotation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 83,
+     "position": 35,
+     "name": "InitialLocation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 84,
+     "position": 36,
+     "name": "stReplicatedStateFSM",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 85,
+     "position": 37,
+     "name": "replicatedRBState",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 86,
+     "position": 38,
+     "name": "m_nVisualDamageMisc",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 87,
+     "position": 39,
+     "name": "m_nVisualDamage",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 88,
+     "position": 40,
+     "name": "m_fCriticalDamageRate",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 89,
+     "position": 41,
+     "name": "m_eDamageHandlingEffectIndex",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 90,
+     "position": 42,
+     "name": "m_nMaxHealth",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 91,
+     "position": 43,
+     "name": "m_bHasBeenPlayerCollisionCategory",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 92,
+     "position": 44,
+     "name": "m_bHasBeenUsedByPlayer",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 93,
+     "position": 45,
+     "name": "m_bDeployedOwnerValid",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 94,
+     "position": 46,
+     "name": "m_bAlarmGoingOff",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 95,
+     "position": 47,
+     "name": "m_bEnableVehicleHorn",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 96,
+     "position": 48,
+     "name": "m_bEnableSpecialLights",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 97,
+     "position": 49,
+     "name": "m_bIsRepairing",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 98,
+     "position": 50,
+     "name": "m_bClientHUDMarkerEnabled",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 99,
+     "position": 51,
+     "name": "m_CargoInventory",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 100,
+     "position": 52,
+     "name": "m_aSeatPawnsForWitnessing",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 101,
+     "position": 53,
+     "name": "m_aWindowOpen",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 102,
+     "position": 54,
+     "name": "m_eSpawnState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 103,
+     "position": 55,
+     "name": "m_nUsingCollisionGroupID",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 104,
+     "position": 56,
+     "name": "m_nMissionTaskItemInsideOwningCollisionGroupID",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 105,
+     "position": 57,
+     "name": "m_nTaskOwningCollisionGroupID",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 106,
+     "position": 58,
+     "name": "m_eInitialTheftFaction",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 107,
+     "position": 59,
+     "name": "m_eStoppingReason",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 108,
+     "position": 60,
+     "name": "m_eBrainAndPhysRepState_Replicated",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 109,
+     "position": 61,
+     "name": "m_eVehicleSetupType",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 110,
+     "position": 62,
+     "name": "vehicleType",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 111,
+     "position": 63,
+     "name": "m_nCriticalDamageType",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 112,
+     "position": 64,
+     "name": "m_DriverIndicator",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cAPBVehicle": {
+   "super": "cAPBVehicleBase",
+   "fields_base": 113,
+   "count": 1,
+   "field_max": 114,
+   "fields": [
+    {
+     "index": 113,
+     "position": 0,
+     "name": "ServerSetTorqueMods",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cProp": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 15,
+   "field_max": 36,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nRepTaskOpposingSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nRepTaskOwningSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_vRepBombLocation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_nRepBombTimer",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_nRepBombState",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_nRepTaskOperationID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "m_nLastDamageCharacterUID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "aRepRBStates",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "RepAnimation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "nRepMaxHealth",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "nRepCurrentHealth",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "m_eIATState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "m_eTaskTargetVFXState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "m_eCurrentTaskOperationCategory",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "eRepPropState",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cCustomisationReplicator": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 4,
+   "field_max": 25,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "ServerSendData",
+     "kind": "Function"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "ClientReceiveData",
+     "kind": "Function"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "ClientNotifyTransferComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "ServerNotifyOperationComplete",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cLCManager": {
+   "super": "cLCManagerBase",
+   "fields_base": 21,
+   "count": 2,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nStatReplicationCompeleted",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_sNPCStats",
+     "kind": "StrProperty"
+    }
+   ]
+  },
+  "cCustomGraffitiDisplayPoint": {
+   "super": "cGraffitiDisplayPoint",
+   "fields_base": 21,
+   "count": 2,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_eNotifyFlag",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_CustomisationGuid",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cGraffitiCrimeTarget": {
+   "super": "cGraffitiDisplayPoint",
+   "fields_base": 21,
+   "count": 5,
+   "field_max": 26,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nRepTaskOpposingSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nRepTaskOwningSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nRepTaskOperationID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_TextureData",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_eTaskTargetVFXState",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cCheckpoint": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 5,
+   "field_max": 26,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_bDebugAlwaysVisible",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nRepTaskOpposingSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nRepTaskOwningSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_nRepTaskOperationID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_eTaskTargetVFXState",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cStaticCrimeTarget": {
+   "super": "cPlaceholderBlockingLocator",
+   "fields_base": 21,
+   "count": 8,
+   "field_max": 29,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nRepTaskOpposingSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nRepTaskOwningSideID_Initial",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nRepTaskOwningSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_bRepBombExploded_Initial",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_bRepBombExploded",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_nRepBombSetLevel",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "m_nRepTaskOperationID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "m_eTaskTargetVFXState",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cItemCustomisationInfo": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_ItemID",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cBlobCustomisationInfo": {
+   "super": "cItemCustomisationInfo",
+   "fields_base": 22,
+   "count": 3,
+   "field_max": 25,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "m_sUserSpecifiedName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 23,
+     "position": 1,
+     "name": "m_nVersion",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 2,
+     "name": "m_nUsedBytes",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cClothingCustomisationInfo": {
+   "super": "cBlobCustomisationInfo",
+   "fields_base": 25,
+   "count": 14,
+   "field_max": 39,
+   "fields": [
+    {
+     "index": 25,
+     "position": 0,
+     "name": "m_Chunk_14",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 26,
+     "position": 1,
+     "name": "m_Chunk_13",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 27,
+     "position": 2,
+     "name": "m_Chunk_12",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 3,
+     "name": "m_Chunk_11",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 4,
+     "name": "m_Chunk_10",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 5,
+     "name": "m_Chunk_09",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 31,
+     "position": 6,
+     "name": "m_Chunk_08",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 32,
+     "position": 7,
+     "name": "m_Chunk_07",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 33,
+     "position": 8,
+     "name": "m_Chunk_06",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 34,
+     "position": 9,
+     "name": "m_Chunk_05",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 35,
+     "position": 10,
+     "name": "m_Chunk_04",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 36,
+     "position": 11,
+     "name": "m_Chunk_03",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 37,
+     "position": 12,
+     "name": "m_Chunk_02",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 38,
+     "position": 13,
+     "name": "m_Chunk_01",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cDisplayPointTokenCustomisationInfo": {
+   "super": "cItemCustomisationInfo",
+   "fields_base": 22,
+   "count": 1,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "m_Guid",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cItem": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 5,
+   "field_max": 26,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_ItemID",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_OwningManager",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_eInventoryItemType",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "ClientEquipItem",
+     "kind": "Function"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "ClientUnequipItem",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cEquipableTaskItem": {
+   "super": "cItem",
+   "fields_base": 26,
+   "count": 1,
+   "field_max": 27,
+   "fields": [
+    {
+     "index": 26,
+     "position": 0,
+     "name": "m_nVariety",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cHoldableItemManager": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 19,
+   "field_max": 40,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_OwningPawn",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nNumSmallTaskItems",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_HeldTaskItem",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_CurrentItem",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_nSelectedWeapon",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_WitnessingWeapon",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "m_DeployedWeapons",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "ClientStartInterrupt",
+     "kind": "Function"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "ClientEndInterrupt",
+     "kind": "Function"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "ServerNotifySpawnedOnClient",
+     "kind": "Function"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "ServerSelectWeapon",
+     "kind": "Function"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "ServerSelectNone",
+     "kind": "Function"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "ServerReloadWeapon",
+     "kind": "Function"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "ClientReloadFailed",
+     "kind": "Function"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "ServerSelectUsable",
+     "kind": "Function"
+    },
+    {
+     "index": 36,
+     "position": 15,
+     "name": "ServerGiftAllAmmo",
+     "kind": "Function"
+    },
+    {
+     "index": 37,
+     "position": 16,
+     "name": "ServerGiftAmmo",
+     "kind": "Function"
+    },
+    {
+     "index": 38,
+     "position": 17,
+     "name": "ClientUnEquip",
+     "kind": "Function"
+    },
+    {
+     "index": 39,
+     "position": 18,
+     "name": "ClientEquipCommandFailed",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cOutfitCustomisationInfo": {
+   "super": "cBlobCustomisationInfo",
+   "fields_base": 25,
+   "count": 4,
+   "field_max": 29,
+   "fields": [
+    {
+     "index": 25,
+     "position": 0,
+     "name": "m_Chunk_04",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 26,
+     "position": 1,
+     "name": "m_Chunk_03",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 27,
+     "position": 2,
+     "name": "m_Chunk_02",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 3,
+     "name": "m_Chunk_01",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cStorageInventory": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 47,
+   "field_max": 68,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_CustomisationLimiterRepData",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_CustomColours",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nGlobalCooldownTimeEnd",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_nGlobalCooldownTimeBegin",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_AmmoTotals",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_AmmoPools",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "m_aReuseGroups",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "m_aFnModsCharacter",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "m_nDeployedTheme",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "m_nDeployedOutfit",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "m_nDeployedVehicle",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "m_aDeployedVehicleUsables",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "m_aDeployedCharacterUsables",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "m_aDeployedSymbols",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "m_aDeployedEquipment",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 36,
+     "position": 15,
+     "name": "m_aWeaponCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 37,
+     "position": 16,
+     "name": "m_aVehicleCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 38,
+     "position": 17,
+     "name": "m_aSymbolCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 39,
+     "position": 18,
+     "name": "m_aDisplayPointTokenCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 40,
+     "position": 19,
+     "name": "m_aOutfitCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 41,
+     "position": 20,
+     "name": "m_aSongCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 42,
+     "position": 21,
+     "name": "m_aThemeCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 43,
+     "position": 22,
+     "name": "m_aClothingCustomisations",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 44,
+     "position": 23,
+     "name": "m_aStackingSlots",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 45,
+     "position": 24,
+     "name": "m_aAvailabilities",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 46,
+     "position": 25,
+     "name": "m_aUsableTokenCharges",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 47,
+     "position": 26,
+     "name": "m_aExaminedItemBits_3",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 48,
+     "position": 27,
+     "name": "m_aExaminedItemBits_2",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 49,
+     "position": 28,
+     "name": "m_aExaminedItemBits_1",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 50,
+     "position": 29,
+     "name": "m_aExaminedItemBits_0",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 51,
+     "position": 30,
+     "name": "m_aUnlockItemBits_3",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 52,
+     "position": 31,
+     "name": "m_aUnlockItemBits_2",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 53,
+     "position": 32,
+     "name": "m_aUnlockItemBits_1",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 54,
+     "position": 33,
+     "name": "m_aUnlockItemBits_0",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 55,
+     "position": 34,
+     "name": "m_aWeaponItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 56,
+     "position": 35,
+     "name": "m_aVehicleItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 57,
+     "position": 36,
+     "name": "m_aUsableTokenItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 58,
+     "position": 37,
+     "name": "m_aUnlockItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 59,
+     "position": 38,
+     "name": "m_aSongItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 60,
+     "position": 39,
+     "name": "m_aThemeItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 61,
+     "position": 40,
+     "name": "m_aSymbolItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 62,
+     "position": 41,
+     "name": "m_aOutfitItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 63,
+     "position": 42,
+     "name": "m_aFnModItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 64,
+     "position": 43,
+     "name": "m_aEquipmentItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 65,
+     "position": 44,
+     "name": "m_aDisplayPointTokenItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 66,
+     "position": 45,
+     "name": "m_aClothingItems",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 67,
+     "position": 46,
+     "name": "m_aCharacterItems",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cSymbolCustomisationInfo": {
+   "super": "cBlobCustomisationInfo",
+   "fields_base": 25,
+   "count": 8,
+   "field_max": 33,
+   "fields": [
+    {
+     "index": 25,
+     "position": 0,
+     "name": "m_Chunk_08",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 26,
+     "position": 1,
+     "name": "m_Chunk_07",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 27,
+     "position": 2,
+     "name": "m_Chunk_06",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 3,
+     "name": "m_Chunk_05",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 4,
+     "name": "m_Chunk_04",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 5,
+     "name": "m_Chunk_03",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 31,
+     "position": 6,
+     "name": "m_Chunk_02",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 32,
+     "position": 7,
+     "name": "m_Chunk_01",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cThemeCustomisationInfo": {
+   "super": "cBlobCustomisationInfo",
+   "fields_base": 25,
+   "count": 10,
+   "field_max": 35,
+   "fields": [
+    {
+     "index": 25,
+     "position": 0,
+     "name": "m_Chunk_10",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 26,
+     "position": 1,
+     "name": "m_Chunk_09",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 27,
+     "position": 2,
+     "name": "m_Chunk_08",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 3,
+     "name": "m_Chunk_07",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 4,
+     "name": "m_Chunk_06",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 5,
+     "name": "m_Chunk_05",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 31,
+     "position": 6,
+     "name": "m_Chunk_04",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 32,
+     "position": 7,
+     "name": "m_Chunk_03",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 33,
+     "position": 8,
+     "name": "m_Chunk_02",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 34,
+     "position": 9,
+     "name": "m_Chunk_01",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cVehicleCustomisationInfo": {
+   "super": "cBlobCustomisationInfo",
+   "fields_base": 25,
+   "count": 13,
+   "field_max": 38,
+   "fields": [
+    {
+     "index": 25,
+     "position": 0,
+     "name": "m_aFnMods",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 26,
+     "position": 1,
+     "name": "m_Chunk_12",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 27,
+     "position": 2,
+     "name": "m_Chunk_11",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 3,
+     "name": "m_Chunk_10",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 4,
+     "name": "m_Chunk_09",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 5,
+     "name": "m_Chunk_08",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 31,
+     "position": 6,
+     "name": "m_Chunk_07",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 32,
+     "position": 7,
+     "name": "m_Chunk_06",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 33,
+     "position": 8,
+     "name": "m_Chunk_05",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 34,
+     "position": 9,
+     "name": "m_Chunk_04",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 35,
+     "position": 10,
+     "name": "m_Chunk_03",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 36,
+     "position": 11,
+     "name": "m_Chunk_02",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 37,
+     "position": 12,
+     "name": "m_Chunk_01",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cWeaponCustomisationInfo": {
+   "super": "cItemCustomisationInfo",
+   "fields_base": 22,
+   "count": 1,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "m_aFnMods",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cAPBCheatManager": {
+   "super": "CheatManager",
+   "fields_base": 0,
+   "count": 1,
+   "field_max": 1,
+   "fields": [
+    {
+     "index": 0,
+     "position": 0,
+     "name": "serverSpraryAllGraffiti",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cHostingPlayerController": {
+   "super": "PlayerController",
+   "fields_base": 123,
+   "count": 30,
+   "field_max": 153,
+   "fields": [
+    {
+     "index": 123,
+     "position": 0,
+     "name": "m_sClanName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 124,
+     "position": 1,
+     "name": "m_eChatState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 125,
+     "position": 2,
+     "name": "m_nPoints",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 126,
+     "position": 3,
+     "name": "m_nCash",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 127,
+     "position": 4,
+     "name": "m_nClanUID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 128,
+     "position": 5,
+     "name": "m_nAccountType",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 129,
+     "position": 6,
+     "name": "m_nAccountUID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 130,
+     "position": 7,
+     "name": "serversystemmessage",
+     "kind": "Function"
+    },
+    {
+     "index": 131,
+     "position": 8,
+     "name": "servercash",
+     "kind": "Function"
+    },
+    {
+     "index": 132,
+     "position": 9,
+     "name": "Receive_GC2DS_ASK_DISTRICT_ENTER",
+     "kind": "Function"
+    },
+    {
+     "index": 133,
+     "position": 10,
+     "name": "Receive_DS2GC_ANS_DISTRICT_ENTER",
+     "kind": "Function"
+    },
+    {
+     "index": 134,
+     "position": 11,
+     "name": "Receive_GC2DS_CHAT",
+     "kind": "Function"
+    },
+    {
+     "index": 135,
+     "position": 12,
+     "name": "Receive_DS2GC_CHAT",
+     "kind": "Function"
+    },
+    {
+     "index": 136,
+     "position": 13,
+     "name": "Receive_DS2GC_CHAT_SYSTEM",
+     "kind": "Function"
+    },
+    {
+     "index": 137,
+     "position": 14,
+     "name": "Receive_GC2DS_ASK_MARKETPLACE_AUCTION_CREATE",
+     "kind": "Function"
+    },
+    {
+     "index": 138,
+     "position": 15,
+     "name": "Receive_DS2GC_ANS_MARKETPLACE_AUCTION_CREATE",
+     "kind": "Function"
+    },
+    {
+     "index": 139,
+     "position": 16,
+     "name": "Receive_GC2DS_ASK_MARKETPLACE_AUCTION_BID",
+     "kind": "Function"
+    },
+    {
+     "index": 140,
+     "position": 17,
+     "name": "Receive_DS2GC_ANS_MARKETPLACE_AUCTION_BID",
+     "kind": "Function"
+    },
+    {
+     "index": 141,
+     "position": 18,
+     "name": "Receive_GC2DS_ASK_MAIL_SEND_HEADER",
+     "kind": "Function"
+    },
+    {
+     "index": 142,
+     "position": 19,
+     "name": "Receive_GC2DS_ASK_MAIL_SEND_BODY_PART",
+     "kind": "Function"
+    },
+    {
+     "index": 143,
+     "position": 20,
+     "name": "Receive_DS2GC_ANS_MAIL_SEND",
+     "kind": "Function"
+    },
+    {
+     "index": 144,
+     "position": 21,
+     "name": "Receive_GC2DS_ASK_MAIL_DETACH_CASH",
+     "kind": "Function"
+    },
+    {
+     "index": 145,
+     "position": 22,
+     "name": "Receive_DS2GC_ANS_MAIL_DETACH_CASH",
+     "kind": "Function"
+    },
+    {
+     "index": 146,
+     "position": 23,
+     "name": "Receive_GC2DS_ASK_MAIL_DETACH_POINTS",
+     "kind": "Function"
+    },
+    {
+     "index": 147,
+     "position": 24,
+     "name": "Receive_DS2GC_ANS_MAIL_DETACH_POINTS",
+     "kind": "Function"
+    },
+    {
+     "index": 148,
+     "position": 25,
+     "name": "Receive_GC2DS_ASK_MAIL_DETACH_ITEM",
+     "kind": "Function"
+    },
+    {
+     "index": 149,
+     "position": 26,
+     "name": "Receive_DS2GC_ANS_MAIL_DETACH_ITEM",
+     "kind": "Function"
+    },
+    {
+     "index": 150,
+     "position": 27,
+     "name": "Receive_DS2GC_MAIL_SYSTEM",
+     "kind": "Function"
+    },
+    {
+     "index": 151,
+     "position": 28,
+     "name": "Receive_DS2GC_DISTRICT_SHUTDOWN_NOTIFY",
+     "kind": "Function"
+    },
+    {
+     "index": 152,
+     "position": 29,
+     "name": "Receive_GC2DS_CLIENT_SYSTEM_SPEC",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cAPBPlayerControllerAnimation": {
+   "super": "cHostingPlayerController",
+   "fields_base": 153,
+   "count": 1,
+   "field_max": 154,
+   "fields": [
+    {
+     "index": 153,
+     "position": 0,
+     "name": "ServerUpdateTimeStamp",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cAPBPlayerController": {
+   "super": "cAPBPlayerControllerAnimation",
+   "fields_base": 154,
+   "count": 480,
+   "field_max": 634,
+   "fields": [
+    {
+     "index": 154,
+     "position": 0,
+     "name": "m_APBPawnLastConnectedReplicated",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 155,
+     "position": 1,
+     "name": "m_PvPFlags",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 156,
+     "position": 2,
+     "name": "m_fMaxUpDownCamSpeed",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 157,
+     "position": 3,
+     "name": "m_fMaxFlyCamSpeed",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 158,
+     "position": 4,
+     "name": "m_sCharacterName",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 159,
+     "position": 5,
+     "name": "m_nMissionAbandonmentExpiryTime",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 160,
+     "position": 6,
+     "name": "m_Mission",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 161,
+     "position": 7,
+     "name": "m_nEffectivePledgedContactSddRowID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 162,
+     "position": 8,
+     "name": "m_nPledgedContactSddRowID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 163,
+     "position": 9,
+     "name": "m_VendorContactInterface",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 164,
+     "position": 10,
+     "name": "m_HoldableItemManager",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 165,
+     "position": 11,
+     "name": "m_Inventory",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 166,
+     "position": 12,
+     "name": "m_fPingTimeStamp",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 167,
+     "position": 13,
+     "name": "m_fCurrentServerTimeStamp",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 168,
+     "position": 14,
+     "name": "m_fDeployedVehicleSpawnTimeStamp",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 169,
+     "position": 15,
+     "name": "m_DeployedVehicle",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 170,
+     "position": 16,
+     "name": "m_fCachedHeatAmount",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 171,
+     "position": 17,
+     "name": "m_nCachedHeatLevel",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 172,
+     "position": 18,
+     "name": "m_eMissionInvolvement",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 173,
+     "position": 19,
+     "name": "m_bIsElectiveRespawning",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 174,
+     "position": 20,
+     "name": "m_bCameraRightSideKey",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 175,
+     "position": 21,
+     "name": "m_bSpectatorMode",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 176,
+     "position": 22,
+     "name": "m_bCameraKeysExtraMovement",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 177,
+     "position": 23,
+     "name": "m_bUseDirectorCameraMode",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 178,
+     "position": 24,
+     "name": "m_bUsingAttachedToActorCamera",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 179,
+     "position": 25,
+     "name": "m_bShieldsEnabled",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 180,
+     "position": 26,
+     "name": "m_bIsElectiveRespawnInProgress",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 181,
+     "position": 27,
+     "name": "m_bTutorialComplete",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 182,
+     "position": 28,
+     "name": "m_bIsOvermatched",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 183,
+     "position": 29,
+     "name": "m_bIsMissionInProgress",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 184,
+     "position": 30,
+     "name": "m_bIsGM",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 185,
+     "position": 31,
+     "name": "m_bDead",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 186,
+     "position": 32,
+     "name": "m_bShowServerHits",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 187,
+     "position": 33,
+     "name": "m_bCanRespawnDeployedVehicle",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 188,
+     "position": 34,
+     "name": "m_bMissionOffersEnabled",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 189,
+     "position": 35,
+     "name": "m_bFlyWhileDead",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 190,
+     "position": 36,
+     "name": "m_ReplicatedHUDMarkerGroup",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 191,
+     "position": 37,
+     "name": "StartCapturingMovie",
+     "kind": "Function"
+    },
+    {
+     "index": 192,
+     "position": 38,
+     "name": "StopCapturingMovie",
+     "kind": "Function"
+    },
+    {
+     "index": 193,
+     "position": 39,
+     "name": "IsCapturingMovie",
+     "kind": "Function"
+    },
+    {
+     "index": 194,
+     "position": 40,
+     "name": "ToggleWantsToCrouchServer",
+     "kind": "Function"
+    },
+    {
+     "index": 195,
+     "position": 41,
+     "name": "NativeVehicleSetup",
+     "kind": "Function"
+    },
+    {
+     "index": 196,
+     "position": 42,
+     "name": "ClientOpenUIScene",
+     "kind": "Function"
+    },
+    {
+     "index": 197,
+     "position": 43,
+     "name": "ServerSetTutorialsComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 198,
+     "position": 44,
+     "name": "ClientSetTutorialsComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 199,
+     "position": 45,
+     "name": "ServerSetGroupLeaderPing",
+     "kind": "Function"
+    },
+    {
+     "index": 200,
+     "position": 46,
+     "name": "ClientAddHUDMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 201,
+     "position": 47,
+     "name": "ClientAddContactHUDMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 202,
+     "position": 48,
+     "name": "ClientAddResupplyHUDMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 203,
+     "position": 49,
+     "name": "ClientAddWitnessingHUDMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 204,
+     "position": 50,
+     "name": "ClientAddItemDeliveryHUDMessage",
+     "kind": "Function"
+    },
+    {
+     "index": 205,
+     "position": 51,
+     "name": "ClientFlushHUDMessages",
+     "kind": "Function"
+    },
+    {
+     "index": 206,
+     "position": 52,
+     "name": "ClientTriggerZonePopupDialog",
+     "kind": "Function"
+    },
+    {
+     "index": 207,
+     "position": 53,
+     "name": "ClientTriggerGameplayPopupDialog",
+     "kind": "Function"
+    },
+    {
+     "index": 208,
+     "position": 54,
+     "name": "ClientAddPopupDialog",
+     "kind": "Function"
+    },
+    {
+     "index": 209,
+     "position": 55,
+     "name": "ClientOpenDisplayPointUI",
+     "kind": "Function"
+    },
+    {
+     "index": 210,
+     "position": 56,
+     "name": "ClientUpdateDisplayPointUI",
+     "kind": "Function"
+    },
+    {
+     "index": 211,
+     "position": 57,
+     "name": "ServerPerformDisplayPointInteraction",
+     "kind": "Function"
+    },
+    {
+     "index": 212,
+     "position": 58,
+     "name": "ServerUpdateUnlockedContactsList",
+     "kind": "Function"
+    },
+    {
+     "index": 213,
+     "position": 59,
+     "name": "ClientUpdateUnlockedContactsList",
+     "kind": "Function"
+    },
+    {
+     "index": 214,
+     "position": 60,
+     "name": "ClientOnCSATimerStarted",
+     "kind": "Function"
+    },
+    {
+     "index": 215,
+     "position": 61,
+     "name": "ClientOnCSATimerStopped",
+     "kind": "Function"
+    },
+    {
+     "index": 216,
+     "position": 62,
+     "name": "ClientOnCSATimerChanged",
+     "kind": "Function"
+    },
+    {
+     "index": 217,
+     "position": 63,
+     "name": "ClientNotifyBackupRecieved",
+     "kind": "Function"
+    },
+    {
+     "index": 218,
+     "position": 64,
+     "name": "ServerUpdateTimeDebug",
+     "kind": "Function"
+    },
+    {
+     "index": 219,
+     "position": 65,
+     "name": "ServerPhysCorrect",
+     "kind": "Function"
+    },
+    {
+     "index": 220,
+     "position": 66,
+     "name": "ClientCrimeListChanged",
+     "kind": "Function"
+    },
+    {
+     "index": 221,
+     "position": 67,
+     "name": "ClientNotifyEnforcerWitness",
+     "kind": "Function"
+    },
+    {
+     "index": 222,
+     "position": 68,
+     "name": "ServerSetPawnAlwaysRelevant",
+     "kind": "Function"
+    },
+    {
+     "index": 223,
+     "position": 69,
+     "name": "ServerLeanInOut",
+     "kind": "Function"
+    },
+    {
+     "index": 224,
+     "position": 70,
+     "name": "ClientCancelLeanInOut",
+     "kind": "Function"
+    },
+    {
+     "index": 225,
+     "position": 71,
+     "name": "ServerShowAllCheckpoints",
+     "kind": "Function"
+    },
+    {
+     "index": 226,
+     "position": 72,
+     "name": "ServerShowGameplayMarkers",
+     "kind": "Function"
+    },
+    {
+     "index": 227,
+     "position": 73,
+     "name": "GM_ServerSetMissionOffersDisabled",
+     "kind": "Function"
+    },
+    {
+     "index": 228,
+     "position": 74,
+     "name": "OnVendorSet",
+     "kind": "Function"
+    },
+    {
+     "index": 229,
+     "position": 75,
+     "name": "SendLeagueRewardsServer",
+     "kind": "Function"
+    },
+    {
+     "index": 230,
+     "position": 76,
+     "name": "SendLeagueRankingServer",
+     "kind": "Function"
+    },
+    {
+     "index": 231,
+     "position": 77,
+     "name": "SummonItemServer",
+     "kind": "Function"
+    },
+    {
+     "index": 232,
+     "position": 78,
+     "name": "SummonItemClient",
+     "kind": "Function"
+    },
+    {
+     "index": 233,
+     "position": 79,
+     "name": "SummonRewardServer",
+     "kind": "Function"
+    },
+    {
+     "index": 234,
+     "position": 80,
+     "name": "SummonRedeemableRewardServer",
+     "kind": "Function"
+    },
+    {
+     "index": 235,
+     "position": 81,
+     "name": "SummonContactRewardServer",
+     "kind": "Function"
+    },
+    {
+     "index": 236,
+     "position": 82,
+     "name": "SummonRoleRewardServer",
+     "kind": "Function"
+    },
+    {
+     "index": 237,
+     "position": 83,
+     "name": "SummonDisplayPointTokenServer",
+     "kind": "Function"
+    },
+    {
+     "index": 238,
+     "position": 84,
+     "name": "LoadCharacterStateServer",
+     "kind": "Function"
+    },
+    {
+     "index": 239,
+     "position": 85,
+     "name": "SaveCharacterStateServer",
+     "kind": "Function"
+    },
+    {
+     "index": 240,
+     "position": 86,
+     "name": "TestPersistenceServer",
+     "kind": "Function"
+    },
+    {
+     "index": 241,
+     "position": 87,
+     "name": "SetAllItemsPaidServer",
+     "kind": "Function"
+    },
+    {
+     "index": 242,
+     "position": 88,
+     "name": "OperateOnItemServer",
+     "kind": "Function"
+    },
+    {
+     "index": 243,
+     "position": 89,
+     "name": "clientOnOperateOnItem",
+     "kind": "Function"
+    },
+    {
+     "index": 244,
+     "position": 90,
+     "name": "CombineItemStackGroupServer",
+     "kind": "Function"
+    },
+    {
+     "index": 245,
+     "position": 91,
+     "name": "ResetItemAvailabilitiesServer",
+     "kind": "Function"
+    },
+    {
+     "index": 246,
+     "position": 92,
+     "name": "UnlockAllItemsServer",
+     "kind": "Function"
+    },
+    {
+     "index": 247,
+     "position": 93,
+     "name": "RemoveUnlockServer",
+     "kind": "Function"
+    },
+    {
+     "index": 248,
+     "position": 94,
+     "name": "CreateSymbolLicence",
+     "kind": "Function"
+    },
+    {
+     "index": 249,
+     "position": 95,
+     "name": "ItemExaminedServer",
+     "kind": "Function"
+    },
+    {
+     "index": 250,
+     "position": 96,
+     "name": "SetItemExaminedServer",
+     "kind": "Function"
+    },
+    {
+     "index": 251,
+     "position": 97,
+     "name": "LogInventoryServer",
+     "kind": "Function"
+    },
+    {
+     "index": 252,
+     "position": 98,
+     "name": "StartVehicleSpawnRepairCostUI",
+     "kind": "Function"
+    },
+    {
+     "index": 253,
+     "position": 99,
+     "name": "ServerAcceptVehicleSpawnDialogue",
+     "kind": "Function"
+    },
+    {
+     "index": 254,
+     "position": 100,
+     "name": "ServerDeclineVehicleSpawnDialogue",
+     "kind": "Function"
+    },
+    {
+     "index": 255,
+     "position": 101,
+     "name": "DebugServerIncrementCash",
+     "kind": "Function"
+    },
+    {
+     "index": 256,
+     "position": 102,
+     "name": "DebugServerDecrementCash",
+     "kind": "Function"
+    },
+    {
+     "index": 257,
+     "position": 103,
+     "name": "ServerLogActorPosition",
+     "kind": "Function"
+    },
+    {
+     "index": 258,
+     "position": 104,
+     "name": "ServerDamageCar",
+     "kind": "Function"
+    },
+    {
+     "index": 259,
+     "position": 105,
+     "name": "ServerPawnTakeDamage",
+     "kind": "Function"
+    },
+    {
+     "index": 260,
+     "position": 106,
+     "name": "ServerSetTestHitReactions",
+     "kind": "Function"
+    },
+    {
+     "index": 261,
+     "position": 107,
+     "name": "ServerTestHitReaction",
+     "kind": "Function"
+    },
+    {
+     "index": 262,
+     "position": 108,
+     "name": "ServerResetReuseGroupsNative",
+     "kind": "Function"
+    },
+    {
+     "index": 263,
+     "position": 109,
+     "name": "ServerLogModifiers",
+     "kind": "Function"
+    },
+    {
+     "index": 264,
+     "position": 110,
+     "name": "ServerTestKineCar",
+     "kind": "Function"
+    },
+    {
+     "index": 265,
+     "position": 111,
+     "name": "ServerDeployNewCar",
+     "kind": "Function"
+    },
+    {
+     "index": 266,
+     "position": 112,
+     "name": "ServerSummonTaskItem",
+     "kind": "Function"
+    },
+    {
+     "index": 267,
+     "position": 113,
+     "name": "ServerTestTaskItemSpawning",
+     "kind": "Function"
+    },
+    {
+     "index": 268,
+     "position": 114,
+     "name": "ServerSummonTestMarker",
+     "kind": "Function"
+    },
+    {
+     "index": 269,
+     "position": 115,
+     "name": "ServerSetTestMarkerRelevant",
+     "kind": "Function"
+    },
+    {
+     "index": 270,
+     "position": 116,
+     "name": "ServerSetTestMarkerState",
+     "kind": "Function"
+    },
+    {
+     "index": 271,
+     "position": 117,
+     "name": "ServerSetTestMarkerType",
+     "kind": "Function"
+    },
+    {
+     "index": 272,
+     "position": 118,
+     "name": "ServerMoveTestMarker",
+     "kind": "Function"
+    },
+    {
+     "index": 273,
+     "position": 119,
+     "name": "ServerDestroyTestMarker",
+     "kind": "Function"
+    },
+    {
+     "index": 274,
+     "position": 120,
+     "name": "LogDistrictBlockContentsServer",
+     "kind": "Function"
+    },
+    {
+     "index": 275,
+     "position": 121,
+     "name": "ValidateMissionsServer",
+     "kind": "Function"
+    },
+    {
+     "index": 276,
+     "position": 122,
+     "name": "TestMissionAllBlocksServer",
+     "kind": "Function"
+    },
+    {
+     "index": 277,
+     "position": 123,
+     "name": "ServerRequestCustomisation",
+     "kind": "Function"
+    },
+    {
+     "index": 278,
+     "position": 124,
+     "name": "ClientCancelCustomisationRequest",
+     "kind": "Function"
+    },
+    {
+     "index": 279,
+     "position": 125,
+     "name": "ClientPrecacheCustomisation",
+     "kind": "Function"
+    },
+    {
+     "index": 280,
+     "position": 126,
+     "name": "BeginUploadServer",
+     "kind": "Function"
+    },
+    {
+     "index": 281,
+     "position": 127,
+     "name": "UploadChunkServer",
+     "kind": "Function"
+    },
+    {
+     "index": 282,
+     "position": 128,
+     "name": "serverItemCreate",
+     "kind": "Function"
+    },
+    {
+     "index": 283,
+     "position": 129,
+     "name": "clientOnItemCreated",
+     "kind": "Function"
+    },
+    {
+     "index": 284,
+     "position": 130,
+     "name": "ClientUploadCustomisationData",
+     "kind": "Function"
+    },
+    {
+     "index": 285,
+     "position": 131,
+     "name": "ServerReceiveCustomisationData",
+     "kind": "Function"
+    },
+    {
+     "index": 286,
+     "position": 132,
+     "name": "ServerNotifyCustomisationUploadComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 287,
+     "position": 133,
+     "name": "NotifyOwnCustomisationChanged",
+     "kind": "Function"
+    },
+    {
+     "index": 288,
+     "position": 134,
+     "name": "ServerSummon",
+     "kind": "Function"
+    },
+    {
+     "index": 289,
+     "position": 135,
+     "name": "ServerKill",
+     "kind": "Function"
+    },
+    {
+     "index": 290,
+     "position": 136,
+     "name": "serverPrintToD",
+     "kind": "Function"
+    },
+    {
+     "index": 291,
+     "position": 137,
+     "name": "serverSetToD",
+     "kind": "Function"
+    },
+    {
+     "index": 292,
+     "position": 138,
+     "name": "serverSetRandomToD",
+     "kind": "Function"
+    },
+    {
+     "index": 293,
+     "position": 139,
+     "name": "serverToggleToD",
+     "kind": "Function"
+    },
+    {
+     "index": 294,
+     "position": 140,
+     "name": "serverSetToDPeriod",
+     "kind": "Function"
+    },
+    {
+     "index": 295,
+     "position": 141,
+     "name": "ClientSetInCustomisationZone",
+     "kind": "Function"
+    },
+    {
+     "index": 296,
+     "position": 142,
+     "name": "ServerSetDebugOpenCustomisation",
+     "kind": "Function"
+    },
+    {
+     "index": 297,
+     "position": 143,
+     "name": "SetVerbosityMissionManagerServer",
+     "kind": "Function"
+    },
+    {
+     "index": 298,
+     "position": 144,
+     "name": "serverNetStatue",
+     "kind": "Function"
+    },
+    {
+     "index": 299,
+     "position": 145,
+     "name": "ClientReloadFX",
+     "kind": "Function"
+    },
+    {
+     "index": 300,
+     "position": 146,
+     "name": "NotifyImpactEffect",
+     "kind": "Function"
+    },
+    {
+     "index": 301,
+     "position": 147,
+     "name": "ClientImpactEffect",
+     "kind": "Function"
+    },
+    {
+     "index": 302,
+     "position": 148,
+     "name": "ClientNotifyStaticHit",
+     "kind": "Function"
+    },
+    {
+     "index": 303,
+     "position": 149,
+     "name": "ClientNotifyDynamicHit",
+     "kind": "Function"
+    },
+    {
+     "index": 304,
+     "position": 150,
+     "name": "ClientNotifySelfHit",
+     "kind": "Function"
+    },
+    {
+     "index": 305,
+     "position": 151,
+     "name": "ClientH2HAttack",
+     "kind": "Function"
+    },
+    {
+     "index": 306,
+     "position": 152,
+     "name": "ClientProjectileAttack",
+     "kind": "Function"
+    },
+    {
+     "index": 307,
+     "position": 153,
+     "name": "ClientExplosion",
+     "kind": "Function"
+    },
+    {
+     "index": 308,
+     "position": 154,
+     "name": "ClientPlayPawnEffect",
+     "kind": "Function"
+    },
+    {
+     "index": 309,
+     "position": 155,
+     "name": "ReplicatedToDEvent",
+     "kind": "Function"
+    },
+    {
+     "index": 310,
+     "position": 156,
+     "name": "ClientSelfSay",
+     "kind": "Function"
+    },
+    {
+     "index": 311,
+     "position": 157,
+     "name": "ServerSetVehicleMaxSpeed",
+     "kind": "Function"
+    },
+    {
+     "index": 312,
+     "position": 158,
+     "name": "ServerWeaponTargetChanged",
+     "kind": "Function"
+    },
+    {
+     "index": 313,
+     "position": 159,
+     "name": "ServerWeaponTargetCleared",
+     "kind": "Function"
+    },
+    {
+     "index": 314,
+     "position": 160,
+     "name": "ServerUpdateTargetOffset",
+     "kind": "Function"
+    },
+    {
+     "index": 315,
+     "position": 161,
+     "name": "clientSetPVPCombat",
+     "kind": "Function"
+    },
+    {
+     "index": 316,
+     "position": 162,
+     "name": "serverSetPVPCombat",
+     "kind": "Function"
+    },
+    {
+     "index": 317,
+     "position": 163,
+     "name": "ServerSetCanTargetAll",
+     "kind": "Function"
+    },
+    {
+     "index": 318,
+     "position": 164,
+     "name": "ClientServerShootLine",
+     "kind": "Function"
+    },
+    {
+     "index": 319,
+     "position": 165,
+     "name": "ServerSetAlwaysAccessInventory",
+     "kind": "Function"
+    },
+    {
+     "index": 320,
+     "position": 166,
+     "name": "ServerSetShowServerHits",
+     "kind": "Function"
+    },
+    {
+     "index": 321,
+     "position": 167,
+     "name": "ServerMakeUnconscious",
+     "kind": "Function"
+    },
+    {
+     "index": 322,
+     "position": 168,
+     "name": "ServerArrest",
+     "kind": "Function"
+    },
+    {
+     "index": 323,
+     "position": 169,
+     "name": "ServerRescue",
+     "kind": "Function"
+    },
+    {
+     "index": 324,
+     "position": 170,
+     "name": "ServerDebugExplosion",
+     "kind": "Function"
+    },
+    {
+     "index": 325,
+     "position": 171,
+     "name": "ServerEnableRespawnInVehicle",
+     "kind": "Function"
+    },
+    {
+     "index": 326,
+     "position": 172,
+     "name": "ServerSetVehicleDamageEffect",
+     "kind": "Function"
+    },
+    {
+     "index": 327,
+     "position": 173,
+     "name": "ReplicatedServerSpike",
+     "kind": "Function"
+    },
+    {
+     "index": 328,
+     "position": 174,
+     "name": "ServerSetControllerPos",
+     "kind": "Function"
+    },
+    {
+     "index": 329,
+     "position": 175,
+     "name": "ServerIllegalLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 330,
+     "position": 176,
+     "name": "ClientIllegalLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 331,
+     "position": 177,
+     "name": "ServerEnableFlyWhileDead",
+     "kind": "Function"
+    },
+    {
+     "index": 332,
+     "position": 178,
+     "name": "ServerEnableRespawnAtCamera",
+     "kind": "Function"
+    },
+    {
+     "index": 333,
+     "position": 179,
+     "name": "ClientParseCommandLine",
+     "kind": "Function"
+    },
+    {
+     "index": 334,
+     "position": 180,
+     "name": "ServerProcessAClientShout",
+     "kind": "Function"
+    },
+    {
+     "index": 335,
+     "position": 181,
+     "name": "APB_serverUpdatePing",
+     "kind": "Function"
+    },
+    {
+     "index": 336,
+     "position": 182,
+     "name": "ServerProtectPlayer",
+     "kind": "Function"
+    },
+    {
+     "index": 337,
+     "position": 183,
+     "name": "ServerStopLCVehicles",
+     "kind": "Function"
+    },
+    {
+     "index": 338,
+     "position": 184,
+     "name": "ServerBeginCSA",
+     "kind": "Function"
+    },
+    {
+     "index": 339,
+     "position": 185,
+     "name": "ServerTestCSA",
+     "kind": "Function"
+    },
+    {
+     "index": 340,
+     "position": 186,
+     "name": "ServerCSAPredicted",
+     "kind": "Function"
+    },
+    {
+     "index": 341,
+     "position": 187,
+     "name": "ClientMispredictedCSA",
+     "kind": "Function"
+    },
+    {
+     "index": 342,
+     "position": 188,
+     "name": "ServerCSAPredictCancel",
+     "kind": "Function"
+    },
+    {
+     "index": 343,
+     "position": 189,
+     "name": "ServerCSAKeyPressed",
+     "kind": "Function"
+    },
+    {
+     "index": 344,
+     "position": 190,
+     "name": "ClientResetPendingCSA",
+     "kind": "Function"
+    },
+    {
+     "index": 345,
+     "position": 191,
+     "name": "ServerCSAKeyReleased",
+     "kind": "Function"
+    },
+    {
+     "index": 346,
+     "position": 192,
+     "name": "StartMissionServer",
+     "kind": "Function"
+    },
+    {
+     "index": 347,
+     "position": 193,
+     "name": "EndMissionServer",
+     "kind": "Function"
+    },
+    {
+     "index": 348,
+     "position": 194,
+     "name": "SetOppositionServer",
+     "kind": "Function"
+    },
+    {
+     "index": 349,
+     "position": 195,
+     "name": "DebugKickSideMemberServer",
+     "kind": "Function"
+    },
+    {
+     "index": 350,
+     "position": 196,
+     "name": "ServerSetFirstStageTargetRangeCheck",
+     "kind": "Function"
+    },
+    {
+     "index": 351,
+     "position": 197,
+     "name": "ServerSetFirstStageTargetRange",
+     "kind": "Function"
+    },
+    {
+     "index": 352,
+     "position": 198,
+     "name": "ServerTestMissionTarget",
+     "kind": "Function"
+    },
+    {
+     "index": 353,
+     "position": 199,
+     "name": "KickSideMemberServer",
+     "kind": "Function"
+    },
+    {
+     "index": 354,
+     "position": 200,
+     "name": "ServerAddStorageAmmo",
+     "kind": "Function"
+    },
+    {
+     "index": 355,
+     "position": 201,
+     "name": "ServerRemoveStorageAmmo",
+     "kind": "Function"
+    },
+    {
+     "index": 356,
+     "position": 202,
+     "name": "ServerEmptyAllEquippedWeapons",
+     "kind": "Function"
+    },
+    {
+     "index": 357,
+     "position": 203,
+     "name": "DebugCancelResupplyServer",
+     "kind": "Function"
+    },
+    {
+     "index": 358,
+     "position": 204,
+     "name": "ServerCancelAllAmmoResupplyActions",
+     "kind": "Function"
+    },
+    {
+     "index": 359,
+     "position": 205,
+     "name": "BuyAmmoBoxes",
+     "kind": "Function"
+    },
+    {
+     "index": 360,
+     "position": 206,
+     "name": "BuyAmmoAmount",
+     "kind": "Function"
+    },
+    {
+     "index": 361,
+     "position": 207,
+     "name": "BeginAmmoResupply",
+     "kind": "Function"
+    },
+    {
+     "index": 362,
+     "position": 208,
+     "name": "CancelAmmoResupply",
+     "kind": "Function"
+    },
+    {
+     "index": 363,
+     "position": 209,
+     "name": "ClientSetPlayerVelocityZero",
+     "kind": "Function"
+    },
+    {
+     "index": 364,
+     "position": 210,
+     "name": "ServerRequestElectiveRespawn",
+     "kind": "Function"
+    },
+    {
+     "index": 365,
+     "position": 211,
+     "name": "ServerCancelElectiveRespawn",
+     "kind": "Function"
+    },
+    {
+     "index": 366,
+     "position": 212,
+     "name": "ServerPrintState",
+     "kind": "Function"
+    },
+    {
+     "index": 367,
+     "position": 213,
+     "name": "ServerSnapRotationToPawn",
+     "kind": "Function"
+    },
+    {
+     "index": 368,
+     "position": 214,
+     "name": "ServerPrintNumSpawnZones",
+     "kind": "Function"
+    },
+    {
+     "index": 369,
+     "position": 215,
+     "name": "ClientGoToSpawnZoneSelectScreen",
+     "kind": "Function"
+    },
+    {
+     "index": 370,
+     "position": 216,
+     "name": "ServerTestMapSelectScreen",
+     "kind": "Function"
+    },
+    {
+     "index": 371,
+     "position": 217,
+     "name": "ServerSelectSpawnZone",
+     "kind": "Function"
+    },
+    {
+     "index": 372,
+     "position": 218,
+     "name": "ServerNotifyClientLoaded",
+     "kind": "Function"
+    },
+    {
+     "index": 373,
+     "position": 219,
+     "name": "ClientReceiveRespawnInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 374,
+     "position": 220,
+     "name": "ServerSetViewTarget",
+     "kind": "Function"
+    },
+    {
+     "index": 375,
+     "position": 221,
+     "name": "ServerSetDeadLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 376,
+     "position": 222,
+     "name": "NewServerDrive",
+     "kind": "Function"
+    },
+    {
+     "index": 377,
+     "position": 223,
+     "name": "ClientAckDrive",
+     "kind": "Function"
+    },
+    {
+     "index": 378,
+     "position": 224,
+     "name": "ServerSetHealthAmounts",
+     "kind": "Function"
+    },
+    {
+     "index": 379,
+     "position": 225,
+     "name": "ServerSetHealthRechargeDuration",
+     "kind": "Function"
+    },
+    {
+     "index": 380,
+     "position": 226,
+     "name": "ServerSetHealthRechargeDelay",
+     "kind": "Function"
+    },
+    {
+     "index": 381,
+     "position": 227,
+     "name": "ServerSetShieldsEnabled",
+     "kind": "Function"
+    },
+    {
+     "index": 382,
+     "position": 228,
+     "name": "ServerEmote",
+     "kind": "Function"
+    },
+    {
+     "index": 383,
+     "position": 229,
+     "name": "ServerCosmeticAimRotation",
+     "kind": "Function"
+    },
+    {
+     "index": 384,
+     "position": 230,
+     "name": "ServerLogicalAimRotation",
+     "kind": "Function"
+    },
+    {
+     "index": 385,
+     "position": 231,
+     "name": "SetCrouchSpeedServer",
+     "kind": "Function"
+    },
+    {
+     "index": 386,
+     "position": 232,
+     "name": "SetWalkSpeedServer",
+     "kind": "Function"
+    },
+    {
+     "index": 387,
+     "position": 233,
+     "name": "SetSprintSpeedServer",
+     "kind": "Function"
+    },
+    {
+     "index": 388,
+     "position": 234,
+     "name": "SetRunSpeedServer",
+     "kind": "Function"
+    },
+    {
+     "index": 389,
+     "position": 235,
+     "name": "ServerEnterMarksManShip",
+     "kind": "Function"
+    },
+    {
+     "index": 390,
+     "position": 236,
+     "name": "ServerExitMarksManShip",
+     "kind": "Function"
+    },
+    {
+     "index": 391,
+     "position": 237,
+     "name": "ServerToggleMarksManShip",
+     "kind": "Function"
+    },
+    {
+     "index": 392,
+     "position": 238,
+     "name": "ClientReplicateHUDMarker",
+     "kind": "Function"
+    },
+    {
+     "index": 393,
+     "position": 239,
+     "name": "ClientShowHUDMarkerTaskMarker",
+     "kind": "Function"
+    },
+    {
+     "index": 394,
+     "position": 240,
+     "name": "ClientDeleteHUDMarker",
+     "kind": "Function"
+    },
+    {
+     "index": 395,
+     "position": 241,
+     "name": "ClientShowMarkerType",
+     "kind": "Function"
+    },
+    {
+     "index": 396,
+     "position": 242,
+     "name": "ClientReplicateHUDMarkerText",
+     "kind": "Function"
+    },
+    {
+     "index": 397,
+     "position": 243,
+     "name": "AbandonMissionServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 398,
+     "position": 244,
+     "name": "NotifyServerThatBusyStateChanged",
+     "kind": "Function"
+    },
+    {
+     "index": 399,
+     "position": 245,
+     "name": "MissionOffer_SendOffer",
+     "kind": "Function"
+    },
+    {
+     "index": 400,
+     "position": 246,
+     "name": "MissionOffer_RevokeOffer",
+     "kind": "Function"
+    },
+    {
+     "index": 401,
+     "position": 247,
+     "name": "MissionOffer_SendChangeNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 402,
+     "position": 248,
+     "name": "MissionEvaluate_OpenDialog",
+     "kind": "Function"
+    },
+    {
+     "index": 403,
+     "position": 249,
+     "name": "ServerMissionEvaluate",
+     "kind": "Function"
+    },
+    {
+     "index": 404,
+     "position": 250,
+     "name": "ClientSetPersistantData",
+     "kind": "Function"
+    },
+    {
+     "index": 405,
+     "position": 251,
+     "name": "ServerAcceptMission",
+     "kind": "Function"
+    },
+    {
+     "index": 406,
+     "position": 252,
+     "name": "ServerDeclineMission",
+     "kind": "Function"
+    },
+    {
+     "index": 407,
+     "position": 253,
+     "name": "ServerCallForBackupNative",
+     "kind": "Function"
+    },
+    {
+     "index": 408,
+     "position": 254,
+     "name": "StartCallForBackupUI",
+     "kind": "Function"
+    },
+    {
+     "index": 409,
+     "position": 255,
+     "name": "DebugPledgeServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 410,
+     "position": 256,
+     "name": "TryPledgeServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 411,
+     "position": 257,
+     "name": "BreakPledgeServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 412,
+     "position": 258,
+     "name": "OnPledgeChangedClient",
+     "kind": "Function"
+    },
+    {
+     "index": 413,
+     "position": 259,
+     "name": "SetMissionDelayTimerServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 414,
+     "position": 260,
+     "name": "SetMissionAbandonmentTimerServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 415,
+     "position": 261,
+     "name": "ServerDebugSetMissionTimer",
+     "kind": "Function"
+    },
+    {
+     "index": 416,
+     "position": 262,
+     "name": "ServerDebugAddMissionTimeBonus",
+     "kind": "Function"
+    },
+    {
+     "index": 417,
+     "position": 263,
+     "name": "ServerSetBombTimer",
+     "kind": "Function"
+    },
+    {
+     "index": 418,
+     "position": 264,
+     "name": "UnlockContactServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 419,
+     "position": 265,
+     "name": "AwardContactStandingServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 420,
+     "position": 266,
+     "name": "SetHeatAmountServerNative",
+     "kind": "Function"
+    },
+    {
+     "index": 421,
+     "position": 267,
+     "name": "ServerSimulateTimeOut",
+     "kind": "Function"
+    },
+    {
+     "index": 422,
+     "position": 268,
+     "name": "DebugReallocateTargetServer",
+     "kind": "Function"
+    },
+    {
+     "index": 423,
+     "position": 269,
+     "name": "ServerDebugPrintMissionDebugInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 424,
+     "position": 270,
+     "name": "ClientGoToCSAAutoRouteState",
+     "kind": "Function"
+    },
+    {
+     "index": 425,
+     "position": 271,
+     "name": "CallServerMoveToPositionNoMovementTimer",
+     "kind": "Function"
+    },
+    {
+     "index": 426,
+     "position": 272,
+     "name": "CallClientCompleteAutoMoveToCSA",
+     "kind": "Function"
+    },
+    {
+     "index": 427,
+     "position": 273,
+     "name": "CallServerCompleteSuccessfulyAutoMoveToCSA",
+     "kind": "Function"
+    },
+    {
+     "index": 428,
+     "position": 274,
+     "name": "ClientAtAutoReachedPositionServer",
+     "kind": "Function"
+    },
+    {
+     "index": 429,
+     "position": 275,
+     "name": "ServerCancelMoveToPositionState_DONOTCALL",
+     "kind": "Function"
+    },
+    {
+     "index": 430,
+     "position": 276,
+     "name": "ClientCancelMoveToPositionState",
+     "kind": "Function"
+    },
+    {
+     "index": 431,
+     "position": 277,
+     "name": "ServerCancelVehicleCloseDoorState",
+     "kind": "Function"
+    },
+    {
+     "index": 432,
+     "position": 278,
+     "name": "ClientCancelVehicleCloseDoorState",
+     "kind": "Function"
+    },
+    {
+     "index": 433,
+     "position": 279,
+     "name": "ClientInvertMouse",
+     "kind": "Function"
+    },
+    {
+     "index": 434,
+     "position": 280,
+     "name": "ServerInvertMouse",
+     "kind": "Function"
+    },
+    {
+     "index": 435,
+     "position": 281,
+     "name": "ServerSetLookBehind",
+     "kind": "Function"
+    },
+    {
+     "index": 436,
+     "position": 282,
+     "name": "ClientSetLookBehind",
+     "kind": "Function"
+    },
+    {
+     "index": 437,
+     "position": 283,
+     "name": "ServerRemoteContactInteraction",
+     "kind": "Function"
+    },
+    {
+     "index": 438,
+     "position": 284,
+     "name": "ClientBeginInteractionState",
+     "kind": "Function"
+    },
+    {
+     "index": 439,
+     "position": 285,
+     "name": "ServerEndInteractionState",
+     "kind": "Function"
+    },
+    {
+     "index": 440,
+     "position": 286,
+     "name": "ClientEndInteractionState",
+     "kind": "Function"
+    },
+    {
+     "index": 441,
+     "position": 287,
+     "name": "ClientMissionGroupMembersNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 442,
+     "position": 288,
+     "name": "ClientMissionStatsNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 443,
+     "position": 289,
+     "name": "ClientMedalsNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 444,
+     "position": 290,
+     "name": "ClientMedalAwardNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 445,
+     "position": 291,
+     "name": "ClientMissionSummaryNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 446,
+     "position": 292,
+     "name": "ClientScorerKillNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 447,
+     "position": 293,
+     "name": "ServerDebugPrintTrackedActivityStats",
+     "kind": "Function"
+    },
+    {
+     "index": 448,
+     "position": 294,
+     "name": "ServerSetTrackedActivity",
+     "kind": "Function"
+    },
+    {
+     "index": 449,
+     "position": 295,
+     "name": "GM_ServerToggleInvisibilityNative",
+     "kind": "Function"
+    },
+    {
+     "index": 450,
+     "position": 296,
+     "name": "GM_ServerSetInvisibilityEnabledNative",
+     "kind": "Function"
+    },
+    {
+     "index": 451,
+     "position": 297,
+     "name": "GM_ServerToggleInvincibilityNative",
+     "kind": "Function"
+    },
+    {
+     "index": 452,
+     "position": 298,
+     "name": "GM_ServerSetInvincibilityEnabledNative",
+     "kind": "Function"
+    },
+    {
+     "index": 453,
+     "position": 299,
+     "name": "GM_ServerToggleCollisionNative",
+     "kind": "Function"
+    },
+    {
+     "index": 454,
+     "position": 300,
+     "name": "GM_ServerSetCollisionEnabledNative",
+     "kind": "Function"
+    },
+    {
+     "index": 455,
+     "position": 301,
+     "name": "GM_ServerToggleIdentifiersNative",
+     "kind": "Function"
+    },
+    {
+     "index": 456,
+     "position": 302,
+     "name": "GM_ServerSetIdentifiersEnabledNative",
+     "kind": "Function"
+    },
+    {
+     "index": 457,
+     "position": 303,
+     "name": "GM_ServerSetRunSpeedNative",
+     "kind": "Function"
+    },
+    {
+     "index": 458,
+     "position": 304,
+     "name": "GM_ServerEnterFreeCameraMode",
+     "kind": "Function"
+    },
+    {
+     "index": 459,
+     "position": 305,
+     "name": "GM_ServerLeaveFreeCameraMode",
+     "kind": "Function"
+    },
+    {
+     "index": 460,
+     "position": 306,
+     "name": "GM_ClientNotifyEnterFreeCameraMode",
+     "kind": "Function"
+    },
+    {
+     "index": 461,
+     "position": 307,
+     "name": "GM_ClientNotifyLeaveFreeCameraMode",
+     "kind": "Function"
+    },
+    {
+     "index": 462,
+     "position": 308,
+     "name": "GM_ServerMoveToLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 463,
+     "position": 309,
+     "name": "GM_ClientNotifyMoveToLocationFailed",
+     "kind": "Function"
+    },
+    {
+     "index": 464,
+     "position": 310,
+     "name": "GM_ServerMoveToPlayerLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 465,
+     "position": 311,
+     "name": "GM_ClientNotifyMoveToPlayerLocationFailed",
+     "kind": "Function"
+    },
+    {
+     "index": 466,
+     "position": 312,
+     "name": "GM_ServerMovePlayerToGMLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 467,
+     "position": 313,
+     "name": "GM_ClientNotifyMovePlayerToGMLocationFailed",
+     "kind": "Function"
+    },
+    {
+     "index": 468,
+     "position": 314,
+     "name": "GM_ClientNotifyTeleportedByGM",
+     "kind": "Function"
+    },
+    {
+     "index": 469,
+     "position": 315,
+     "name": "GM_ServerRepairVehicle",
+     "kind": "Function"
+    },
+    {
+     "index": 470,
+     "position": 316,
+     "name": "GM_ClientNotifyVehicleRepairFailed",
+     "kind": "Function"
+    },
+    {
+     "index": 471,
+     "position": 317,
+     "name": "GM_ServerStartMissionNative",
+     "kind": "Function"
+    },
+    {
+     "index": 472,
+     "position": 318,
+     "name": "GM_ServerEndMissionNative",
+     "kind": "Function"
+    },
+    {
+     "index": 473,
+     "position": 319,
+     "name": "GM_ServerSetOppositionNative",
+     "kind": "Function"
+    },
+    {
+     "index": 474,
+     "position": 320,
+     "name": "GMDebug_SetGMNative",
+     "kind": "Function"
+    },
+    {
+     "index": 475,
+     "position": 321,
+     "name": "ServerTeleportToTaskTargetNative",
+     "kind": "Function"
+    },
+    {
+     "index": 476,
+     "position": 322,
+     "name": "ServerSetTaskTargetTriggeredNative",
+     "kind": "Function"
+    },
+    {
+     "index": 477,
+     "position": 323,
+     "name": "ServerSetPreferredTaskTargetNative",
+     "kind": "Function"
+    },
+    {
+     "index": 478,
+     "position": 324,
+     "name": "ServerSetObjectivePreferredTaskTargetNative",
+     "kind": "Function"
+    },
+    {
+     "index": 479,
+     "position": 325,
+     "name": "ServerLogMissionsNative",
+     "kind": "Function"
+    },
+    {
+     "index": 480,
+     "position": 326,
+     "name": "ServerDebugSetRating",
+     "kind": "Function"
+    },
+    {
+     "index": 481,
+     "position": 327,
+     "name": "ServerDebugAddFormHistoryNative",
+     "kind": "Function"
+    },
+    {
+     "index": 482,
+     "position": 328,
+     "name": "ServerDebugSetThreatLevel",
+     "kind": "Function"
+    },
+    {
+     "index": 483,
+     "position": 329,
+     "name": "ClientContactStandingNotification",
+     "kind": "Function"
+    },
+    {
+     "index": 484,
+     "position": 330,
+     "name": "ServerRequestContactStanding",
+     "kind": "Function"
+    },
+    {
+     "index": 485,
+     "position": 331,
+     "name": "ServerLeanLeftKeyDown",
+     "kind": "Function"
+    },
+    {
+     "index": 486,
+     "position": 332,
+     "name": "ServerLeanRightKeyDown",
+     "kind": "Function"
+    },
+    {
+     "index": 487,
+     "position": 333,
+     "name": "ClientReceiveCharacterInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 488,
+     "position": 334,
+     "name": "ClientReceiveCharacterInfoMultiPacket",
+     "kind": "Function"
+    },
+    {
+     "index": 489,
+     "position": 335,
+     "name": "ServerRequestCharacterData",
+     "kind": "Function"
+    },
+    {
+     "index": 490,
+     "position": 336,
+     "name": "ClientReceiveCharacterData",
+     "kind": "Function"
+    },
+    {
+     "index": 491,
+     "position": 337,
+     "name": "ServerRequestCharacterStats",
+     "kind": "Function"
+    },
+    {
+     "index": 492,
+     "position": 338,
+     "name": "ClientReceiveCharacterStats",
+     "kind": "Function"
+    },
+    {
+     "index": 493,
+     "position": 339,
+     "name": "ServerRequestVehicleData",
+     "kind": "Function"
+    },
+    {
+     "index": 494,
+     "position": 340,
+     "name": "ClientReceiveVehicleData",
+     "kind": "Function"
+    },
+    {
+     "index": 495,
+     "position": 341,
+     "name": "ServerRequestOtherPlayerCustomisation",
+     "kind": "Function"
+    },
+    {
+     "index": 496,
+     "position": 342,
+     "name": "ServerRequestOtherPlayerContactStanding",
+     "kind": "Function"
+    },
+    {
+     "index": 497,
+     "position": 343,
+     "name": "ClientReceiveOtherPlayerContactStanding",
+     "kind": "Function"
+    },
+    {
+     "index": 498,
+     "position": 344,
+     "name": "ServerRequestCharacterRolesData",
+     "kind": "Function"
+    },
+    {
+     "index": 499,
+     "position": 345,
+     "name": "ClientReceiveCharacterRolesData",
+     "kind": "Function"
+    },
+    {
+     "index": 500,
+     "position": 346,
+     "name": "ServerRequestCharacterThemeGuid",
+     "kind": "Function"
+    },
+    {
+     "index": 501,
+     "position": 347,
+     "name": "ClientReceiveCharacterThemeGuid",
+     "kind": "Function"
+    },
+    {
+     "index": 502,
+     "position": 348,
+     "name": "MusicStudioDataStream_ServerMultiChunkDataBegin",
+     "kind": "Function"
+    },
+    {
+     "index": 503,
+     "position": 349,
+     "name": "MusicStudioDataStream_ServerCloseStream",
+     "kind": "Function"
+    },
+    {
+     "index": 504,
+     "position": 350,
+     "name": "MusicStudioDataStream_ServerSendData1",
+     "kind": "Function"
+    },
+    {
+     "index": 505,
+     "position": 351,
+     "name": "MusicStudioDataStream_ServerSendData2",
+     "kind": "Function"
+    },
+    {
+     "index": 506,
+     "position": 352,
+     "name": "MusicStudioDataStream_ServerSendData3",
+     "kind": "Function"
+    },
+    {
+     "index": 507,
+     "position": 353,
+     "name": "MusicStudioDataStream_ServerSendData4",
+     "kind": "Function"
+    },
+    {
+     "index": 508,
+     "position": 354,
+     "name": "MusicStudioDataStream_ServerSendData5",
+     "kind": "Function"
+    },
+    {
+     "index": 509,
+     "position": 355,
+     "name": "MusicStudioDataStream_ServerSendData6",
+     "kind": "Function"
+    },
+    {
+     "index": 510,
+     "position": 356,
+     "name": "MusicStudioDataStream_ServerSendData7",
+     "kind": "Function"
+    },
+    {
+     "index": 511,
+     "position": 357,
+     "name": "MusicStudioDataStream_ServerSendData8",
+     "kind": "Function"
+    },
+    {
+     "index": 512,
+     "position": 358,
+     "name": "MusicStudioDataStream_ClientCreateStream",
+     "kind": "Function"
+    },
+    {
+     "index": 513,
+     "position": 359,
+     "name": "MusicStudioDataStream_ClientCloseStream",
+     "kind": "Function"
+    },
+    {
+     "index": 514,
+     "position": 360,
+     "name": "MusicStudioDataStream_ClientMultiChunkDataBegin",
+     "kind": "Function"
+    },
+    {
+     "index": 515,
+     "position": 361,
+     "name": "MusicStudioDataStream_ClientSendData1",
+     "kind": "Function"
+    },
+    {
+     "index": 516,
+     "position": 362,
+     "name": "MusicStudioDataStream_ClientSendData2",
+     "kind": "Function"
+    },
+    {
+     "index": 517,
+     "position": 363,
+     "name": "MusicStudioDataStream_ClientSendData3",
+     "kind": "Function"
+    },
+    {
+     "index": 518,
+     "position": 364,
+     "name": "MusicStudioDataStream_ClientSendData4",
+     "kind": "Function"
+    },
+    {
+     "index": 519,
+     "position": 365,
+     "name": "MusicStudioDataStream_ClientSendData5",
+     "kind": "Function"
+    },
+    {
+     "index": 520,
+     "position": 366,
+     "name": "MusicStudioDataStream_ClientSendData6",
+     "kind": "Function"
+    },
+    {
+     "index": 521,
+     "position": 367,
+     "name": "MusicStudioDataStream_ClientSendData7",
+     "kind": "Function"
+    },
+    {
+     "index": 522,
+     "position": 368,
+     "name": "MusicStudioDataStream_ClientSendData8",
+     "kind": "Function"
+    },
+    {
+     "index": 523,
+     "position": 369,
+     "name": "MusicStudioLiveMode_ServerStartLiveMode",
+     "kind": "Function"
+    },
+    {
+     "index": 524,
+     "position": 370,
+     "name": "MusicStudioLiveMode_ClientLiveModeStarted",
+     "kind": "Function"
+    },
+    {
+     "index": 525,
+     "position": 371,
+     "name": "MusicStudioLiveMode_ClientJoinedAsSpectator",
+     "kind": "Function"
+    },
+    {
+     "index": 526,
+     "position": 372,
+     "name": "MusicStudioLiveMode_ServerJoinLivePerformance",
+     "kind": "Function"
+    },
+    {
+     "index": 527,
+     "position": 373,
+     "name": "ClientOnMissionEnded",
+     "kind": "Function"
+    },
+    {
+     "index": 528,
+     "position": 374,
+     "name": "ClientOnCheckpointReached",
+     "kind": "Function"
+    },
+    {
+     "index": 529,
+     "position": 375,
+     "name": "NotifyServerGroupPublicStateChanged",
+     "kind": "Function"
+    },
+    {
+     "index": 530,
+     "position": 376,
+     "name": "NotifyServerLfgStateChanged",
+     "kind": "Function"
+    },
+    {
+     "index": 531,
+     "position": 377,
+     "name": "ClientAutoJoinGroup",
+     "kind": "Function"
+    },
+    {
+     "index": 532,
+     "position": 378,
+     "name": "ClientOnGroupJoined",
+     "kind": "Function"
+    },
+    {
+     "index": 533,
+     "position": 379,
+     "name": "ClientOnGroupLeft",
+     "kind": "Function"
+    },
+    {
+     "index": 534,
+     "position": 380,
+     "name": "ClientOnGroupMemberAdded",
+     "kind": "Function"
+    },
+    {
+     "index": 535,
+     "position": 381,
+     "name": "ClientOnGroupMemberRemoved",
+     "kind": "Function"
+    },
+    {
+     "index": 536,
+     "position": 382,
+     "name": "ClientReceiveOppositionID",
+     "kind": "Function"
+    },
+    {
+     "index": 537,
+     "position": 383,
+     "name": "ClientOnUnreliableGroupDataReceived",
+     "kind": "Function"
+    },
+    {
+     "index": 538,
+     "position": 384,
+     "name": "ClientSetInitialState",
+     "kind": "Function"
+    },
+    {
+     "index": 539,
+     "position": 385,
+     "name": "ClientSetGroupLeader",
+     "kind": "Function"
+    },
+    {
+     "index": 540,
+     "position": 386,
+     "name": "ClientOnSideJoined",
+     "kind": "Function"
+    },
+    {
+     "index": 541,
+     "position": 387,
+     "name": "ClientOnSideLeftNative",
+     "kind": "Function"
+    },
+    {
+     "index": 542,
+     "position": 388,
+     "name": "ClientOnSideMemberAdded",
+     "kind": "Function"
+    },
+    {
+     "index": 543,
+     "position": 389,
+     "name": "ClientOnSideMemberRemoved",
+     "kind": "Function"
+    },
+    {
+     "index": 544,
+     "position": 390,
+     "name": "ServerServerRPCOverFlow",
+     "kind": "Function"
+    },
+    {
+     "index": 545,
+     "position": 391,
+     "name": "ReliableDoNothingClientRPC",
+     "kind": "Function"
+    },
+    {
+     "index": 546,
+     "position": 392,
+     "name": "ReliableDoNothingServerRPC",
+     "kind": "Function"
+    },
+    {
+     "index": 547,
+     "position": 393,
+     "name": "ServerDamageActor",
+     "kind": "Function"
+    },
+    {
+     "index": 548,
+     "position": 394,
+     "name": "ClientGotoStateIfNotInState",
+     "kind": "Function"
+    },
+    {
+     "index": 549,
+     "position": 395,
+     "name": "ServerSetIsCustomising",
+     "kind": "Function"
+    },
+    {
+     "index": 550,
+     "position": 396,
+     "name": "NotifyEnterCustomisationStudio",
+     "kind": "Function"
+    },
+    {
+     "index": 551,
+     "position": 397,
+     "name": "ServerExitCustomisationStudio",
+     "kind": "Function"
+    },
+    {
+     "index": 552,
+     "position": 398,
+     "name": "ServerNotifyEnterCustomisationStudio",
+     "kind": "Function"
+    },
+    {
+     "index": 553,
+     "position": 399,
+     "name": "ServerNotifyEnterSymbolEditor",
+     "kind": "Function"
+    },
+    {
+     "index": 554,
+     "position": 400,
+     "name": "ServerNotifyExitSymbolEditor",
+     "kind": "Function"
+    },
+    {
+     "index": 555,
+     "position": 401,
+     "name": "NotifyEnterMusicStudio",
+     "kind": "Function"
+    },
+    {
+     "index": 556,
+     "position": 402,
+     "name": "ServerNotifyEnterMusicStudio",
+     "kind": "Function"
+    },
+    {
+     "index": 557,
+     "position": 403,
+     "name": "NotifyExitMusicStudio",
+     "kind": "Function"
+    },
+    {
+     "index": 558,
+     "position": 404,
+     "name": "ServerNotifyExitMusicStudio",
+     "kind": "Function"
+    },
+    {
+     "index": 559,
+     "position": 405,
+     "name": "SetMusicDeviceVehicle",
+     "kind": "Function"
+    },
+    {
+     "index": 560,
+     "position": 406,
+     "name": "SetMusicTrack",
+     "kind": "Function"
+    },
+    {
+     "index": 561,
+     "position": 407,
+     "name": "SetMusicStudioTrack",
+     "kind": "Function"
+    },
+    {
+     "index": 562,
+     "position": 408,
+     "name": "ResetMusicTrack",
+     "kind": "Function"
+    },
+    {
+     "index": 563,
+     "position": 409,
+     "name": "ServerRequestVehicleTrackInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 564,
+     "position": 410,
+     "name": "ClientReceiveVehicleTrackInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 565,
+     "position": 411,
+     "name": "ServerRequestDisplayPointTrackInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 566,
+     "position": 412,
+     "name": "ClientReceiveDisplayPointTrackInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 567,
+     "position": 413,
+     "name": "serverGetDisplayPointPosition",
+     "kind": "Function"
+    },
+    {
+     "index": 568,
+     "position": 414,
+     "name": "clientOnGetDisplayPointPositionComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 569,
+     "position": 415,
+     "name": "serverAddGroupWaypoint",
+     "kind": "Function"
+    },
+    {
+     "index": 570,
+     "position": 416,
+     "name": "clientOnAddGroupWaypointComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 571,
+     "position": 417,
+     "name": "serverDeleteGroupWaypoint",
+     "kind": "Function"
+    },
+    {
+     "index": 572,
+     "position": 418,
+     "name": "clientOnDeleteGroupWaypointComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 573,
+     "position": 419,
+     "name": "AddPersonalWaypoint",
+     "kind": "Function"
+    },
+    {
+     "index": 574,
+     "position": 420,
+     "name": "ServerSetPersistantData",
+     "kind": "Function"
+    },
+    {
+     "index": 575,
+     "position": 421,
+     "name": "ServerAwayFromKeyboard",
+     "kind": "Function"
+    },
+    {
+     "index": 576,
+     "position": 422,
+     "name": "SetCustomColour",
+     "kind": "Function"
+    },
+    {
+     "index": 577,
+     "position": 423,
+     "name": "ServerSetCameraUserDefinedViewScalar",
+     "kind": "Function"
+    },
+    {
+     "index": 578,
+     "position": 424,
+     "name": "ServerSetCameraPosition",
+     "kind": "Function"
+    },
+    {
+     "index": 579,
+     "position": 425,
+     "name": "ServerSetCameraModeOffsets",
+     "kind": "Function"
+    },
+    {
+     "index": 580,
+     "position": 426,
+     "name": "ServerSetCameraModeFOV",
+     "kind": "Function"
+    },
+    {
+     "index": 581,
+     "position": 427,
+     "name": "ServerSetClientViewPortSize",
+     "kind": "Function"
+    },
+    {
+     "index": 582,
+     "position": 428,
+     "name": "ServerDoCameraCollision",
+     "kind": "Function"
+    },
+    {
+     "index": 583,
+     "position": 429,
+     "name": "ServerSpectatorMode",
+     "kind": "Function"
+    },
+    {
+     "index": 584,
+     "position": 430,
+     "name": "ServerCameraViewTarget",
+     "kind": "Function"
+    },
+    {
+     "index": 585,
+     "position": 431,
+     "name": "ServerUseDirectorCameraMode",
+     "kind": "Function"
+    },
+    {
+     "index": 586,
+     "position": 432,
+     "name": "ServerSetCameraMaximumFlySpeed",
+     "kind": "Function"
+    },
+    {
+     "index": 587,
+     "position": 433,
+     "name": "ServerSetCameraMaximumUpDownSpeed",
+     "kind": "Function"
+    },
+    {
+     "index": 588,
+     "position": 434,
+     "name": "ServerCameraModeOriginLagSpeed",
+     "kind": "Function"
+    },
+    {
+     "index": 589,
+     "position": 435,
+     "name": "ServerCameraKeysExtraMovement",
+     "kind": "Function"
+    },
+    {
+     "index": 590,
+     "position": 436,
+     "name": "ServerNetSet",
+     "kind": "Function"
+    },
+    {
+     "index": 591,
+     "position": 437,
+     "name": "ClientNetSet",
+     "kind": "Function"
+    },
+    {
+     "index": 592,
+     "position": 438,
+     "name": "ServerMovementKeyDisallowLean",
+     "kind": "Function"
+    },
+    {
+     "index": 593,
+     "position": 439,
+     "name": "GetGolemSpawnerActor",
+     "kind": "Function"
+    },
+    {
+     "index": 594,
+     "position": 440,
+     "name": "ServerPossessGolemSpawnerActor",
+     "kind": "Function"
+    },
+    {
+     "index": 595,
+     "position": 441,
+     "name": "ServerDestroyGolemSpawnerActor",
+     "kind": "Function"
+    },
+    {
+     "index": 596,
+     "position": 442,
+     "name": "ServerGolemSpawnCharacter",
+     "kind": "Function"
+    },
+    {
+     "index": 597,
+     "position": 443,
+     "name": "ServerGolemSpawnCharacterAtPlayerLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 598,
+     "position": 444,
+     "name": "ServerGolemSetAssetDescriptorTrace",
+     "kind": "Function"
+    },
+    {
+     "index": 599,
+     "position": 445,
+     "name": "ServerGolemDestroyAssetTrace",
+     "kind": "Function"
+    },
+    {
+     "index": 600,
+     "position": 446,
+     "name": "ServerGolemDestroyAllCharacters",
+     "kind": "Function"
+    },
+    {
+     "index": 601,
+     "position": 447,
+     "name": "ServerGolemSetEmoteTrace",
+     "kind": "Function"
+    },
+    {
+     "index": 602,
+     "position": 448,
+     "name": "ServerGolemSetEmoteStatusTrace",
+     "kind": "Function"
+    },
+    {
+     "index": 603,
+     "position": 449,
+     "name": "ServerGolemSetEmoteStatus",
+     "kind": "Function"
+    },
+    {
+     "index": 604,
+     "position": 450,
+     "name": "ServerGolemSetRandomEmoteTrace",
+     "kind": "Function"
+    },
+    {
+     "index": 605,
+     "position": 451,
+     "name": "ServerGolemSetRandomEmotes",
+     "kind": "Function"
+    },
+    {
+     "index": 606,
+     "position": 452,
+     "name": "ServerGolemSpawnVehicle",
+     "kind": "Function"
+    },
+    {
+     "index": 607,
+     "position": 453,
+     "name": "ServerGolemDestroyAllVehicles",
+     "kind": "Function"
+    },
+    {
+     "index": 608,
+     "position": 454,
+     "name": "ServerGolemSpawnVehicleAtPlayerLocation",
+     "kind": "Function"
+    },
+    {
+     "index": 609,
+     "position": 455,
+     "name": "ServerGolemSaveScene",
+     "kind": "Function"
+    },
+    {
+     "index": 610,
+     "position": 456,
+     "name": "ServerGolemSpawnRandomCharacters",
+     "kind": "Function"
+    },
+    {
+     "index": 611,
+     "position": 457,
+     "name": "ServerGolemSpawnRandomVehicles",
+     "kind": "Function"
+    },
+    {
+     "index": 612,
+     "position": 458,
+     "name": "GetFlythroughSpawnerActor",
+     "kind": "Function"
+    },
+    {
+     "index": 613,
+     "position": 459,
+     "name": "ServerDestroyFlythroughSpawnerActor",
+     "kind": "Function"
+    },
+    {
+     "index": 614,
+     "position": 460,
+     "name": "ServerFlythroughSpawnPedestrian",
+     "kind": "Function"
+    },
+    {
+     "index": 615,
+     "position": 461,
+     "name": "ServerFlythroughDestroyAllPedestrians",
+     "kind": "Function"
+    },
+    {
+     "index": 616,
+     "position": 462,
+     "name": "ServerFlythroughSpawnVehicle",
+     "kind": "Function"
+    },
+    {
+     "index": 617,
+     "position": 463,
+     "name": "ServerFlythroughDestroyAllVehicles",
+     "kind": "Function"
+    },
+    {
+     "index": 618,
+     "position": 464,
+     "name": "ClientHeatDebugInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 619,
+     "position": 465,
+     "name": "ClientActiveCrimeDebugInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 620,
+     "position": 466,
+     "name": "ClientReceiveActivityMessages",
+     "kind": "Function"
+    },
+    {
+     "index": 621,
+     "position": 467,
+     "name": "ServerTriggerGameplayTutorial",
+     "kind": "Function"
+    },
+    {
+     "index": 622,
+     "position": 468,
+     "name": "ClientTriggerGameplayTutorial",
+     "kind": "Function"
+    },
+    {
+     "index": 623,
+     "position": 469,
+     "name": "ServerTriggerCSABeginEventTutorial",
+     "kind": "Function"
+    },
+    {
+     "index": 624,
+     "position": 470,
+     "name": "ClientCSABeginEventTutorial",
+     "kind": "Function"
+    },
+    {
+     "index": 625,
+     "position": 471,
+     "name": "ServerTriggerCSAEndEventTutorial",
+     "kind": "Function"
+    },
+    {
+     "index": 626,
+     "position": 472,
+     "name": "ClientCSAEndEventTutorial",
+     "kind": "Function"
+    },
+    {
+     "index": 627,
+     "position": 473,
+     "name": "ServerCustomisationLimiterUse",
+     "kind": "Function"
+    },
+    {
+     "index": 628,
+     "position": 474,
+     "name": "ServerSyncTime",
+     "kind": "Function"
+    },
+    {
+     "index": 629,
+     "position": 475,
+     "name": "ClientBeginSyncTime",
+     "kind": "Function"
+    },
+    {
+     "index": 630,
+     "position": 476,
+     "name": "ClientSyncTime",
+     "kind": "Function"
+    },
+    {
+     "index": 631,
+     "position": 477,
+     "name": "ServerForceCriticalDamageVehicleUse",
+     "kind": "Function"
+    },
+    {
+     "index": 632,
+     "position": 478,
+     "name": "ServerToggleSwitchCameraSide",
+     "kind": "Function"
+    },
+    {
+     "index": 633,
+     "position": 479,
+     "name": "ServerSetMissionOfferState",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cBotPlayerController": {
+   "super": "cAPBPlayerController",
+   "fields_base": 634,
+   "count": 4,
+   "field_max": 638,
+   "fields": [
+    {
+     "index": 634,
+     "position": 0,
+     "name": "ServerRestartBots",
+     "kind": "Function"
+    },
+    {
+     "index": 635,
+     "position": 1,
+     "name": "InitDummyPawns",
+     "kind": "Function"
+    },
+    {
+     "index": 636,
+     "position": 2,
+     "name": "ServerSetNumDummies",
+     "kind": "Function"
+    },
+    {
+     "index": 637,
+     "position": 3,
+     "name": "ServerSetLocation",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cToDManager": {
+   "super": "cToDManagerBase",
+   "fields_base": 21,
+   "count": 4,
+   "field_max": 25,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_CurrentWeather",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_eToDPeriod",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_fToD",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_bActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "cAPBClientServerDebugManager": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 4,
+   "field_max": 25,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_ServerTickTimes_Replicated",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_aNPCPositions",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nPedestrianIDToDrawRouteFor_Replicated",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_bDisplayNPCIDs",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "cAPBGameReplicationInfo": {
+   "super": "GameReplicationInfo",
+   "fields_base": 47,
+   "count": 10,
+   "field_max": 57,
+   "fields": [
+    {
+     "index": 47,
+     "position": 0,
+     "name": "m_nDistrictInstanceType",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 48,
+     "position": 1,
+     "name": "m_sSessionGuid",
+     "kind": "StrProperty"
+    },
+    {
+     "index": 49,
+     "position": 2,
+     "name": "m_nDistrictEnforcerCount",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 50,
+     "position": 3,
+     "name": "m_nDistrictCriminalCount",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 51,
+     "position": 4,
+     "name": "m_bAllPvEDamageEnabled",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 52,
+     "position": 5,
+     "name": "m_bAllPvPDamageEnabled",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 53,
+     "position": 6,
+     "name": "m_bMissionsEnabled",
+     "kind": "BoolProperty"
+    },
+    {
+     "index": 54,
+     "position": 7,
+     "name": "m_pAPBClientServerDebugManager",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 55,
+     "position": 8,
+     "name": "m_aJunctionStatus",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 56,
+     "position": 9,
+     "name": "m_ToDManager",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "cTaskTargetVehicleSpawner": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 10,
+   "field_max": 31,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nRepTaskOpposingSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nRepTaskOwningSideID_Initial",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nRepTaskOwningSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_vRepBombLocation",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_nRepBombTimer",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_nRepBombState_Initial",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "m_nRepBombState",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "m_nRepTaskOperationID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "m_eTaskTargetVFXState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "m_Vehicle",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "cTaskItemPickup": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nVariety",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cReplicatedHUDMarkerGroup": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_aHUDMarkerUpdates",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cTaskObjective": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 16,
+   "field_max": 37,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nVehiclesDelivered",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nTaskItemsDelivered",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nTaskItemsSpawned",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_nTargetsTriggeredOpposition",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_nTargetsTriggeredOwners",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_nSddTaskObjectiveRow",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "m_eSideFaction",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "m_eTaskObjectiveState",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "m_nEscapeBar",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "m_nEscapeBarLimit",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 31,
+     "position": 10,
+     "name": "m_nEscapeCurrentPenaltySeconds",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 32,
+     "position": 11,
+     "name": "m_nReplicatedNumberOfBombTargets",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 33,
+     "position": 12,
+     "name": "m_nReplicatedBombTimeRemaining",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 34,
+     "position": 13,
+     "name": "m_nNumberOfBombsExploded",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 35,
+     "position": 14,
+     "name": "m_nNumberOfBombsSet",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 36,
+     "position": 15,
+     "name": "m_bReplicatedIsBombTimerActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "cAPBProjectile": {
+   "super": "Projectile",
+   "fields_base": 21,
+   "count": 3,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_GrenadeBounceInfo",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_ProjectileType",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_bPinOut",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "cWeapon": {
+   "super": "cItem",
+   "fields_base": 26,
+   "count": 11,
+   "field_max": 37,
+   "fields": [
+    {
+     "index": 26,
+     "position": 0,
+     "name": "m_ModifiableVariables",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 27,
+     "position": 1,
+     "name": "m_RandomSeedReplicated",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 28,
+     "position": 2,
+     "name": "m_PrimaryAmmoPool",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 3,
+     "name": "m_RoundsRemaining",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 30,
+     "position": 4,
+     "name": "ClientFireRequestFailed",
+     "kind": "Function"
+    },
+    {
+     "index": 31,
+     "position": 5,
+     "name": "ClientShotFinishedOnServer",
+     "kind": "Function"
+    },
+    {
+     "index": 32,
+     "position": 6,
+     "name": "ClientReload",
+     "kind": "Function"
+    },
+    {
+     "index": 33,
+     "position": 7,
+     "name": "ServerStartFire",
+     "kind": "Function"
+    },
+    {
+     "index": 34,
+     "position": 8,
+     "name": "ServerCancelReload",
+     "kind": "Function"
+    },
+    {
+     "index": 35,
+     "position": 9,
+     "name": "ClientReloadComplete",
+     "kind": "Function"
+    },
+    {
+     "index": 36,
+     "position": 10,
+     "name": "ServerStopFire",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cGrenadeWeapon": {
+   "super": "cProjectileWeapon",
+   "fields_base": 37,
+   "count": 2,
+   "field_max": 39,
+   "fields": [
+    {
+     "index": 37,
+     "position": 0,
+     "name": "m_CookingGrenade",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 38,
+     "position": 1,
+     "name": "ClientNotifyGrenadeExploded",
+     "kind": "Function"
+    }
+   ]
+  },
+  "cRaycastWeapon": {
+   "super": "cWeapon",
+   "fields_base": 37,
+   "count": 4,
+   "field_max": 41,
+   "fields": [
+    {
+     "index": 37,
+     "position": 0,
+     "name": "m_EagleEyesModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 38,
+     "position": 1,
+     "name": "m_ShortSightedModifier",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 39,
+     "position": 2,
+     "name": "m_fPerShotModifier",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 40,
+     "position": 3,
+     "name": "m_fRampDistance",
+     "kind": "FloatProperty"
+    }
+   ]
+  },
+  "cAudioDisplayPoint": {
+   "super": "cInteractiveDynamicSMActor",
+   "fields_base": 26,
+   "count": 4,
+   "field_max": 30,
+   "fields": [
+    {
+     "index": 26,
+     "position": 0,
+     "name": "m_fDisplayPointVolume",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 27,
+     "position": 1,
+     "name": "m_MusicNameInfo",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 28,
+     "position": 2,
+     "name": "m_MusicPlaybackInfo",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 3,
+     "name": "m_nCharaterOwnerUID",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cDisplayPointStatuePlinth": {
+   "super": "cInteractiveDynamicSMActor",
+   "fields_base": 26,
+   "count": 1,
+   "field_max": 27,
+   "fields": [
+    {
+     "index": 26,
+     "position": 0,
+     "name": "m_nCharaterOwnerUID",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cPlayerGraffitiDisplayPoint": {
+   "super": "cCustomGraffitiDisplayPoint",
+   "fields_base": 23,
+   "count": 1,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 23,
+     "position": 0,
+     "name": "m_nCharaterOwnerUID",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cPlayerVehicleDisplayPoint": {
+   "super": "StaticMeshActor",
+   "fields_base": 21,
+   "count": 3,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nCharaterOwnerUID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_CurrentVehicle",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_eBayState",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cStatueDisplayPoint": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nCharaterOwnerUID",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cStatueModel": {
+   "super": "SkeletalMeshActor",
+   "fields_base": 22,
+   "count": 2,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "m_DisplayPointOwner",
+     "kind": "ObjectProperty"
+    },
+    {
+     "index": 23,
+     "position": 1,
+     "name": "m_CustomisationGuids",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cRagdollableNPCSkeletalMeshActor": {
+   "super": "SkeletalMeshActor",
+   "fields_base": 22,
+   "count": 1,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "m_NPCHitData",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cNPCDriverSkeletalMeshActor": {
+   "super": "cRagdollableNPCSkeletalMeshActor",
+   "fields_base": 23,
+   "count": 1,
+   "field_max": 24,
+   "fields": [
+    {
+     "index": 23,
+     "position": 0,
+     "name": "m_DriverEjectData",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cNPCSkeletalMeshActor": {
+   "super": "cRagdollableNPCSkeletalMeshActor",
+   "fields_base": 23,
+   "count": 12,
+   "field_max": 35,
+   "fields": [
+    {
+     "index": 23,
+     "position": 0,
+     "name": "m_nPhoneDialogueStartTime_ReplicatedInitial",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 1,
+     "name": "m_nLastVNodeIDPlayedAt",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 2,
+     "name": "m_TTIReactionInProgressData_Replicated",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 26,
+     "position": 3,
+     "name": "m_TTIReactionData_Replicated",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 27,
+     "position": 4,
+     "name": "m_afEvtCriteriaTimers_R",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 28,
+     "position": 5,
+     "name": "m_PedStateUpdate_Replicated",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 29,
+     "position": 6,
+     "name": "m_PedState_ReplicatedInitial",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 30,
+     "position": 7,
+     "name": "m_nAssetIndex_Replicated",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 31,
+     "position": 8,
+     "name": "m_fLocomotionSpeed",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 32,
+     "position": 9,
+     "name": "m_eBrainAndPhysRepState_Replicated",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 33,
+     "position": 10,
+     "name": "m_nTypeID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 34,
+     "position": 11,
+     "name": "m_nID",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cAPBTempCover": {
+   "super": "DynamicSMActor",
+   "fields_base": 26,
+   "count": 2,
+   "field_max": 28,
+   "fields": [
+    {
+     "index": 26,
+     "position": 0,
+     "name": "m_InitialHealth",
+     "kind": "FloatProperty"
+    },
+    {
+     "index": 27,
+     "position": 1,
+     "name": "m_Health",
+     "kind": "FloatProperty"
+    }
+   ]
+  },
+  "cTaskTargetTaskItemSpawner": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 5,
+   "field_max": 26,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nRepTaskOpposingSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_nRepTaskOwningSideID_Initial",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nRepTaskOwningSideID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_nRepTaskOperationID",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_eTaskTargetVFXState",
+     "kind": "ByteProperty"
+    }
+   ]
+  },
+  "cVendorContactInterface": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_bIsActive",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "cVehicleCargoInventory": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 6,
+   "field_max": 27,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_nNumTaskItems",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_eCurrentCargoType",
+     "kind": "ByteProperty"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "m_nCurrentPassengers",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "m_nCurrentPips",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "m_nMaxPassengers",
+     "kind": "IntProperty"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "m_nMaxPips",
+     "kind": "IntProperty"
+    }
+   ]
+  },
+  "cSetupTypeManager": {
+   "super": "Actor",
+   "fields_base": 21,
+   "count": 2,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "m_aVehicleAssetRange",
+     "kind": "StructProperty"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "m_aPedestrianAssetRange",
+     "kind": "StructProperty"
+    }
+   ]
+  },
+  "cHUDBase": {
+   "super": "HUD",
+   "fields_base": 21,
+   "count": 4,
+   "field_max": 25,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "SelfSay",
+     "kind": "Function"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "ClientSelfSay",
+     "kind": "Function"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "SelfSayTimer",
+     "kind": "Function"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "SelfSayFadeTimer",
+     "kind": "Function"
+    }
+   ]
+  },
+  "Admin": {
+   "super": "PlayerController",
+   "fields_base": 123,
+   "count": 5,
+   "field_max": 128,
+   "fields": [
+    {
+     "index": 123,
+     "position": 0,
+     "name": "ServerAdmin",
+     "kind": "Function"
+    },
+    {
+     "index": 124,
+     "position": 1,
+     "name": "ServerKickBan",
+     "kind": "Function"
+    },
+    {
+     "index": 125,
+     "position": 2,
+     "name": "ServerKick",
+     "kind": "Function"
+    },
+    {
+     "index": 126,
+     "position": 3,
+     "name": "ServerRestartMap",
+     "kind": "Function"
+    },
+    {
+     "index": 127,
+     "position": 4,
+     "name": "ServerSwitch",
+     "kind": "Function"
+    }
+   ]
+  },
+  "EmitterSpawnable": {
+   "super": "Emitter",
+   "fields_base": 22,
+   "count": 1,
+   "field_max": 23,
+   "fields": [
+    {
+     "index": 22,
+     "position": 0,
+     "name": "ParticleTemplate",
+     "kind": "ObjectProperty"
+    }
+   ]
+  },
+  "CoverReplicator": {
+   "super": "ReplicationInfo",
+   "fields_base": 21,
+   "count": 10,
+   "field_max": 31,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "ServerSendInitialCoverReplicationInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 22,
+     "position": 1,
+     "name": "ClientReceiveInitialCoverReplicationInfo",
+     "kind": "Function"
+    },
+    {
+     "index": 23,
+     "position": 2,
+     "name": "ServerSendEnabledSlots",
+     "kind": "Function"
+    },
+    {
+     "index": 24,
+     "position": 3,
+     "name": "ClientReceiveEnabledSlots",
+     "kind": "Function"
+    },
+    {
+     "index": 25,
+     "position": 4,
+     "name": "ServerSendDisabledSlots",
+     "kind": "Function"
+    },
+    {
+     "index": 26,
+     "position": 5,
+     "name": "ClientReceiveDisabledSlots",
+     "kind": "Function"
+    },
+    {
+     "index": 27,
+     "position": 6,
+     "name": "ServerSendAdjustedSlots",
+     "kind": "Function"
+    },
+    {
+     "index": 28,
+     "position": 7,
+     "name": "ClientReceiveAdjustedSlots",
+     "kind": "Function"
+    },
+    {
+     "index": 29,
+     "position": 8,
+     "name": "ServerSendManualCoverTypeSlots",
+     "kind": "Function"
+    },
+    {
+     "index": 30,
+     "position": 9,
+     "name": "ClientReceiveManualCoverTypeSlots",
+     "kind": "Function"
+    }
+   ]
+  },
+  "AmbientSoundSimpleToggleable": {
+   "super": "AmbientSoundSimple",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bCurrentlyPlaying",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "HeightFog": {
+   "super": "Info",
+   "fields_base": 21,
+   "count": 1,
+   "field_max": 22,
+   "fields": [
+    {
+     "index": 21,
+     "position": 0,
+     "name": "bEnabled",
+     "kind": "BoolProperty"
+    }
+   ]
+  },
+  "RTWLCCPlayerController": {
+   "super": "cHostingPlayerController",
+   "fields_base": 153,
+   "count": 1,
+   "field_max": 154,
+   "fields": [
+    {
+     "index": 153,
+     "position": 0,
+     "name": "ReplicatedToDEvent",
+     "kind": "Function"
+    }
+   ]
+  }
+ }
+}

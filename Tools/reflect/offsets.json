@@ -1,0 +1,2027 @@
+{
+  "_comment": [
+    "Карта смещений в памяти клиента APB (build 1.1.0.534979).",
+    "Смещения в ПАМЯТИ, не путать с индексами полей ClassNetCache.",
+    "Адреса в globals и functions записаны так, как их показывает Ghidra;",
+    "скрипт пересчитает их в runtime через ghidra_base и базу модуля.",
+    "Секции uobject / uclass / fpackageinfo — РАСКЛАДКИ СТРУКТУР (hex).",
+    "Секции globals / functions — АДРЕСА (свои для каждой сборки).",
+    "Адреса конкретных экземпляров сюда не пишутся: они меняются каждую сессию.",
+    "Ключи, начинающиеся с подчёркивания, — заметки, а не данные.",
+    "Пополняйте по мере находок: --learn добавит запись.",
+    "02.09.2026: добавлены разделы ufield / ustruct / ufunction / uenum и reflection_baseline из apb_reflect.py."
+  ],
+  "ghidra_base": "0x10900000",
+  "netindex_base": 31103,
+  "_netindex_note": [
+    "FirstNetIndex пакета APBGame. GlobalNetIndex = netindex_base + local.",
+    "ПОДТВЕРЖДЁН 28.08.2026 прямым чтением памяти в ДВУХ сессиях",
+    "(PID 51436 и 55740), поиском по ObjectCount, без подсказки значения:",
+    "  FPackageInfo 0xF0753BA0, ObjectBase 31103, ObjectCount 30874,",
+    "  Generation 2/2, Parent 0xFA7F35B0 = Package APBGame (GUID совпал).",
+    "",
+    "МЕХАНИКА: ObjectBase не назначается произвольно - он копится как",
+    "сумма ObjectCount всех пакетов, объявленных ДО APBGame, а список",
+    "пакетов объявляет сам сервер при логине. Значит 31103 подтверждает",
+    "неизменность НАШЕГО списка, а не свойство клиента.",
+    "",
+    "РЕКОМЕНДАЦИЯ: считать базу как сумму по списку там, где список",
+    "формируется, и рядом поставить сверку с 31103. Тогда правильность",
+    "держится по построению. Изменится список - уедет вся карта единым",
+    "сдвигом, который внутренние инварианты не ловят.",
+    "",
+    "В UObject лежит ЛОКАЛЬНЫЙ индекс (+0x20/+0x24), глобального там нет."
+  ],
+  "netcache": {
+    "_note": [
+      "Эталон, прочитанный из живых UClass (apb_objects.py --netfields).",
+      "UClass+0x10C — TArray<UField*> NetFields, построенный самим движком",
+      "в UClass::Link. UClass+0x088 — второй массив, меньше по размеру.",
+      "Индекс поля = FieldsBase + позиция в NetFields, ОДНА запись = ОДИН индекс.",
+      "ArrayDim слоты НЕ разворачивает: в NetFields массив занимает одну запись",
+      "(разворачивается ClassReps, а не NetFields).",
+      "Отсюда: ARRAY_TAKES_ARRAYDIM_SLOTS в NetFieldIndexMap.cs должен быть false."
+    ],
+    "netfields_offset": "0x10C",
+    "classes": {
+      "cAPBVehicle": {
+        "_note": [
+          "Наследник cAPBVehicleBase. Собственных NetFields ровно одно,",
+          "поэтому FieldsBase = 113 (= fieldMax предка), fieldMax = 114.",
+          "Именно 114 надо ставить в запросы по каналу машины, не 120."
+        ],
+        "fields_base": 113,
+        "count": 1,
+        "field_max": 114
+      },
+      "cAPBVehicleBase": {
+        "fields_base": 48,
+        "count": 65,
+        "field_max": 113,
+        "known": {
+          "serverIndicateLeft": {
+            "index": 48,
+            "position": 0
+          },
+          "serverIndicateRight": {
+            "index": 49,
+            "position": 1
+          },
+          "serverToggleSpecialLights": {
+            "index": 50,
+            "position": 2
+          },
+          "serverStartVehicleHorn": {
+            "index": 51,
+            "position": 3
+          },
+          "serverStopVehicleHorn": {
+            "index": 52,
+            "position": 4
+          },
+          "m_PvPFlags": {
+            "index": 57,
+            "position": 9,
+            "_source": "RESEARCH.md, отдельно не пересверялось"
+          },
+          "stReplicatedStateFSM": {
+            "index": 84,
+            "position": 36,
+            "_source": "RESEARCH.md, отдельно не пересверялось"
+          },
+          "m_eVehicleSetupType": {
+            "index": 109,
+            "position": 61
+          },
+          "vehicleType": {
+            "index": 110,
+            "position": 62
+          }
+        },
+        "_note": [
+          "Состав и порядок сверены с живым NetFields построчно: 65 из 65.",
+          "База 48 = fieldMax(SVehicle), не подгонка."
+        ]
+      },
+      "cAPBPlayerController": {
+        "fields_base": 154,
+        "count": 480,
+        "field_max": 634,
+        "known": {
+          "m_bDead": {
+            "index": 185,
+            "position": 31
+          },
+          "ToggleWantsToCrouchServer": {
+            "index": 194,
+            "position": 40
+          },
+          "ServerSelectSpawnZone": {
+            "index": 371,
+            "position": 217
+          },
+          "ServerNotifyClientLoaded": {
+            "index": 372,
+            "position": 218
+          },
+          "ClientReplicateHUDMarker": {
+            "index": 392,
+            "position": 238
+          },
+          "m_HoldableItemManager": {
+            "index": 164,
+            "position": 10,
+            "_source": "RESEARCH.md §8"
+          },
+          "m_Inventory": {
+            "index": 165,
+            "position": 11,
+            "_source": "RESEARCH.md §8"
+          },
+          "m_DeployedVehicle": {
+            "index": 169,
+            "position": 15,
+            "_source": "RESEARCH.md §8"
+          }
+        },
+        "_note": [
+          "extends cAPBPlayerControllerAnimation, а не cHostingPlayerController.",
+          "Состав и порядок сверены с живым NetFields: 480 из 480."
+        ]
+      },
+      "Actor": {
+        "fields_base": 0,
+        "count": 21,
+        "field_max": 21
+      },
+      "Pawn": {
+        "fields_base": 21,
+        "count": 22,
+        "field_max": 43
+      },
+      "PlayerController": {
+        "fields_base": 26,
+        "count": 97,
+        "field_max": 123
+      },
+      "cHostingPlayerController": {
+        "fields_base": 123,
+        "count": 30,
+        "field_max": 153
+      },
+      "cAPBPawn": {
+        "fields_base": 44,
+        "count": 66,
+        "field_max": 110
+      },
+      "cStorageInventory": {
+        "fields_base": 21,
+        "count": 47,
+        "field_max": 68
+      },
+      "cTaskDescription": {
+        "fields_base": 21,
+        "count": 30,
+        "field_max": 51
+      },
+      "GameReplicationInfo": {
+        "fields_base": 21,
+        "count": 26,
+        "field_max": 47
+      },
+      "PlayerReplicationInfo": {
+        "fields_base": 21,
+        "count": 23,
+        "field_max": 44
+      },
+      "cHoldableItemManager": {
+        "fields_base": 21,
+        "count": 19,
+        "field_max": 40
+      },
+      "Object": {
+        "fields_base": 0,
+        "count": 0,
+        "field_max": 0
+      },
+      "Vehicle": {
+        "_note": "Из apb_objects.py --chain cAPBVehicle, 28.08.2026.",
+        "fields_base": 43,
+        "count": 2,
+        "field_max": 45
+      },
+      "SVehicle": {
+        "_note": "Прямой предок cAPBVehicleBase — отсюда база 48.",
+        "fields_base": 45,
+        "count": 3,
+        "field_max": 48
+      },
+      "cAPBPlayerControllerAnimation": {
+        "_note": [
+          "Промежуточный класс между cHostingPlayerController и",
+          "cAPBPlayerController. Объясняет переход 153 -> 154.",
+          "ПОДТВЕРЖДЁН замером: --dump-netcache 28.08.2026."
+        ],
+        "fields_base": 153,
+        "count": 1,
+        "field_max": 154
+      },
+      "cBotPlayerController": {
+        "_note": "Наследник cAPBPlayerController. Для NPC граница — 638.",
+        "fields_base": 634,
+        "count": 4,
+        "field_max": 638
+      },
+      "cAPBPawnAnimation": {
+        "_note": [
+          "Промежуточный класс между Pawn и cAPBPawn.",
+          "Объясняет переход 43 -> 44. Строение симметрично",
+          "контроллеру: <Base>Animation с одним net-полем.",
+          "ПОДТВЕРЖДЁН: super=Pawn, netSlots=1, base=43."
+        ],
+        "fields_base": 43,
+        "count": 1,
+        "field_max": 44
+      },
+      "Controller": {
+        "_note": "Предок PlayerController. Из engine class diagnostics.",
+        "fields_base": 21,
+        "count": 5,
+        "field_max": 26
+      }
+    },
+    "_source": "apb_objects.py --dump-netcache, 28.08.2026. Полная выгрузка 98 классов — в netcache.json. Здесь только ключевые.",
+    "_field_order": [
+      "ПОРЯДОК NetFields: ординалы export table ПО ВОЗРАСТАНИЮ.",
+      "Воспроизводится офлайн, из пакетов, без запущенного клиента.",
+      "",
+      "ОТВЕРГНУТЫЕ ГИПОТЕЗЫ - не проверять заново:",
+      "  1. Сырой порядок UELib. Не годится.",
+      "  2. Его Reverse(). Не годится. Доказательство, что простого",
+      "     преобразования списка не существует: у cAPBVehicleBase движок",
+      "     ставит функции первыми, у cAPBPlayerController - свойства.",
+      "     Один разворот не может дать оба варианта.",
+      "  3. Сортировка по имени в UClass::Link. Такой сортировки НЕТ.",
+      "  4. Инвариант «члены лежат в export table перед классом». ЛОЖЕН:",
+      "     у cAPBVehicleBase часть членов лежит после, а порядок верен.",
+      "     Классов с таким расположением: 3.",
+      "",
+      "Симптом неверного направления сортировки: computed + expected",
+      "постоянна у всех полей класса. Константа означает зеркало -",
+      "состав и база верны, перевёрнут только порядок."
+    ],
+    "_chain": [
+      "Цепочка замкнута полностью, разрывов не осталось (28.08.2026).",
+      "Оба прежних «расхождения на единицу» оказались промежуточными",
+      "классами, а не ошибками:",
+      "  Pawn 43 -> cAPBPawnAnimation 44 -> cAPBPawn 110",
+      "  cHostingPlayerController 153 -> cAPBPlayerControllerAnimation 154",
+      "    -> cAPBPlayerController 634 -> cBotPlayerController 638",
+      "Для NPC граница WriteBoundedInt равна 638, не 634."
+    ],
+    "_field_names": [
+      "Имя поля это UName: строка плюс номер. Правила выяснены 28.08.2026",
+      "по сырому дампу и подтверждены сверкой 98/98:",
+      "  Number == -1  номера нет, числовой хвост часть строки (m_Chunk_01)",
+      "  Number == 0   номер ЕСТЬ, суффикс _0; UELib считает это пустым",
+      "                и печатает имя без хвоста - единственный дефект",
+      "  Number >= 1   UELib подставляет сам, верно",
+      "Суффикс равен номеру НАПРЯМУЮ: m_Chunk_10 при Number = 10.",
+      "Формула N-1 из общего описания UE3 здесь НЕВЕРНА.",
+      "Затронуто два поля cStorageInventory: m_aExaminedItemBits_0,",
+      "m_aUnlockItemBits_0. На индексы не влияло, ломало поиск по имени."
+    ],
+    "_verification": [
+      "Сверено с netcache.json 28.08.2026: 98 классов из 98.",
+      "База, состав и порядок совпадают полностью.",
+      "Источники независимы: FieldIndexMap.txt строится из пакетов через",
+      "UELib, netcache.json читается из живых UClass.",
+      "Повторять после каждой пересборки генератора:",
+      "  python fieldmap_compare.py FieldIndexMap.txt netcache.json"
+    ]
+  },
+  "globals": {
+    "_note": [
+      "Найдено в Init_Engine_Type_System (appInitNames).",
+      "GObjObjects подтверждён 27.08.2026 через apb_objects.py --find:",
+      "инвариант Data[k]->Index == k выполнился 39/39, Num 636606,",
+      "Max 825016. Это же подтверждает index_offset = +0x04.",
+      "Лежит рядом с GNames, как и положено движковым глобалам."
+    ],
+    "GObjObjects": "0x12A39290",
+    "GObjObjects.ArrayNum": "0x12A39294",
+    "GObjObjects.ArrayMax": "0x12A39298",
+    "GNames": "0x12A49A10",
+    "GNames.ArrayNum": "0x12A49A14",
+    "GNames.ArrayMax": "0x12A49A18",
+    "NameHash": "0x12A45950",
+    "NameHash.count": 4096,
+    "GMalloc": "0x129FD2F4",
+    "GNamesInitialised": "0x129FD154"
+  },
+  "functions": {
+    "_note": [
+      "Адреса как в Ghidra (image base 0x10900000).",
+      "appInitNames — это функция, которую Ghidra назвала",
+      "Init_Engine_Type_System; адрес не записан, впишите при случае."
+    ],
+    "appInitNames": null,
+    "FNameEntry::ctor": "0x1098DC20",
+    "FName::Register": "0x10990D40",
+    "UObject::GetFName": "0x10946C10",
+    "UObject::IsInState": "0x109B2C80",
+    "ApplySetupType": "0x11890410",
+    "RepNotifySetupType": "0x11890680",
+    "LoadVehicleSetupInfo": "0x11660790",
+    "VehicleCSA_AccessCheck": "0x11811960",
+    "VehicleCSA_FinalCheck": "0x117DA990",
+    "cAPBVehicleBase::IsCSASupported": "0x118141B0",
+    "execIsCSASupported_cAPBVehicleBase": "0x115436C0",
+    "Vehicle::NotifyParkedTaskTargetUsable": "0x117F8150",
+    "Vehicle::CleanupMissionTaskLink": "0x117FD2D0",
+    "BeginParkedVehicleTask": "0x115412E0",
+    "cAPBUsableComponent::RemoveUser": "0x118E0420",
+    "ClientGoToCSAAutoRouteState_entry": "0x11528980",
+    "_ClientGoToCSAAutoRouteState_entry_note": "exec-стаб (params-размотка), вызывает native через vtable+0xAD8. Не путать с 0x116FE220 — это разные функции.",
+    "CSA424_native_handler": "0x116FE220",
+    "_CSA424_native_handler_note": [
+      "Native-обработчик field 424 (принимает actor, eCSA byte, IPIndex, ARDIndex).",
+      "Подтверждён 29.08.2026 брейком: ECX=контроллер (this), стек = (actor, eCSA, IPIndex, ARDIndex).",
+      "Тело: if(actor && vtable[0xADC](actor) && vtable[0xAE0](actor,IPIndex)) {",
+      "  this+0x9C4=actor; this+0x9C8=IPIndex; this+0x9CC=ARDIndex; this+0x695=eCSA;",
+      "  GotoState(\"AutoMoveToCSAPositionState\") через vtable+0x108 }",
+      "GotoState вызывается БЕЗ доп. флагов — повторный вход в то же состояние",
+      "НЕ перезапускает BeginState. См. секцию csa_automove_rpc."
+    ],
+    "CSA426_handler_stub_range": "0x11528E50-0x11528F00",
+    "_CSA426_handler_stub_range_note": [
+      "НЕ РАЗОБРАНО в Ghidra — участок без распознанной функции,",
+      "в отличие от соседних exec-стабов 0x11528980 и 0x11528BC0.",
+      "Брейк на 0x11528E50 срабатывает (подтверждено), но декомпиляция",
+      "возвращает 'No function found'. Разбирать байтами/дизассемблером."
+    ],
+    "UObject::ProcessInternal": "0x109C2B50",
+    "_UObject::ProcessInternal_note": [
+      "Общая точка входа интерпретатора: значение UFunction::Func у ВСЕХ",
+      "скриптовых функций. 476 из 900 в выборке.",
+      "Найдено как модальное значение Func, подтверждено сырым дампом четырёх",
+      "функций (JoinArray, OnTeleport, SetPlayerDataProvider, Possess).",
+      "Обязательно исключать при генерации имён для Ghidra, иначе тысячи имён",
+      "лягут на один адрес."
+    ]
+  },
+  "wire_formats": {
+    "SActiveAssetIndexes": {
+      "_note": [
+        "Из блока экспортов cSetupTypeManager: структура содержит ДВА поля,",
+        "m_nStart и m_nEnd (в NetIndexMap они идут перед структурой, в",
+        "обратном порядке). Отправка 12 сырых байт валила клиент —",
+        "проверить как 2 элемента, а не 3.",
+        "Массивы этой структуры: m_aVehicleAssetRange (local 24968),",
+        "m_aPedestrianAssetRange (local 24969).",
+        "Размерность задают MAX_VEHICLE_CATEGORIES / MAX_PEDESTRIAN_TYPES.",
+        "Типы полей export table не показывает — подтвердить отдельно."
+      ],
+      "netindex_local": 24957,
+      "netindex_global": 56060,
+      "members": [
+        "m_nStart",
+        "m_nEnd"
+      ]
+    },
+    "stReplicatedStateFSM": {
+      "_note": [
+        "Поле 84 у cAPBVehicleBase, тип APBVehicleStateFSM.",
+        "Прочитано из памяти 28.08.2026: РОВНО ДВА члена.",
+        "Первый — FName, а не строка и не байт.",
+        "Состояние Active существует: APBGame.cAPBVehicleBase.Active"
+      ],
+      "field_index": 84,
+      "members": [
+        {
+          "name": "sActorState",
+          "type": "FName",
+          "offset_in_struct": "0x00"
+        },
+        {
+          "name": "ePseudoKinCompState",
+          "type": "byte",
+          "offset_in_struct": "0x08",
+          "enum": "EPseudoKinCompState"
+        }
+      ]
+    },
+    "byte_fields_without_enum": {
+      "_note": [
+        "ByteProperty без ссылки на UEnum сериализуется ОБЫЧНЫМ БАЙТОМ (8 бит),",
+        "а не через WriteBoundedInt. Отправка их как enum сдвинет поток.",
+        "Правило выведено из устройства UE3, экспериментом не подтверждено.",
+        "Список получен: apb_props.py --enums cAPBVehicleBase"
+      ],
+      "cAPBVehicleBase": [
+        {
+          "index": 103,
+          "name": "m_nUsingCollisionGroupID"
+        },
+        {
+          "index": 104,
+          "name": "m_nMissionTaskItemInsideOwningCollisionGroupID"
+        },
+        {
+          "index": 105,
+          "name": "m_nTaskOwningCollisionGroupID"
+        },
+        {
+          "index": 107,
+          "name": "m_eStoppingReason"
+        },
+        {
+          "index": 111,
+          "name": "m_nCriticalDamageType"
+        }
+      ]
+    },
+    "enum_fields": {
+      "_note": "bits = enumValueCount, ВКЛЮЧАЯ _MAX. Проверено на живых UEnum.",
+      "cAPBVehicleBase": [
+        {
+          "index": 102,
+          "name": "m_eSpawnState",
+          "enum": "etVehicleSpawnState",
+          "bits": 7
+        },
+        {
+          "index": 106,
+          "name": "m_eInitialTheftFaction",
+          "enum": "etFaction",
+          "bits": 5
+        },
+        {
+          "index": 108,
+          "name": "m_eBrainAndPhysRepState_Replicated",
+          "enum": "etBrainAndPhysRepState",
+          "bits": 8
+        },
+        {
+          "index": 109,
+          "name": "m_eVehicleSetupType",
+          "enum": "etVehicleSetupType",
+          "bits": 46
+        },
+        {
+          "index": 110,
+          "name": "vehicleType",
+          "enum": "EVehicleType",
+          "bits": 8
+        },
+        {
+          "index": 112,
+          "name": "m_DriverIndicator",
+          "enum": "etIndicatorLightType",
+          "bits": 4
+        }
+      ]
+    }
+  },
+  "uobject": {
+    "_note": [
+      "Подтверждено двумя независимыми путями.",
+      "Живой cAPBVehicle 27.08.2026 (0xD27271C0) через --layout:",
+      "  +0x2C -> PersistentLevel (Outer)",
+      "  +0x30 Name = cAPBVehicle",
+      "  +0x38 -> объект, у которого +0x30 = cAPBVehicle (Class)",
+      "  +0x3C -> Default__cAPBVehicle (ObjectArchetype)",
+      "Четвёрка лежит подряд без дыр — как UE3 и раскладывает эти поля.",
+      "Декомпиляция UObject::GetFName (0x10946C10):",
+      "  +0x04 Index в GObjObjects, -1 = объект не зарегистрирован",
+      "  +0x30 Name.Index, +0x34 Name.Number",
+      "Декомпиляция UObject::IsInState (0x109B2C80):",
+      "  +0x18 StateFrame; StateFrame+0x24 StateNode;",
+      "  UState+0x40 SuperState; StateFrame+0x34/+0x38 StateStack (Data/Num, шаг 0xC)"
+    ],
+    "vtable_offset": "0x00",
+    "index_offset": "0x04",
+    "_index_offset_note": "Подтверждён 27.08.2026: Data[k]->Index == k выполнился 39/39 на GObjObjects.",
+    "state_frame_offset": "0x18",
+    "outer_offset": "0x2C",
+    "name_offset": "0x30",
+    "name_number_offset": "0x34",
+    "class_offset": "0x38",
+    "archetype_offset": "0x3C",
+    "_archetype_note": [
+      "+0x3C — это UObject::ObjectArchetype, то есть CDO класса САМОГО",
+      "объекта. У актора cAPBVehicle там лежит Default__cAPBVehicle,",
+      "а у объекта UClass cAPBVehicleBase — Default__Class, потому что",
+      "класс этого объекта равен Class. Это не ошибка смещения.",
+      "CDO конкретного класса — отдельное поле UClass::ClassDefaultObject,",
+      "его смещение ищет apb_objects.py --selftest."
+    ],
+    "linker_index_offset": "0x20",
+    "net_index_offset": "0x24",
+    "_local_index_note": [
+      "Найдено 28.08.2026 дифференциально: у шести архетипов оба поля",
+      "равны export-ординалу, разность с ординалом ноль у всех.",
+      "Это ЛОКАЛЬНЫЙ индекс. Глобальный в UObject не хранится:",
+      "global = FPackageInfo.ObjectBase + local, см. секцию fpackageinfo.",
+      "ПОРЯДОК ДВУХ ПОЛЕЙ НЕ РАЗЛИЧЁН — у объектов из пакета они совпадают.",
+      "Различать на динамически созданном объекте: у него линкерный индекс -1."
+    ],
+    "children_offset": "0x50",
+    "field_next_offset": "0x44",
+    "_fname_number_rule": [
+      "В ПАМЯТИ: Name.Number == 0 означает ОТСУТСТВИЕ суффикса.",
+      "ОТВЕРГНУТО: перенос правила UELib ('-1 = нет суффикса, 0 = валидный _0')",
+      "на память. При нём UClass Class читается как 'Class_0', и любое сравнение",
+      "имён классов молча не срабатывает — дамп выходит пустым без ошибки.",
+      "Правило UELib остаётся верным для ФАЙЛОВОГО формата.",
+      "Замер: на 5000 объектов Number == 0 у 4999, Number == 1 у 2."
+    ],
+    "_net_index_open": [
+      "ОТКРЫТО: какое из полей 0x20 / 0x24 является NetIndex, а какое линкерным",
+      "индексом, всё ещё не различено. Здесь принято 0x24 = NetIndex.",
+      "APBEMU_VSTATE_DRIVE_HANDOFF.md называет NetIndex поле 0x20.",
+      "Различать на ДИНАМИЧЕСКИ созданном объекте: у него линкерный индекс -1,",
+      "а NetIndex осмысленный. До этого замера считать вопрос открытым."
+    ],
+    "class_class_invariant": [
+      "UClass 'Class' — единственный объект, у которого Class == сам объект.",
+      "Не зависит от имён, поэтому годится как первичный якорь на новой сборке,",
+      "когда правило суффиксов FName ещё не проверено."
+    ]
+  },
+  "uclass": {
+    "_note": [
+      "UClass поверх UObject.",
+      "ClassDefaultObject найден 28.08.2026 (apb_objects.py --selftest):",
+      "  совпадение Default__<класс> подтверждено, смещение +0x148.",
+      "NetFields (+0x10C) — массив, который строит UClass::Link;",
+      "именно его порядок воспроизводит FieldIndexMap.txt."
+    ],
+    "class_default_object_offset": "0x148",
+    "netfields_offset": "0x10C",
+    "netfields_alt_offset": "0x088",
+    "_netfields_alt_note": "Второй, меньший массив. Назначение не выяснено.",
+    "class_cast_flags_offset": "0xEC",
+    "_class_cast_flags_note": [
+      "CASTCLASS_UProperty 0x8000, CASTCLASS_UBoolProperty 0x20000,",
+      "CASTCLASS_UFunction 0x80000. Дешёвая проверка типа поля без строк."
+    ]
+  },
+  "fpackageinfo": {
+    "_note": [
+      "FPackageInfo из UPackageMap соединения. Раскладка подтверждена",
+      "28.08.2026 по записи 0xF0753BA0 в живом клиенте:",
+      "  Parent 0xFA7F35B0 -> Package APBGame (проверено --identify),",
+      "  Guid совпал с Guid объекта пакета,",
+      "  ObjectBase 31103, ObjectCount 30874, Generation 2/2.",
+      "АДРЕС ЗАПИСИ В ФАЙЛ НЕ ПИШЕТСЯ: он свой в каждой сессии.",
+      "Находить заново: python find_firstnetindex.py --map NetIndexMap.txt",
+      "Долгосрочно — идти от UNetConnection к его PackageMap.",
+      "Generation 2/2 означает, что APBGame.u пересобирался; клиент и",
+      "сервер сверяют это число. Если оно где-то захардкожено, при смене",
+      "сборки пакета разъедется."
+    ],
+    "Parent": "0x00",
+    "Guid": "0x04",
+    "ObjectBase": "0x14",
+    "ObjectCount": "0x18",
+    "LocalGeneration": "0x1C",
+    "RemoteGeneration": "0x20"
+  },
+  "netindexmap": {
+    "_note": [
+      "Состояние NetIndexMap.txt на 28.08.2026. ПРОВЕРЕН ПОЛНОСТЬЮ.",
+      "Локальный NetIndex == ординал в export table, нумерация с нуля."
+    ],
+    "slots": 30874,
+    "named": 30874,
+    "empty": 0,
+    "unique_names": 16639,
+    "repeated_names": 3093,
+    "return_value_entries": 1664,
+    "archetypes": 773,
+    "_verification": [
+      "инвариант ordinal(Default__X) == ordinal(X)+1: 773 из 773",
+      "живых архетипов из памяти совпало: 772 из 772, в ДВУХ сессиях",
+      "дыр нет, диапазон 0..30873",
+      "Совпадение живых чисел закрывает равномерный сдвиг таблицы —",
+      "то, что внутренние инварианты поймать не могут.",
+      "Повторять: python netindex_compare.py NetIndexMap.txt live.txt"
+    ],
+    "_dedup_bug": [
+      "Генератор раньше ключевал экспорты по ИМЕНИ и терял ~46% записей",
+      "(ReturnValue встречается 1664 раза). Любой инструмент, который",
+      "складывает экспорты в словарь по имени, повторит эту ошибку.",
+      "Ключевать только по индексу."
+    ]
+  },
+  "csa_access_check": {
+    "_note": [
+      "cAPBVehicle: проверка прицела Context Sensitive Action.",
+      "Разобрано из VehicleCSA_AccessCheck (ghidra 0x11811960).",
+      "m_PvPFlags (+0xA84) в проверке НЕ участвует — подтверждено",
+      "как декомпиляцией, так и живым сравнением с игроком 27.08.2026.",
+      "Код причины отказа уходит в player vtable +0x5A8; -1 = разрешено.",
+      "Проверки идут по порядку, первый провал возвращает 0.",
+      "Гейты без reason_code отказывают МОЛЧА — HUD остаётся в дефолтном",
+      "Not Usable, и брейкпоинт на +0x5A8 их не поймает."
+    ],
+    "gates": [
+      {
+        "order": 1,
+        "check": "IsInState('Active', true)",
+        "reason_code": null,
+        "note": "машина обязана быть в состоянии Active; первый подозреваемый для эмулятора"
+      },
+      {
+        "order": 2,
+        "check": "FUN_1169EF30()",
+        "reason_code": null
+      },
+      {
+        "order": 3,
+        "check": "flags_684 & 0x40000 == 0",
+        "reason_code": null
+      },
+      {
+        "order": 4,
+        "check": "если vehicleType==6 (ParkedTaskTarget) и taskObject_98C!=0: taskFaction_5FD != -1",
+        "reason_code": null,
+        "note": "ЕДИНСТВЕННОЕ место, где 0xFF блокирует"
+      },
+      {
+        "order": 5,
+        "check": "taskFaction_5FD совпадает с одной из двух групп игрока",
+        "reason_code": 2
+      },
+      {
+        "order": 6,
+        "check": "если owner_A1C!=0: owner и игрок дают одинаковый vtable+0x550",
+        "reason_code": 4
+      },
+      {
+        "order": 7,
+        "check": "если owner_A1C!=0: группа игрока совпадает",
+        "reason_code": 6
+      },
+      {
+        "order": 8,
+        "check": "faction_5FF == -1 ЛИБО == группе игрока",
+        "reason_code": 0,
+        "note": "здесь 0xFF означает «ограничения нет» и ПРОХОДИТ"
+      },
+      {
+        "order": 9,
+        "check": "state_1BC не в {0x11,0x12,0x13} либо FUN_118DBBC0(vehicle) == 0",
+        "reason_code": null
+      },
+      {
+        "order": 10,
+        "check": "faction_5FE == -1 ЛИБО режим (+0x680 vtable +0x3D4) != 2 ЛИБО FUN_118608F0()",
+        "reason_code": 2,
+        "note": "0xFF снова означает «ограничения нет»; ветка с кодом 5 недостижима"
+      },
+      {
+        "order": 11,
+        "check": "health_32C >= 1",
+        "reason_code": null,
+        "note": "нулевое здоровье блокирует молча; второй подозреваемый для эмулятора"
+      }
+    ]
+  },
+  "enums": {
+    "EVehicleType": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount (параметр bits).",
+      "0": "VEHICLETYPE_None",
+      "1": "VEHICLETYPE_Free",
+      "2": "VEHICLETYPE_LivingCity",
+      "3": "VEHICLETYPE_PlayerDeployed",
+      "4": "VEHICLETYPE_HackSpawned",
+      "5": "VEHICLETYPE_TestPseudoKinematic",
+      "6": "VEHICLETYPE_ParkedTaskTarget",
+      "7": "VEHICLETYPE_MAX"
+    },
+    "etVehicleSpawnState": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount (параметр bits).",
+      "0": "eVSS_NotSpawned",
+      "1": "eVSS_Spawned",
+      "2": "eVSS_DiedDamaged",
+      "3": "eVSS_DiedVandalised",
+      "4": "eVSS_Recycled",
+      "5": "eVSS_Telefragged",
+      "6": "eVSS_MAX"
+    },
+    "ELogCategory": {
+      "_note": "EName категорий debugf из appInitNames. Ищите push этих значений в Ghidra.",
+      "1976": "APB_Player (0x7D8)",
+      "1977": "APB_Combat (0x7D9)",
+      "1979": "APB_VehicleUse (0x7DB)",
+      "1983": "APB_Inventory (0x7DF)",
+      "1996": "APB_Net (0x7EC)",
+      "2062": "APB_VehicleSpawnBays (0x80E)",
+      "2077": "APB_VehicleRepair (0x81D)",
+      "2078": "APB_Ammo (0x81E)",
+      "2086": "APB_AmmoResupply (0x826)",
+      "2087": "APB_Streaming (0x827)",
+      "2093": "APB_HoldableItemManager (0x82D)",
+      "2095": "APB_PlayerSpawning (0x82F)",
+      "2133": "APB_UIInteractionPoint (0x855)",
+      "2210": "APB_VehicleDestroyed (0x8A2)"
+    },
+    "etFaction": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount (параметр bits).",
+      "0": "kFACTION_None",
+      "1": "kFACTION_Enforcer",
+      "2": "kFACTION_Criminal",
+      "3": "kFACTION_Both",
+      "4": "kFACTION_MAX"
+    },
+    "etBrainAndPhysRepState": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount (параметр bits).",
+      "0": "kBPS_None",
+      "1": "kBPS_Init",
+      "2": "kBPS_Active",
+      "3": "kBPS_Disconnected",
+      "4": "kBPS_Limbo",
+      "5": "kBPS_SelfDestructCountdown",
+      "6": "kBPS_RagDoll",
+      "7": "kBPS_MAX"
+    },
+    "etIndicatorLightType": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount (параметр bits).",
+      "0": "kIndicatorLight_None",
+      "1": "kIndicatorLight_Left",
+      "2": "kIndicatorLight_Right",
+      "3": "kIndicatorLight_MAX"
+    },
+    "etVehiclePositionIndex": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount.",
+      "0": "VehiclePositionIndex_FrontLeft",
+      "1": "VehiclePositionIndex_FrontRight",
+      "2": "VehiclePositionIndex_RearLeft",
+      "3": "VehiclePositionIndex_RearRight",
+      "4": "VehiclePositionIndex_Cargo",
+      "5": "VehiclePositionIndex_MAX"
+    },
+    "etCrimeListState": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount.",
+      "0": "CrimeListState_Empty",
+      "1": "CrimeListState_Decaying",
+      "2": "CrimeListState_CrimeInProgress",
+      "3": "CrimeListState_MAX"
+    },
+    "etPlayerCustomisation": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount.",
+      "0": "PC_CHARACTER",
+      "1": "PC_VEHICLE",
+      "2": "PC_GRAFFITI",
+      "3": "PC_THEME",
+      "4": "PC_MAX"
+    },
+    "etCharacterLeanState": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount.",
+      "0": "CLS_None",
+      "1": "CLS_MirroredLeft",
+      "2": "CLS_Left",
+      "3": "CLS_Right",
+      "4": "CLS_MAX"
+    },
+    "etPlayerInteractionState": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount.",
+      "0": "ePIS_None",
+      "1": "ePIS_Contact",
+      "2": "ePIS_MailBox",
+      "3": "ePIS_DisplayPoint",
+      "4": "ePIS_Garage",
+      "5": "ePIS_Wardrobe",
+      "6": "ePIS_Persona",
+      "7": "ePIS_SymbolEditor",
+      "8": "ePIS_MarketPlace",
+      "9": "ePIS_MusicStudio",
+      "10": "ePIS_Max"
+    },
+    "etHUDMarkerState": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount.",
+      "0": "HUDMarkerState_Active",
+      "1": "HUDMarkerState_Flashing",
+      "2": "HUDMarkerState_Greyed",
+      "3": "HUDMarkerState_Inactive",
+      "4": "HUDMarkerState_Ping_Crouched_Moving",
+      "5": "HUDMarkerState_Ping_Crouched_Static",
+      "6": "HUDMarkerState_Ping_FireDefault",
+      "7": "HUDMarkerState_Ping_Marksmanship",
+      "8": "HUDMarkerState_Ping_Running",
+      "9": "HUDMarkerState_Ping_Sprinting",
+      "10": "HUDMarkerState_Ping_Static",
+      "11": "HUDMarkerState_Ping_Vehicle_Moving",
+      "12": "HUDMarkerState_Ping_Vehicle_Static",
+      "13": "HUDMarkerState_Ping_Walking",
+      "14": "HUDMarkerState_Task_OppositionAttack",
+      "15": "HUDMarkerState_Task_OppositionDefend",
+      "16": "HUDMarkerState_Task_OwnerAttack",
+      "17": "HUDMarkerState_Task_OwnerDefend",
+      "18": "HUDMarkerState_MAX"
+    },
+    "etContextSensitiveActionBase": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Последний элемент _MAX ВХОДИТ в enumValueCount.",
+      "0": "CSA_None",
+      "1": "CSA_AntiGraffiti",
+      "2": "CSA_Arrest",
+      "3": "CSA_Arrested",
+      "4": "CSA_AudioDisplayPoint",
+      "5": "CSA_BuildingBreakIn",
+      "6": "CSA_BuildingForcedEntry",
+      "7": "CSA_CargoInteraction",
+      "8": "CSA_CrimeSceneInvestigation",
+      "9": "CSA_CrimeSceneInvestigation_Vehicle",
+      "10": "CSA_DefuseBomb",
+      "11": "CSA_DefuseVehicleBomb",
+      "12": "CSA_DeployAmmoCarrier",
+      "13": "CSA_DropTaskItem",
+      "14": "CSA_EnterVehicle",
+      "15": "CSA_Graffiti",
+      "16": "CSA_GraffitiDisplayPoint_Billboard",
+      "17": "CSA_GraffitiDisplayPoint_Default",
+      "18": "CSA_GraffitiDisplayPoint_Targeted",
+      "19": "CSA_Hacking",
+      "20": "CSA_Hacking_Vehicle",
+      "21": "CSA_Hotwire",
+      "22": "CSA_InventoryAccess",
+      "23": "CSA_NPCForcibleArrest",
+      "24": "CSA_NPCMugging",
+      "25": "CSA_NPCStopSearch",
+      "26": "CSA_OpenAmmoPurchase",
+      "27": "CSA_OpenGarage",
+      "28": "CSA_OpenInventory",
+      "29": "CSA_OpenInventory_Legacy",
+      "30": "CSA_OpenLocker",
+      "31": "CSA_OpenMailBox",
+      "32": "CSA_OpenMarketPlace",
+      "33": "CSA_OpenMusicStudio",
+      "34": "CSA_OpenPersona",
+      "35": "CSA_OpenSymbolDesigner",
+      "36": "CSA_OpenWardrobe",
+      "37": "CSA_PassTaskItem",
+      "38": "CSA_PassTaskItemToCargoHold",
+      "39": "CSA_PickupTaskItem",
+      "40": "CSA_PlantBomb",
+      "41": "CSA_PlantVehicleBomb",
+      "42": "CSA_PlayerInteractionMenu",
+      "43": "CSA_RCE_Door",
+      "44": "CSA_RCE_Fence",
+      "45": "CSA_RCE_Ladder",
+      "46": "CSA_ReceiveTaskItem",
+      "47": "CSA_ReceiveTaskItemFromCargoHold",
+      "48": "CSA_Rescue",
+      "49": "CSA_Rescued",
+      "50": "CSA_ResupplyAmmo",
+      "51": "CSA_ResupplyAmmo_Legacy",
+      "52": "CSA_Sabotage",
+      "53": "CSA_Sabotage_Vehicle",
+      "54": "CSA_SetAlight",
+      "55": "CSA_SetVehicleAlight",
+      "56": "CSA_SpawnVehicle",
+      "57": "CSA_SpawnVehicle_Legacy",
+      "58": "CSA_SpeakToContact",
+      "59": "CSA_StatueDisplayPoint",
+      "60": "CSA_VehicleBreakIn",
+      "61": "CSA_MAX"
+    },
+    "etVehicleSetupType": {
+      "_note": "Прочитано из UEnum в памяти 28.08.2026. Заменяет внешний VehicleSetupTypes.csv. _MAX входит в enumValueCount (bits=46).",
+      "0": "VehicleSetupType_None",
+      "1": "VehicleSetupType_AmbientSUV_PickupCamper",
+      "2": "VehicleSetupType_AmbientSUV_PickupFrontVariant1",
+      "3": "VehicleSetupType_AmbientSUV_PickupKingCab",
+      "4": "VehicleSetupType_AmbientSUV_PickupWorks",
+      "5": "VehicleSetupType_AmbientSUV_SUV",
+      "6": "VehicleSetupType_AmbientTruck_BoxBackCurtain",
+      "7": "VehicleSetupType_AmbientTruck_BoxBackSolid",
+      "8": "VehicleSetupType_AmbientTruck_CementMixer",
+      "9": "VehicleSetupType_AmbientTruck_DumpTruck",
+      "10": "VehicleSetupType_AmbientTruck_FireTruck",
+      "11": "VehicleSetupType_AmbientTruck_GarbageTruck",
+      "12": "VehicleSetupType_AmbientUtility_2DoorCabriolet",
+      "13": "VehicleSetupType_AmbientUtility_2DoorCoupe",
+      "14": "VehicleSetupType_AmbientUtility_2DoorHatchback",
+      "15": "VehicleSetupType_AmbientUtility_2DoorHatchbackVan",
+      "16": "VehicleSetupType_AmbientUtility_4DoorEstate",
+      "17": "VehicleSetupType_AmbientUtility_4DoorEstateVan",
+      "18": "VehicleSetupType_AmbientUtility_4DoorHatchback",
+      "19": "VehicleSetupType_AmbientUtility_4DoorSedan",
+      "20": "VehicleSetupType_AmbientUtility_4DoorSedanFrontVariant1",
+      "21": "VehicleSetupType_AmbientUtility_4DoorSedanFrontVariant2",
+      "22": "VehicleSetupType_AmbientUtility_4DoorSedanFrontVariant3",
+      "23": "VehicleSetupType_AmbientUtility_ClassicMuscle",
+      "24": "VehicleSetupType_AmbientUtility_ExecSaloon",
+      "25": "VehicleSetupType_AmbientUtility_LowRider",
+      "26": "VehicleSetupType_AmbientUtility_SportSUV",
+      "27": "VehicleSetupType_AmbientUtility_Taxi",
+      "28": "VehicleSetupType_AmbientVan_Ambulance",
+      "29": "VehicleSetupType_AmbientVan_ArmouredVan",
+      "30": "VehicleSetupType_AmbientVan_CamperVan",
+      "31": "VehicleSetupType_AmbientVan_FrontVariant1",
+      "32": "VehicleSetupType_AmbientVan_HighBoxBack",
+      "33": "VehicleSetupType_AmbientVan_PrisonVan",
+      "34": "VehicleSetupType_AmbientVan_StandardVan",
+      "35": "VehicleSetupType_CriminalCarrying",
+      "36": "VehicleSetupType_CriminalCompact",
+      "37": "VehicleSetupType_CriminalGeneralPurpose",
+      "38": "VehicleSetupType_CriminalPerformance",
+      "39": "VehicleSetupType_EnforcerCarrying",
+      "40": "VehicleSetupType_EnforcerCompact",
+      "41": "VehicleSetupType_EnforcerGeneralPurpose",
+      "42": "VehicleSetupType_EnforcerPerformance",
+      "43": "VehicleSetupType_AmbientSUV_Pickup",
+      "44": "VehicleSetupType_AmbientUtility_Roadster",
+      "45": "VehicleSetupType_MAX"
+    }
+  },
+  "structs": {
+    "actor": {
+      "_note": "Общая часть любого AActor",
+      "fields": [
+        {
+          "name": "vtable",
+          "offset": "0x000",
+          "type": "ptr"
+        },
+        {
+          "name": "Index",
+          "offset": "0x004",
+          "type": "i32"
+        },
+        {
+          "name": "StateFrame",
+          "offset": "0x018",
+          "type": "ptr"
+        },
+        {
+          "name": "Outer",
+          "offset": "0x02C",
+          "type": "ptr"
+        },
+        {
+          "name": "Name",
+          "offset": "0x030",
+          "type": "fname"
+        },
+        {
+          "name": "Class",
+          "offset": "0x038",
+          "type": "ptr"
+        },
+        {
+          "name": "ObjectArchetype",
+          "offset": "0x03C",
+          "type": "ptr"
+        },
+        {
+          "name": "Location.X",
+          "offset": "0x0F0",
+          "type": "float"
+        },
+        {
+          "name": "Location.Y",
+          "offset": "0x0F4",
+          "type": "float"
+        },
+        {
+          "name": "Location.Z",
+          "offset": "0x0F8",
+          "type": "float"
+        },
+        {
+          "name": "Rotation",
+          "offset": "0x0FC",
+          "type": "u32"
+        }
+      ]
+    },
+    "uobject_header": {
+      "_note": "Только заголовок UObject — быстрая проверка любого адреса",
+      "fields": [
+        {
+          "name": "vtable",
+          "offset": "0x000",
+          "type": "ptr"
+        },
+        {
+          "name": "Index",
+          "offset": "0x004",
+          "type": "i32"
+        },
+        {
+          "name": "StateFrame",
+          "offset": "0x018",
+          "type": "ptr"
+        },
+        {
+          "name": "Outer",
+          "offset": "0x02C",
+          "type": "ptr"
+        },
+        {
+          "name": "Name",
+          "offset": "0x030",
+          "type": "fname"
+        },
+        {
+          "name": "Class",
+          "offset": "0x038",
+          "type": "ptr"
+        },
+        {
+          "name": "Class.Name",
+          "offset": [
+            "0x038",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "ObjectArchetype",
+          "offset": "0x03C",
+          "type": "ptr"
+        },
+        {
+          "name": "Archetype.Name",
+          "offset": [
+            "0x03C",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "StateNode",
+          "offset": [
+            "0x018",
+            "0x024"
+          ],
+          "type": "ptr"
+        },
+        {
+          "name": "StateNode.Name",
+          "offset": [
+            "0x018",
+            "0x024",
+            "0x030"
+          ],
+          "type": "fname"
+        }
+      ]
+    },
+    "pawn": {
+      "_note": "cAPBPawn. Location подтверждена 27.08.2026 через живую цепочку vehicle+0x24C.",
+      "fields": [
+        {
+          "name": "vtable",
+          "offset": "0x000",
+          "type": "ptr"
+        },
+        {
+          "name": "Name",
+          "offset": "0x030",
+          "type": "fname"
+        },
+        {
+          "name": "Class.Name",
+          "offset": [
+            "0x038",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "Location.X",
+          "offset": "0x0F0",
+          "type": "float"
+        },
+        {
+          "name": "Location.Y",
+          "offset": "0x0F4",
+          "type": "float"
+        },
+        {
+          "name": "Location.Z",
+          "offset": "0x0F8",
+          "type": "float"
+        },
+        {
+          "name": "controller",
+          "offset": "0x248",
+          "type": "ptr"
+        }
+      ]
+    },
+    "controller": {
+      "_note": [
+        "cAPBPlayerController. m_PvPFlags подтверждён 27.08.2026 живьём:",
+        "FF FF 00 00 00 00 00 00 — группы не назначены, ePvPType=0, все bool false;",
+        "байт в байт как у машины по +0xA84.",
+        "ВАЖНО: одинаковые значения тут ничего не доказывают — это дефолт из CDO,",
+        "который вы увидите у любого поля, которое ни разу не реплицировалось."
+      ],
+      "fields": [
+        {
+          "name": "vtable",
+          "offset": "0x000",
+          "type": "ptr"
+        },
+        {
+          "name": "Name",
+          "offset": "0x030",
+          "type": "fname"
+        },
+        {
+          "name": "Class.Name",
+          "offset": [
+            "0x038",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "m_nFriendlyCollisionGroupID",
+          "offset": "0xC78",
+          "type": "u8"
+        },
+        {
+          "name": "m_nEnemyCollisionGroupID",
+          "offset": "0xC79",
+          "type": "u8"
+        },
+        {
+          "name": "m_ePvPType",
+          "offset": "0xC7A",
+          "type": "u8"
+        },
+        {
+          "name": "pvp_bools_C7C  (0x01 Friend, 0x02 Enemy, 0x04 OwnFac, 0x08 OtherFac, 0x10 CollInvuln)",
+          "offset": "0xC7C",
+          "type": "u32"
+        }
+      ]
+    },
+    "controller_csa": {
+      "_note": [
+        "cAPBPlayerController: путь CSA и автодоводка.",
+        "Смещения из apb_props.py --all --fields cAPBPlayerController.",
+        "flags_62C: бит 0x80 = m_bPendingCSARequest, 0x8000 = m_bUIInteraction.",
+        "m_ReticuleActor — то, что уходит в поле 343 как target.",
+        "m_bDamageByFriend Пять булов лежат битами в одном дворде на 0xC7C, а 0xC7B — это байт выравнивания, не поле."
+      ],
+      "fields": [
+        {
+          "name": "m_nChannelsOpen",
+          "offset": "0x058",
+          "type": "i32"
+        },
+        {
+          "name": "flags_62C  (0x80 = PendingCSA)",
+          "offset": "0x62C",
+          "type": "u32"
+        },
+        {
+          "name": "m_ReticuleActor  [поле 343]",
+          "offset": "0x668",
+          "type": "ptr"
+        },
+        {
+          "name": "m_eGotoVehicleAccessPointIndex",
+          "offset": "0x694",
+          "type": "u8"
+        },
+        {
+          "name": "m_eGoToCSA",
+          "offset": "0x695",
+          "type": "u8",
+          "enum": "etContextSensitiveActionBase"
+        },
+        {
+          "name": "m_ePendingPredictedCSA",
+          "offset": "0x697",
+          "type": "u8",
+          "enum": "etContextSensitiveActionBase"
+        },
+        {
+          "name": "m_DeployedVehicle",
+          "offset": "0x6C4",
+          "type": "ptr"
+        },
+        {
+          "name": "m_GotoVehicleAccessPointVehicle",
+          "offset": "0x9C0",
+          "type": "ptr"
+        },
+        {
+          "name": "m_GoToCSAInteractiveActor",
+          "offset": "0x9C4",
+          "type": "ptr"
+        },
+        {
+          "name": "m_nGoToCSAIPIndex",
+          "offset": "0x9C8",
+          "type": "i32"
+        },
+        {
+          "name": "m_nGoToAutoRouteDataIndex",
+          "offset": "0x9CC",
+          "type": "i32"
+        },
+        {
+          "name": "m_CSAComponent",
+          "offset": "0x9EC",
+          "type": "ptr"
+        }
+      ]
+    },
+    "vehicle": {
+      "_note": [
+        "cAPBVehicleBase. Имена и смещения прочитаны 28.08.2026 из UProperty::Offset,",
+        "а не угаданы через --diff. Полный список из 205 полей:",
+        "  python apb_props.py --fields cAPBVehicleBase --all",
+        "Поля ниже 0x5D0 принадлежат предкам (SVehicle/Vehicle/Pawn/Actor)",
+        "и их имена пока не разобраны."
+      ],
+      "fields": [
+        {
+          "name": "vtable",
+          "offset": "0x000",
+          "type": "ptr"
+        },
+        {
+          "name": "Index",
+          "offset": "0x004",
+          "type": "i32"
+        },
+        {
+          "name": "StateFrame",
+          "offset": "0x018",
+          "type": "ptr"
+        },
+        {
+          "name": "Name",
+          "offset": "0x030",
+          "type": "fname"
+        },
+        {
+          "name": "Class.Name",
+          "offset": [
+            "0x038",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "Location.X",
+          "offset": "0x0F0",
+          "type": "float"
+        },
+        {
+          "name": "Location.Y",
+          "offset": "0x0F4",
+          "type": "float"
+        },
+        {
+          "name": "Location.Z",
+          "offset": "0x0F8",
+          "type": "float"
+        },
+        {
+          "name": "Rotation",
+          "offset": "0x0FC",
+          "type": "u32"
+        },
+        {
+          "name": "state_1BC  [предок, имя неизвестно]",
+          "offset": "0x1BC",
+          "type": "i32"
+        },
+        {
+          "name": "linkedPawn_24C  [предок]",
+          "offset": "0x24C",
+          "type": "ptr"
+        },
+        {
+          "name": "health_32C  [предок, вероятно Pawn::Health]",
+          "offset": "0x32C",
+          "type": "i32"
+        },
+        {
+          "name": "health_330  [предок]",
+          "offset": "0x330",
+          "type": "i32"
+        },
+        {
+          "name": "m_eDriverPosition",
+          "offset": "0x5F0",
+          "type": "u8"
+        },
+        {
+          "name": "m_IndicatorLightActive",
+          "offset": "0x5F1",
+          "type": "u8"
+        },
+        {
+          "name": "m_NextIndicatorLightActive",
+          "offset": "0x5F2",
+          "type": "u8"
+        },
+        {
+          "name": "m_DriverIndicator",
+          "offset": "0x5F3",
+          "type": "u8"
+        },
+        {
+          "name": "m_nCriticalDamageType",
+          "offset": "0x5F4",
+          "type": "u8"
+        },
+        {
+          "name": "m_maxExplodingTime",
+          "offset": "0x5F5",
+          "type": "u8"
+        },
+        {
+          "name": "vehicleType",
+          "offset": "0x5F6",
+          "type": "u8",
+          "enum": "EVehicleType"
+        },
+        {
+          "name": "m_eVehicleSetupType",
+          "offset": "0x5F7",
+          "type": "u8",
+          "enum": "VehicleSetupType"
+        },
+        {
+          "name": "m_eOldVehicleSetupType",
+          "offset": "0x5F8",
+          "type": "u8",
+          "enum": "VehicleSetupType"
+        },
+        {
+          "name": "m_eBrainAndPhysRepState",
+          "offset": "0x5F9",
+          "type": "u8"
+        },
+        {
+          "name": "m_eBrainAndPhysRepState_Replicated",
+          "offset": "0x5FA",
+          "type": "u8"
+        },
+        {
+          "name": "m_eStoppingReason",
+          "offset": "0x5FB",
+          "type": "u8"
+        },
+        {
+          "name": "m_eInitialTheftFaction",
+          "offset": "0x5FC",
+          "type": "u8"
+        },
+        {
+          "name": "m_nTaskOwningCollisionGroupID",
+          "offset": "0x5FD",
+          "type": "i8"
+        },
+        {
+          "name": "m_nMissionTaskItemInsideOwningCollisionGroupID",
+          "offset": "0x5FE",
+          "type": "i8"
+        },
+        {
+          "name": "m_nUsingCollisionGroupID",
+          "offset": "0x5FF",
+          "type": "i8"
+        },
+        {
+          "name": "m_eSpawnState",
+          "offset": "0x600",
+          "type": "u8",
+          "enum": "etVehicleSpawnState"
+        },
+        {
+          "name": "m_aSeatPawnsForWitnessing[0]",
+          "offset": "0x670",
+          "type": "ptr"
+        },
+        {
+          "name": "m_CargoInventory",
+          "offset": "0x680",
+          "type": "ptr"
+        },
+        {
+          "name": "bools_684  (31 булево в одном dword)",
+          "offset": "0x684",
+          "type": "u32"
+        },
+        {
+          "name": "m_pGolemobile",
+          "offset": "0x688",
+          "type": "ptr"
+        },
+        {
+          "name": "m_LastDamageController",
+          "offset": "0x6B4",
+          "type": "ptr"
+        },
+        {
+          "name": "m_nMaxHealth",
+          "offset": "0x6C0",
+          "type": "i32"
+        },
+        {
+          "name": "m_nLastHealth",
+          "offset": "0x6F4",
+          "type": "i32"
+        },
+        {
+          "name": "m_nHUDMarkerID",
+          "offset": "0x750",
+          "type": "i32"
+        },
+        {
+          "name": "m_sCurrentState  [не реплицируется]",
+          "offset": "0x754",
+          "type": "fname"
+        },
+        {
+          "name": "stReplicatedStateFSM.sActorState",
+          "offset": "0x75C",
+          "type": "fname"
+        },
+        {
+          "name": "stReplicatedStateFSM.ePseudoKinCompState",
+          "offset": "0x764",
+          "type": "u8"
+        },
+        {
+          "name": "InitialLocation.X",
+          "offset": "0x768",
+          "type": "float"
+        },
+        {
+          "name": "InitialLocation.Y",
+          "offset": "0x76C",
+          "type": "float"
+        },
+        {
+          "name": "InitialLocation.Z",
+          "offset": "0x770",
+          "type": "float"
+        },
+        {
+          "name": "m_nID",
+          "offset": "0x7A8",
+          "type": "i32"
+        },
+        {
+          "name": "m_nTypeID",
+          "offset": "0x7AC",
+          "type": "i32"
+        },
+        {
+          "name": "m_pBrain",
+          "offset": "0x7B8",
+          "type": "ptr"
+        },
+        {
+          "name": "m_nVehicleCategory",
+          "offset": "0x7C0",
+          "type": "i32"
+        },
+        {
+          "name": "m_TaskObjective",
+          "offset": "0x98C",
+          "type": "ptr"
+        },
+        {
+          "name": "m_VehicleSpawner",
+          "offset": "0x994",
+          "type": "ptr"
+        },
+        {
+          "name": "m_nIncrementalID",
+          "offset": "0x9F4",
+          "type": "i32"
+        },
+        {
+          "name": "m_DeployedOwner",
+          "offset": "0xA1C",
+          "type": "ptr"
+        },
+        {
+          "name": "m_PvPFlags.m_nFriendlyCollisionGroupID",
+          "offset": "0xA84",
+          "type": "u8"
+        },
+        {
+          "name": "m_PvPFlags.m_nEnemyCollisionGroupID",
+          "offset": "0xA85",
+          "type": "u8"
+        },
+        {
+          "name": "m_PvPFlags.m_ePvPType",
+          "offset": "0xA86",
+          "type": "u8"
+        },
+        {
+          "name": "m_PvPFlags.bools",
+          "offset": "0xA88",
+          "type": "u32"
+        }
+      ]
+    },
+    "vehicle_csa": {
+      "_note": [
+        "Поля, читаемые VehicleCSA_AccessCheck (ghidra 0x11811960),",
+        "перечислены В ПОРЯДКЕ ПРОВЕРОК.",
+        "ИМЕНА ИСПРАВЛЕНЫ 28.08.2026 по UProperty::Offset (apb_props.py):",
+        "  0x680 — это m_CargoInventory, а не gameMode;",
+        "  0x684 — битовое поле из 8 булевых, а не флаги-u32;",
+        "  0xA1C — m_DeployedOwner;",
+        "  0x5FD/0x5FE/0x5FF — идентификаторы ГРУПП КОЛЛИЗИИ, не фракции.",
+        "Значение -1 в группах означает «без ограничений» (из декомпиляции)."
+      ],
+      "fields": [
+        {
+          "name": "StateFrame",
+          "offset": "0x018",
+          "type": "ptr"
+        },
+        {
+          "name": "StateNode.Name",
+          "offset": [
+            "0x018",
+            "0x024",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "bools_684  (битовое поле)",
+          "offset": "0x684",
+          "type": "u32"
+        },
+        {
+          "name": "vehicleType",
+          "offset": "0x5F6",
+          "type": "u8",
+          "enum": "EVehicleType"
+        },
+        {
+          "name": "taskObject_98C",
+          "offset": "0x98C",
+          "type": "ptr"
+        },
+        {
+          "name": "m_nTaskOwningCollisionGroupID  (-1 блокирует)",
+          "offset": "0x5FD",
+          "type": "i8"
+        },
+        {
+          "name": "m_DeployedOwner",
+          "offset": "0xA1C",
+          "type": "ptr"
+        },
+        {
+          "name": "m_nUsingCollisionGroupID  (-1 = без огр.)",
+          "offset": "0x5FF",
+          "type": "i8"
+        },
+        {
+          "name": "state_1BC  (0x11-0x13 подозрительно)",
+          "offset": "0x1BC",
+          "type": "i32"
+        },
+        {
+          "name": "m_nMissionTaskItemInsideOwningCollisionGroupID",
+          "offset": "0x5FE",
+          "type": "i8"
+        },
+        {
+          "name": "m_CargoInventory",
+          "offset": "0x680",
+          "type": "ptr"
+        },
+        {
+          "name": "health_32C  (<1 блокирует)",
+          "offset": "0x32C",
+          "type": "i32"
+        }
+      ]
+    },
+    "csa_automove_rpc": {
+      "_note": [
+        "Раскладка полей контроллера (cAPBPlayerController), заполняемых",
+        "хендлером CSA424_native_handler (0x116FE220) и используемых",
+        "AutoMoveToCSAPositionState. Снято 29.08.2026 живым чтением памяти",
+        "контроллера 0xE6261C60 после отправки field 424",
+        "(objectp:22,enump:14:62,int:0,int:47).",
+        "",
+        "СТАТУС field 429/426/427 (ИСПРАВЛЕНО 29.08.2026):",
+        "  field 429 = уведомление БЕЗ параметров (remainingBits=1 на входе,",
+        "  индекс поля занимает 9 бит, хвостовой бит — presence/terminator).",
+        "  429 приходит когда игрок ПРЕРЫВАЕТ авто-подход (нажатие W),",
+        "  А НЕ при успешном прибытии. Имя 'CallServerMoveToPositionNoMovementTimer'",
+        "  стоит читать как 'таймер отсутствия движения', не 'move без таймера'.",
+        "  ОТВЕРГНУТО: гипотеза 'ответить 426 на 429' — приводит к падению",
+        "  0xC0000005 в APB.exe+0x9D7522, т.к. 426 отправляется состоянию,",
+        "  которое клиент уже сам свернул через прерывание.",
+        "  field 427 (ServerCompleteSuccessfulyAutoMoveToCSA) — без параметров,",
+        "  ЗА ВСЮ СЕССИЮ НИ РАЗУ НЕ ПРИШЁЛ, включая случай с доигранной",
+        "  анимацией подхода и разворота (клиент 5 минут простоял в",
+        "  AutoMoveToCSAPositionState, пока не был прерван вручную).",
+        "",
+        "ГИПОТЕЗА ПОД ПРОВЕРКОЙ (не подтверждена): прибытие проверяется по",
+        "порогу +0x998 (15.0), а не по +0x9B4 (40.0). В зафиксированном",
+        "случае pawn остановился на расстоянии 24.42 от точки +0x9A8 —",
+        "между двумя порогами. Следующий шаг: hardware breakpoint на",
+        "чтение +0x998, чтобы поймать функцию проверки прибытия."
+      ],
+      "fields": [
+        {
+          "name": "unk_990 (пара float, назначение не выяснено)",
+          "offset": "0x990",
+          "type": "float",
+          "_observed_value": 192.5
+        },
+        {
+          "name": "unk_994",
+          "offset": "0x994",
+          "type": "float",
+          "_observed_value": 275.0
+        },
+        {
+          "name": "arrival_threshold_A (кандидат на радиус прибытия)",
+          "offset": "0x998",
+          "type": "float",
+          "_observed_value": 15.0
+        },
+        {
+          "name": "approach_facing_vector",
+          "offset": [
+            "0x99C",
+            "0x9A0",
+            "0x9A4"
+          ],
+          "type": "vector3(float,float,float)",
+          "_note": "единичный вектор, длина ~0.99999 — направление разворота у точки подхода",
+          "_observed_value": [
+            -0.98574,
+            -0.16018,
+            0.05156
+          ]
+        },
+        {
+          "name": "route_target_position",
+          "offset": [
+            "0x9A8",
+            "0x9AC",
+            "0x9B0"
+          ],
+          "type": "vector3(float,float,float)",
+          "_note": "точка назначения маршрута; Z проецируется на высоту pawn, не берётся напрямую из сокета",
+          "_observed_value": [
+            138988.97,
+            151476.59,
+            83.669
+          ]
+        },
+        {
+          "name": "arrival_threshold_B (кандидат на радиус прибытия)",
+          "offset": "0x9B4",
+          "type": "float",
+          "_observed_value": 40.0
+        },
+        {
+          "name": "unk_9B8",
+          "offset": "0x9B8",
+          "type": "float",
+          "_observed_value": 0.5
+        },
+        {
+          "name": "m_GoToCSAInteractiveActor",
+          "offset": "0x9C4",
+          "type": "ptr",
+          "_note": "записывается CSA424_native_handler"
+        },
+        {
+          "name": "m_695 / eCSA (тип CSA)",
+          "offset": "0x695",
+          "type": "u8"
+        },
+        {
+          "name": "m_nGoToCSAIPIndex",
+          "offset": "0x9C8",
+          "type": "i32"
+        },
+        {
+          "name": "m_nGoToAutoRouteDataIndex",
+          "offset": "0x9CC",
+          "type": "i32"
+        }
+      ]
+    },
+    "vehicle_owner": {
+      "_note": "Пример цепочки указателей: владелец машины через owner_A1C",
+      "fields": [
+        {
+          "name": "owner",
+          "offset": "0xA1C",
+          "type": "ptr"
+        },
+        {
+          "name": "owner.vtable",
+          "offset": [
+            "0xA1C",
+            "0x000"
+          ],
+          "type": "ptr"
+        },
+        {
+          "name": "owner.Name",
+          "offset": [
+            "0xA1C",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "owner.Class.Name",
+          "offset": [
+            "0xA1C",
+            "0x038",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "owner.Location.X",
+          "offset": [
+            "0xA1C",
+            "0x0F0"
+          ],
+          "type": "float"
+        },
+        {
+          "name": "owner.Location.Y",
+          "offset": [
+            "0xA1C",
+            "0x0F4"
+          ],
+          "type": "float"
+        },
+        {
+          "name": "owner.Location.Z",
+          "offset": [
+            "0xA1C",
+            "0x0F8"
+          ],
+          "type": "float"
+        }
+      ]
+    },
+    "vehicle_state": {
+      "_note": [
+        "Всё, что относится к состоянию машины. Первый гейт CSA —",
+        "IsInState('Active'), и он читает StateNode из StateFrame.",
+        "stReplicatedStateFSM — реплицируемое поле 84; sActorState это FName.",
+        "Пока в нём None, машина ни в каком состоянии не находится."
+      ],
+      "fields": [
+        {
+          "name": "StateFrame",
+          "offset": "0x018",
+          "type": "ptr"
+        },
+        {
+          "name": "StateNode.Name",
+          "offset": [
+            "0x018",
+            "0x024",
+            "0x030"
+          ],
+          "type": "fname"
+        },
+        {
+          "name": "m_sCurrentState  [локальное]",
+          "offset": "0x754",
+          "type": "fname"
+        },
+        {
+          "name": "sActorState  [поле 84]",
+          "offset": "0x75C",
+          "type": "fname"
+        },
+        {
+          "name": "ePseudoKinCompState",
+          "offset": "0x764",
+          "type": "u8"
+        },
+        {
+          "name": "m_eBrainAndPhysRepState",
+          "offset": "0x5F9",
+          "type": "u8"
+        },
+        {
+          "name": "m_eBrainAndPhysRepState_Replicated",
+          "offset": "0x5FA",
+          "type": "u8"
+        },
+        {
+          "name": "m_eSpawnState",
+          "offset": "0x600",
+          "type": "u8",
+          "enum": "etVehicleSpawnState"
+        }
+      ]
+    }
+  },
+  "_verify_commands": {
+    "_note": [
+      "Дампы снимаются один раз за сессию при клиенте В РАЙОНЕ,",
+      "сверки повторяются офлайн после каждой пересборки."
+    ],
+    "нужен_клиент": [
+      "python apb_objects.py --archetypes > live.txt",
+      "python apb_objects.py --dump-netcache netcache.json",
+      "python find_firstnetindex.py --map NetIndexMap.txt",
+      "python apb_reflect.py --selftest",
+      "python apb_reflect.py --probe-ufunction",
+      "python apb_reflect.py --dump reflect.json --flat reflect.txt --ghidra-names natives.txt"
+    ],
+    "офлайн": [
+      "python netindex_compare.py NetIndexMap.txt live.txt",
+      "python fieldmap_compare.py FieldIndexMap.txt netcache.json",
+      "python report_parser.py FieldIndexMap.txt <класс>"
+    ],
+    "_open": [
+      "НЕ ПРОВЕРЕНО: обе сверки прогонялись на дампах ОДНОЙ",
+      "сессии. Независимость индексов полей от сессии выглядит",
+      "очевидной, но не подтверждена замером."
+    ],
+    "_reflection_note": [
+      "reflect.txt — канонический построчный дамп всей рефлексии.",
+      "Предназначен для diff против такого же экспорта из UELib по APBGame.u:",
+      "совпадение по всему пакету доказывает дампер целиком, а не по трём классам.",
+      "natives.txt даёт имена нативных функций для переименования в Ghidra."
+    ]
+  },
+  "uproperty": {
+    "_note": [
+      "Раскладка UProperty, найденная apb_props.py --discover.",
+      "Якоря: vehicleType 0x5F6, m_eVehicleSetupType 0x5F7,",
+      "m_eSpawnState 0x600 у cAPBVehicleBase.",
+      "Дополнено 02.09.2026 из apb_reflect.py: property_flags и rep_index."
+    ],
+    "offset": "0x68",
+    "element_size": "0x4C",
+    "array_dim": "0x48",
+    "bit_mask": "0x88",
+    "enum_ref": "0x88",
+    "struct_ref": "0x88",
+    "property_flags": "0x50",
+    "_property_flags_note": [
+      "QWORD. CPF_Const 0x2, CPF_OptionalParm 0x10, CPF_Net 0x20, CPF_Parm 0x80,",
+      "CPF_OutParm 0x100, CPF_ReturnParm 0x400, CPF_CoerceParm 0x800.",
+      "Параметры функции = её Children с CPF_Parm; локальные = без него."
+    ],
+    "rep_index": "0x62",
+    "_inner_note": [
+      "0x88 — общий слот первой ссылки. ПОДТВЕРЖДЕНО для ObjectProperty.PropertyClass",
+      "и StructProperty.Struct. ГИПОТЕЗА для ByteProperty.Enum, ArrayProperty.Inner,",
+      "DelegateProperty.Function — проверяется тем, что Inner массива обязан быть",
+      "UProperty по ClassCastFlags & 0x8000."
+    ]
+  },
+  "ufield": {
+    "_note": [
+      "UField : UObject. В этой сборке UE3 у UField ДВА поля: SuperField и Next.",
+      "Отсюда размер UObject = 0x40, а собственные поля UStruct начинаются с 0x48.",
+      "Подтверждено: обход Children->Next даёт связные списки без циклов",
+      "для всех 3470 классов, 1226 структур и 12146 функций."
+    ],
+    "super_field": "0x40",
+    "next": "0x44"
+  },
+  "ustruct": {
+    "_note": [
+      "UStruct : UField. Общая база для UClass, UScriptStruct, UFunction, UState.",
+      "Подтверждено apb_reflect.py --probe-ufunction 02.09.2026 на 900 функциях:",
+      "properties_size точно равен sum(parms+locals) на 106 функциях с локальными,",
+      "тогда как ParmsSize (0xA6) равен только сумме параметров."
+    ],
+    "children": "0x50",
+    "properties_size": "0x54",
+    "_properties_size_note": "INT, не u16. Для UFunction = размер параметров И локальных.",
+    "script": "0x58",
+    "_script_note": [
+      "TArray<BYTE>: Data 0x58, Num 0x5C, Max 0x60.",
+      "Байткод UnrealScript остаётся в памяти распакованным — при желании",
+      "тела скриптовых функций можно дизассемблировать прямо из процесса.",
+      "У JoinArray Num=167 при properties_size=44 — сходится."
+    ],
+    "_rejected": [
+      "ОТВЕРГНУТО: properties_size = 0xA6 (u16). Совпадение возникало только",
+      "на нативных функциях, у которых нет локальных переменных, поэтому",
+      "ParmsSize и PropertiesSize там численно равны. На функциях с",
+      "локальными 0xA6 даёт размер только параметров.",
+      "Источник ошибки — APBEMU_VSTATE_DRIVE_HANDOFF.md, раздел 5."
+    ]
+  },
+  "ufunction": {
+    "_note": [
+      "UFunction : UStruct. Выведено apb_reflect.py --probe-ufunction 02.09.2026.",
+      "Метод: NumParms и ParmsSize сверялись с истиной, вычисленной из уже",
+      "подтверждённого обхода Children (CPF_Parm = 0x80), на 705 функциях с",
+      "параметрами. Совпадение 705/705 при единственном кандидате-смещении.",
+      "Раскладка дополнительно прочитана глазами в сыром дампе четырёх функций",
+      "и совпадает с канонической раскладкой UE3."
+    ],
+    "function_flags": "0x94",
+    "i_native": "0x98",
+    "rep_offset": "0x9A",
+    "friendly_name": "0x9C",
+    "_friendly_name_note": "FName: Index 0x9C, Number 0xA0. Равен Name у 891/900; расходится на операторах.",
+    "oper_precedence": "0xA4",
+    "num_parms": "0xA5",
+    "parms_size": "0xA6",
+    "return_value_offset": "0xA8",
+    "_return_value_offset_note": "u16. 0xFFFF = возвращаемого значения нет.",
+    "first_property_to_init": "0xAC",
+    "func": "0xB0",
+    "_func_note": [
+      "У СКРИПТОВЫХ функций Func НЕ равен нулю: туда кладётся общий",
+      "интерпретатор UObject::ProcessInternal (0x109C2B50).",
+      "Нативность определяется как Func != ProcessInternal, а не Func != 0.",
+      "На выборке 900: ProcessInternal у 476, остальные 424 указывают на",
+      "собственные реализации (401 различный адрес)."
+    ],
+    "_verification": [
+      "FUNC_Native (0x400) в function_flags совпадает с (Func != ProcessInternal)",
+      "у 889 из 899 образцов, 98.9%.",
+      "Все 10 расхождений в одну сторону: флаг native стоит, биндинга нет.",
+      "Семантическая сверка: Possess flags=0x00020802 = defined|event|public,",
+      "и это действительно event Possess(Pawn, bool);",
+      "JoinArray flags=0x00422003 = final|defined|static|public|hasoutparms",
+      "при наличии out-параметра."
+    ],
+    "_rejected": [
+      "ОТВЕРГНУТО: func = 0xB8. Там 21 значение с крупными группами (172/153/129),",
+      "это не таблица реализаций, а соседний массив указателей.",
+      "ОТВЕРГНУТО: 'нативный биндинг ожидается при FUNC_Native AND FUNC_Defined'.",
+      "Даёт согласие 477/900, то есть хуже простого критерия. Причина:",
+      "нативные функции в массе своей НЕ имеют FUNC_Defined — этот бит",
+      "означает наличие скриптового тела, а не факт объявления.",
+      "Следствие: 'объявлен native без реализации' нельзя определять по",
+      "отсутствию FUNC_Defined; правильный признак — Func == ProcessInternal",
+      "при выставленном FUNC_Native. Таких в выборке 10 из 900."
+    ],
+    "declared_native_without_binding": [
+      "GetBoundDataStores",
+      "CheckCanResupplyPlayer",
+      "IsAmmoCarrierFnModActive",
+      "RetAmmoResupplyProgress",
+      "RetBombTarget",
+      "ClientNotifyBombTimerUpdated",
+      "GetLookAtPriority",
+      "RetHealth"
+    ],
+    "_declared_native_without_binding_note": [
+      "Клиент знает сигнатуру, но исполнить не может: реализации в бинарнике нет.",
+      "По составу это логика заданий и объектов миссий, то есть, вероятно,",
+      "серверные нативы, вырезанные из клиентской сборки.",
+      "Список неполный — снят с выборки 900 из 12146; полный получается",
+      "прогоном apb_reflect.py --unbound после починки критерия."
+    ]
+  },
+  "uenum": {
+    "_note": [
+      "UEnum : UField. Names идёт сразу за UField.",
+      "НЕ ДОКАЗАНО замкнутым инвариантом: смещение принято по попаданию в",
+      "диапазон 0 < Num < 1024 при валидных FName. Проверять сверкой",
+      "состава конкретного enum с --enums из apb_props.py."
+    ],
+    "names": "0x48",
+    "_names_note": "TArray<FName>: Data 0x48, Num 0x4C. Элемент 8 байт (Index, Number)."
+  },
+  "reflection_baseline": {
+    "_note": [
+      "Снято apb_reflect.py 02.09.2026, клиент 1.1.0.534979 в районе.",
+      "Служит регрессионной проверкой: заметное расхождение этих чисел",
+      "означает либо другую сборку, либо поехавшую раскладку."
+    ],
+    "GNames.Num": 94238,
+    "GObjObjects.Num": 635324,
+    "classes": 3470,
+    "script_structs": 1226,
+    "enums": 1201,
+    "states": 87,
+    "functions": 12146,
+    "native_functions_with_binding": 5676,
+    "flat_dump_lines": 56998
+  }
+}
