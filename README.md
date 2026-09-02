@@ -1,10 +1,8 @@
 Emulator for educational purposes only
 
-Current supported version: 1.19.4.775380 (APB: Reloaded latest)
+Current supported version: 1.13.1
 
-Go to https://github.com/fiki574/rAPB/wiki for help on setting up the server
-
-You cannot enter districts yet
+Districts in process
 
 Here you can find variety of tools, source codes, information, etc. that will help you in researching/developing rebornAPB
 
