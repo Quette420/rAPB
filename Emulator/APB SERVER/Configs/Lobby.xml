@@ -1,11 +1,11 @@
 <?xml version="1.0" standalone="yes"?>
 <root>
-	<LoginServer>
-		<Port>2106</Port>
-	</LoginServer>
-	
-	<WorldListener>
-		<IP>127.0.0.1</IP>
-		<Port>2101</Port>
-	</WorldListener>
+    <LoginServer>
+        <Port>1001</Port>
+    </LoginServer>
+
+    <WorldListener>
+        <IP>127.0.0.1</IP>
+        <Port>2101</Port>
+    </WorldListener>
 </root>
