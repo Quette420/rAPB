@@ -29,6 +29,11 @@ namespace WorldServer.Districts
             Log.Info("RegisterDistrict", district.ToString() + " tries to register.");
             if (ID != 0)
             {
+                // District authentication disabled for now.
+                // The older working implementation explicitly disabled
+                // this check because it prevented districts from connecting.
+    
+                district.Id = ID;
                 MyDB.AccountEntry acc = Databases.AccountTable.SingleOrDefault(a => a.Token == token);
                 if (acc.CanHostDistrict == 0 || acc.Index < 1)
                 {
