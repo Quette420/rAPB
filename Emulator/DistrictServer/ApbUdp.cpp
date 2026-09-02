@@ -663,6 +663,15 @@ namespace ApbUdp
                 }
             }
 
+            // Newer APB/UE3 builds serialize bIsReplicationPaused between
+            // open/close and bReliable. The older build-3908 parser omitted it,
+            // shifting channel/type/length by one bit.
+            if (!reader.ReadBit(bunch.ReplicationPaused))
+            {
+                packet.Error = "truncated replication-paused flag";
+                return false;
+            }
+
             if (!reader.ReadBit(bunch.Reliable))
             {
                 packet.Error = "truncated reliability flag";
@@ -707,7 +716,17 @@ namespace ApbUdp
 
             if (bunch.DataBitCount > reader.Remaining())
             {
-                packet.Error = "bunch data exceeds packet payload";
+                // Preserve already-decoded bunches. The captured newer client
+                // carries additional trailing framing the build-3908 parser
+                // does not yet model; the first control bunch is still usable.
+                packet.Error = "trailing bunch data exceeds packet payload";
+
+                if (!packet.Bunches.empty())
+                {
+                    packet.Valid = true;
+                    return true;
+                }
+
                 return false;
             }
 
@@ -840,6 +859,7 @@ namespace ApbUdp
             // with the APB AUTH FString.
             writer.WriteBit(false);  // not ACK
             writer.WriteBit(false);  // no open/close control flags
+            writer.WriteBit(false);  // bIsReplicationPaused
             writer.WriteBit(true);   // reliable
             writer.WriteBits(0, 10); // control channel index
             writer.WriteBits(channelSequence % 1024u, 10);
@@ -4060,14 +4080,47 @@ namespace ApbUdp
             return false;
         }
 
-        messageType = bunch.RawData[0];
-        const std::size_t payloadBytes = bunch.DataBitCount / 8u;
+        const std::vector<std::uint8_t>* source = &bunch.RawData;
+        std::vector<std::uint8_t> shifted;
+
+        // Newer client: the first open ControlChannel bunch contains the
+        // endian-inspection marker before the control-message byte. The live
+        // capture becomes NMT_HandshakeStart (0x1A) after consuming one bit.
+        if (bunch.Open && bunch.DataBitCount > 8)
+        {
+            shifted.assign(bunch.RawData.size(), 0);
+
+            for (std::size_t bit = 0; bit + 1 < bunch.DataBitCount; ++bit)
+            {
+                const std::size_t sourceBit = bit + 1;
+                const std::uint8_t value =
+                    (bunch.RawData[sourceBit / 8] >>
+                     (sourceBit % 8)) & 1u;
+
+                if (value != 0)
+                    shifted[bit / 8] |=
+                        static_cast<std::uint8_t>(1u << (bit % 8));
+            }
+
+            if (!shifted.empty() &&
+                shifted[0] >= 26u &&
+                shifted[0] <= 29u)
+            {
+                source = &shifted;
+            }
+        }
+
+        messageType = (*source)[0];
+
+        std::size_t payloadBytes = bunch.DataBitCount / 8u;
+        if (source == &shifted && payloadBytes > 0)
+            payloadBytes = (bunch.DataBitCount - 1u) / 8u;
 
         if (payloadBytes > 1u)
         {
             payload.assign(
-                bunch.RawData.begin() + 1,
-                bunch.RawData.begin() + payloadBytes);
+                source->begin() + 1,
+                source->begin() + payloadBytes);
         }
 
         return true;
@@ -4100,6 +4153,7 @@ namespace ApbUdp
             stream << " DATA"
                    << " open=" << (bunch.Open ? 1 : 0)
                    << " close=" << (bunch.Close ? 1 : 0)
+                   << " paused=" << (bunch.ReplicationPaused ? 1 : 0)
                    << " rel=" << (bunch.Reliable ? 1 : 0)
                    << " ch=" << bunch.ChannelIndex
                    << " seq=" << bunch.ChannelSequence

@@ -5,6 +5,7 @@
 #include "WS_DS_COM.h"
 #include "ApbUdp.h"
 #include <Ws2tcpip.h>
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -37,6 +38,12 @@ namespace
     constexpr bool kSendWelcomeAfterAuth = true;
     constexpr unsigned short kDistrictUdpPort = 6969;
 
+    constexpr std::uint8_t NMT_HandshakeStart = 26;
+    constexpr std::uint8_t NMT_HandshakeChallenge = 27;
+    constexpr std::uint8_t NMT_HandshakeResponse = 28;
+    constexpr std::uint8_t NMT_HandshakeComplete = 29;
+    constexpr std::uint32_t kHandshakeChallengeValue = 0x12345678u;
+
     std::string Hex(
         const std::uint8_t* data,
         std::size_t size,
@@ -63,27 +70,26 @@ namespace
     }
 
     std::string EndpointText(const sockaddr_in& endpoint)
-{
-    char address[INET_ADDRSTRLEN] = {};
-
-    if (InetNtopA(
-            AF_INET,
-            const_cast<IN_ADDR*>(&endpoint.sin_addr),
-            address,
-            static_cast<DWORD>(sizeof(address))) == nullptr)
     {
-        strcpy_s(address, "unknown");
+        char address[INET_ADDRSTRLEN] = {};
+
+        IN_ADDR copy = endpoint.sin_addr;
+
+        if (InetNtopA(
+                AF_INET,
+                &copy,
+                address,
+                static_cast<DWORD>(sizeof(address))) == nullptr)
+        {
+            strcpy_s(address, "unknown");
+        }
+
+        std::ostringstream out;
+        out << address
+            << ":"
+            << ntohs(endpoint.sin_port);
+        return out.str();
     }
-
-    std::ostringstream stream;
-
-    stream
-        << address
-        << ":"
-        << ntohs(endpoint.sin_port);
-
-    return stream.str();
-}
 
     Account* FindAccount(std::uint32_t id)
     {
@@ -144,6 +150,26 @@ namespace
     {
         std::lock_guard<std::mutex> lock(g_accountsMutex);
         return g_accounts;
+    }
+
+    Account* FindOnlyPendingAccount()
+    {
+        std::lock_guard<std::mutex> lock(g_accountsMutex);
+
+        Account* found = nullptr;
+
+        for (Account* account : g_accounts)
+        {
+            if (account == nullptr || account->HasEndpoint())
+                continue;
+
+            if (found != nullptr)
+                return nullptr;
+
+            found = account;
+        }
+
+        return found;
     }
 
     // ---------------------------------------------------------------------
@@ -448,6 +474,227 @@ namespace
         }
 
         return sent;
+    }
+
+    bool SendHandshakeChallenge(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account,
+        std::uint32_t clientPacketId)
+    {
+        if (account == nullptr)
+            return false;
+
+        SendAck(socket, endpoint, account, clientPacketId);
+
+        const std::uint8_t payload[4] =
+        {
+            static_cast<std::uint8_t>(kHandshakeChallengeValue),
+            static_cast<std::uint8_t>(kHandshakeChallengeValue >> 8),
+            static_cast<std::uint8_t>(kHandshakeChallengeValue >> 16),
+            static_cast<std::uint8_t>(kHandshakeChallengeValue >> 24)
+        };
+
+        std::vector<std::uint8_t> packet =
+            ApbUdp::BuildBinaryControlPacket(
+                0,
+                account->AllocateServerPacketId(),
+                account->AllocateServerReliableSequence(),
+                NMT_HandshakeChallenge,
+                payload,
+                sizeof(payload));
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "HANDSHAKE-CHALLENGE");
+
+        if (sent)
+        {
+            account->SetHandshakeChallenge(kHandshakeChallengeValue);
+            account->SetHandshakeState(
+                Account::HandshakeState::ChallengeSent);
+
+            Logger(
+                lSUCCESS,
+                "District Handshake",
+                "Sent NMT_HandshakeChallenge(27) to account %u; "
+                "challenge=0x%08X",
+                static_cast<unsigned int>(account->GetId()),
+                static_cast<unsigned int>(kHandshakeChallengeValue));
+        }
+
+        return sent;
+    }
+
+    bool SendHandshakeComplete(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account,
+        std::uint32_t clientPacketId)
+    {
+        if (account == nullptr)
+            return false;
+
+        std::vector<std::uint8_t> packet =
+            ApbUdp::BuildAckAndBinaryControlPacket(
+                0,
+                account->AllocateServerPacketId(),
+                clientPacketId,
+                account->AllocateServerReliableSequence(),
+                NMT_HandshakeComplete,
+                nullptr,
+                0);
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "ACK+HANDSHAKE-COMPLETE");
+
+        if (sent)
+        {
+            account->SetHandshakeState(
+                Account::HandshakeState::Complete);
+
+            Logger(
+                lSUCCESS,
+                "District Handshake",
+                "Sent NMT_HandshakeComplete(29) to account %u.",
+                static_cast<unsigned int>(account->GetId()));
+        }
+
+        return sent;
+    }
+
+    bool ProcessBinaryHandshakePacket(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account*& account,
+        const ApbUdp::Packet& packet)
+    {
+        for (const ApbUdp::Bunch& bunch : packet.Bunches)
+        {
+            std::uint8_t messageType = 0;
+            std::vector<std::uint8_t> payload;
+
+            if (!ApbUdp::ReadBinaryControlMessage(
+                    bunch,
+                    messageType,
+                    payload))
+            {
+                continue;
+            }
+
+            Logger(
+                lINFO,
+                "District Binary Control",
+                "RX message=%u packetId=%u open=%d paused=%d "
+                "payloadBytes=%u payload=%s",
+                static_cast<unsigned int>(messageType),
+                static_cast<unsigned int>(packet.PacketId),
+                bunch.Open ? 1 : 0,
+                bunch.ReplicationPaused ? 1 : 0,
+                static_cast<unsigned int>(payload.size()),
+                payload.empty()
+                    ? "<empty>"
+                    : Hex(
+                        payload.data(),
+                        payload.size(),
+                        64).c_str());
+
+            if (messageType == NMT_HandshakeStart)
+            {
+                if (account == nullptr)
+                {
+                    account = FindOnlyPendingAccount();
+
+                    if (account == nullptr)
+                    {
+                        Logger(
+                            lERROR,
+                            "District Handshake",
+                            "NMT_HandshakeStart from %s could not be associated "
+                            "with exactly one pending WorldServer handoff.",
+                            EndpointText(endpoint).c_str());
+                        return true;
+                    }
+
+                    account->BindEndpoint(
+                        endpoint.sin_addr.s_addr,
+                        ntohs(endpoint.sin_port));
+                    account->SetAuthenticated(true);
+
+                    Logger(
+                        lSUCCESS,
+                        "District Handshake",
+                        "Bound %s to pending account %u from WorldServer handoff.",
+                        EndpointText(endpoint).c_str(),
+                        static_cast<unsigned int>(account->GetId()));
+                }
+
+                account->SetLastClientPacketId(packet.PacketId);
+
+                SendHandshakeChallenge(
+                    socket,
+                    endpoint,
+                    account,
+                    packet.PacketId);
+
+                return true;
+            }
+
+            if (messageType == NMT_HandshakeResponse)
+            {
+                if (account == nullptr)
+                    return true;
+
+                std::uint32_t response = 0;
+
+                if (payload.size() >= 4)
+                {
+                    response =
+                        static_cast<std::uint32_t>(payload[0]) |
+                        (static_cast<std::uint32_t>(payload[1]) << 8) |
+                        (static_cast<std::uint32_t>(payload[2]) << 16) |
+                        (static_cast<std::uint32_t>(payload[3]) << 24);
+                }
+
+                Logger(
+                    lSUCCESS,
+                    "District Handshake",
+                    "Received NMT_HandshakeResponse(28) from account %u: "
+                    "response=0x%08X expectedChallenge=0x%08X",
+                    static_cast<unsigned int>(account->GetId()),
+                    static_cast<unsigned int>(response),
+                    static_cast<unsigned int>(
+                        account->GetHandshakeChallenge()));
+
+                SendHandshakeComplete(
+                    socket,
+                    endpoint,
+                    account,
+                    packet.PacketId);
+
+                return true;
+            }
+
+            if (messageType == NMT_HandshakeComplete)
+            {
+                Logger(
+                    lINFO,
+                    "District Handshake",
+                    "Client sent NMT_HandshakeComplete(29).");
+                return true;
+            }
+        }
+
+        return false;
     }
 
     bool ProcessAuthPacket(
@@ -779,6 +1026,15 @@ namespace
                 "%s%s",
                 wasEncrypted ? "DECRYPTED " : "PLAINTEXT ",
                 ApbUdp::DescribePacket(packet).c_str());
+
+            if (ProcessBinaryHandshakePacket(
+                    socketHandle,
+                    remoteAddress,
+                    endpointAccount,
+                    packet))
+            {
+                continue;
+            }
 
             if (ProcessAuthPacket(
                     socketHandle,

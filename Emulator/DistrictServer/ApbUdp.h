@@ -94,6 +94,7 @@ namespace ApbUdp
         std::uint32_t AckPacketId = 0;
         bool Open = false;
         bool Close = false;
+        bool ReplicationPaused = false;
         bool Reliable = false;
         std::uint16_t ChannelIndex = 0;
         std::uint16_t ChannelSequence = 0;
