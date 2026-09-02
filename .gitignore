@@ -234,3 +234,33 @@ _Pvt_Extensions
 
 # FAKE - F# Make
 .fake/
+/Emulator/.idea/.idea.ApbEmu/.idea/.name
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/CL.command.1.tlog
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/Cl.items.tlog
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/CL.read.1.tlog
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/CL.write.1.tlog
+/Emulator/APB SERVER/Logs/DistrictLog.txt
+/Emulator/.build/stage-Debug-Win32/DistrictServer.exe
+/Emulator/APB SERVER/DistrictServer.exe
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.exe.recipe
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/DistrictServer.lastbuildstate
+/Emulator/.build/stage-Debug-Win32/FrameWork.dll
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/link.command.1.tlog
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/link.read.1.tlog
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/link.secondary.1.tlog
+/Emulator/.build/obj-Debug-Win32/DistrictServer/DistrictServer.tlog/link.write.1.tlog
+/Emulator/APB SERVER/Logs/LobbyLog.txt
+/Emulator/.build/stage-Debug-Win32/LobbyServer.exe
+/Emulator/APB SERVER/LobbyServer.exe
+/Emulator/.build/stage-Debug-Win32/LobbyServer.exe.config
+/Emulator/APB SERVER/LobbyServer.exe.config
+/Emulator/.build/stage-Debug-Win32/MyDB.dll
+/Emulator/APB SERVER/MyDB.dll
+/Emulator/.build/stage-Debug-Win32/MySql.Data.dll
+/Emulator/rebuild_servers.bat
+/Emulator/.build/obj-Debug-Win32/DistrictServer/vc145.idb
+/Emulator/APB SERVER/Logs/WorldLog.txt
+/Emulator/.build/stage-Debug-Win32/WorldServer.exe
+/Emulator/APB SERVER/WorldServer.exe
+/Emulator/.build/stage-Debug-Win32/WorldServer.exe.config
+/Emulator/APB SERVER/WorldServer.exe.config
