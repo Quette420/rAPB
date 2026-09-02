@@ -4,21 +4,23 @@ use apb_2013;
 
 truncate characters;
 
-INSERT INTO accounts
+INSERT INTO `accounts`
 (
-Username,
-Password,
-Verifier,
-Salt,
-Threat,
-IsAdmin,
-IsBanned,
-InUse,
-CanHostDistrict,
-Token
+`Index`,
+`Username`,
+`Password`,
+`Verifier`,
+`Salt`,
+`Threat`,
+`IsAdmin`,
+`IsBanned`,
+`InUse`,
+`CanHostDistrict`,
+`Token`
 )
 VALUES
 (
+1,
 'test',
 'test',
 '',

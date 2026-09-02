@@ -564,6 +564,45 @@ namespace
 
 namespace ApbUdp
 {
+    namespace
+    {
+        bool HasUsableControlBunch(const Packet& packet)
+        {
+            for (const Bunch& bunch : packet.Bunches)
+            {
+                if (bunch.Kind == BunchKind::Data &&
+                    bunch.ChannelIndex == 0 &&
+                    bunch.ChannelType == 1 &&
+                    bunch.DataBitCount >= 8 &&
+                    !bunch.RawData.empty())
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool FinishPartialPacket(
+            Packet& packet,
+            const char* error)
+        {
+            packet.Error = error != nullptr ? error : "trailing framing parse error";
+
+            // Newer APB builds append transport/framing bits after the first
+            // useful ControlChannel bunch. We do not fully model that tail yet.
+            // If a complete channel-0 control bunch was already decoded, keep it
+            // and let the district handshake layer consume it.
+            if (HasUsableControlBunch(packet))
+            {
+                packet.Valid = true;
+                return true;
+            }
+
+            return false;
+        }
+    }
+
     bool ParsePacket(
         const std::uint8_t* data,
         std::size_t size,
@@ -610,8 +649,9 @@ namespace ApbUdp
 
             if (!reader.ReadBit(flag))
             {
-                packet.Error = "truncated ACK/data flag";
-                return false;
+                return FinishPartialPacket(
+                    packet,
+                    "truncated ACK/data flag");
             }
 
             if (flag)
@@ -626,16 +666,18 @@ namespace ApbUdp
                 bool hasAckId = false;
                 if (!reader.ReadBit(hasAckId))
                 {
-                    packet.Error = "truncated ACK id presence flag";
-                    return false;
+                    return FinishPartialPacket(
+                        packet,
+                        "truncated ACK id presence flag");
                 }
 
                 if (hasAckId)
                 {
                     if (!reader.ReadBits(30, value))
                     {
-                        packet.Error = "truncated ACK packet id";
-                        return false;
+                        return FinishPartialPacket(
+                            packet,
+                            "truncated ACK packet id");
                     }
                     bunch.AckPacketId = value;
                 }
@@ -649,8 +691,9 @@ namespace ApbUdp
             bool hasOpenClose = false;
             if (!reader.ReadBit(hasOpenClose))
             {
-                packet.Error = "truncated open/close presence flag";
-                return false;
+                return FinishPartialPacket(
+                    packet,
+                    "truncated open/close presence flag");
             }
 
             if (hasOpenClose)
@@ -658,8 +701,9 @@ namespace ApbUdp
                 if (!reader.ReadBit(bunch.Open) ||
                     !reader.ReadBit(bunch.Close))
                 {
-                    packet.Error = "truncated open/close flags";
-                    return false;
+                    return FinishPartialPacket(
+                        packet,
+                        "truncated open/close flags");
                 }
             }
 
@@ -668,20 +712,23 @@ namespace ApbUdp
             // shifting channel/type/length by one bit.
             if (!reader.ReadBit(bunch.ReplicationPaused))
             {
-                packet.Error = "truncated replication-paused flag";
-                return false;
+                return FinishPartialPacket(
+                    packet,
+                    "truncated replication-paused flag");
             }
 
             if (!reader.ReadBit(bunch.Reliable))
             {
-                packet.Error = "truncated reliability flag";
-                return false;
+                return FinishPartialPacket(
+                    packet,
+                    "truncated reliability flag");
             }
 
             if (!reader.ReadBits(10, value))
             {
-                packet.Error = "truncated channel index";
-                return false;
+                return FinishPartialPacket(
+                    packet,
+                    "truncated channel index");
             }
             bunch.ChannelIndex = static_cast<std::uint16_t>(value);
 
@@ -689,8 +736,9 @@ namespace ApbUdp
             {
                 if (!reader.ReadBits(10, value))
                 {
-                    packet.Error = "truncated channel sequence";
-                    return false;
+                    return FinishPartialPacket(
+                        packet,
+                        "truncated channel sequence");
                 }
                 bunch.ChannelSequence = static_cast<std::uint16_t>(value);
             }
@@ -699,16 +747,18 @@ namespace ApbUdp
             {
                 if (!reader.ReadBits(3, value))
                 {
-                    packet.Error = "truncated channel type";
-                    return false;
+                    return FinishPartialPacket(
+                        packet,
+                        "truncated channel type");
                 }
                 bunch.ChannelType = static_cast<std::uint8_t>(value);
             }
 
             if (!reader.ReadBits(12, value))
             {
-                packet.Error = "truncated bunch data length";
-                return false;
+                return FinishPartialPacket(
+                    packet,
+                    "truncated bunch data length");
             }
 
             bunch.DataBitCount = static_cast<std::uint16_t>(value);
@@ -747,8 +797,9 @@ namespace ApbUdp
 
             if (!reader.Skip(bunch.DataBitCount))
             {
-                packet.Error = "failed to advance over bunch data";
-                return false;
+                return FinishPartialPacket(
+                    packet,
+                    "failed to advance over bunch data");
             }
 
             packet.Bunches.push_back(bunch);
@@ -4138,6 +4189,8 @@ namespace ApbUdp
 
         if (!packet.Valid)
             stream << " invalid=" << packet.Error;
+        else if (!packet.Error.empty())
+            stream << " partialTail=" << packet.Error;
 
         for (std::size_t index = 0; index < packet.Bunches.size(); ++index)
         {

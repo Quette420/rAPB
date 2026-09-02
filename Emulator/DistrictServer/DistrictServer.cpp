@@ -539,25 +539,33 @@ namespace
         if (account == nullptr)
             return false;
 
+        // Keep the packet-level ACK separate. The live newer client already
+        // proved that it accepts this 8-byte encrypted ACK after packet 0.
+        const bool ackSent =
+            SendAck(
+                socket,
+                endpoint,
+                account,
+                clientPacketId);
+
         std::vector<std::uint8_t> packet =
-            ApbUdp::BuildAckAndBinaryControlPacket(
+            ApbUdp::BuildBinaryControlPacket(
                 0,
                 account->AllocateServerPacketId(),
-                clientPacketId,
                 account->AllocateServerReliableSequence(),
                 NMT_HandshakeComplete,
                 nullptr,
                 0);
 
-        const bool sent =
+        const bool completeSent =
             SendProtectedPacket(
                 socket,
                 endpoint,
                 account,
                 packet,
-                "ACK+HANDSHAKE-COMPLETE");
+                "HANDSHAKE-COMPLETE");
 
-        if (sent)
+        if (completeSent)
         {
             account->SetHandshakeState(
                 Account::HandshakeState::Complete);
@@ -565,11 +573,13 @@ namespace
             Logger(
                 lSUCCESS,
                 "District Handshake",
-                "Sent NMT_HandshakeComplete(29) to account %u.",
-                static_cast<unsigned int>(account->GetId()));
+                "Sent NMT_HandshakeComplete(29) directly after "
+                "NMT_HandshakeStart(26) to account %u (ACK sent=%d).",
+                static_cast<unsigned int>(account->GetId()),
+                ackSent ? 1 : 0);
         }
 
-        return sent;
+        return ackSent && completeSent;
     }
 
     bool ProcessBinaryHandshakePacket(
@@ -640,11 +650,35 @@ namespace
 
                 account->SetLastClientPacketId(packet.PacketId);
 
-                SendHandshakeChallenge(
-                    socket,
-                    endpoint,
-                    account,
-                    packet.PacketId);
+                // V6 APB-specific WelcomeDirect probe.
+                //
+                // The old working retail-APB reference used WelcomeDirect:
+                // ACK the initial authentication/control packet and immediately
+                // send WELCOME, with no CHALLENGE round trip.  The newer client
+                // now enters through NMT_HandshakeStart(26) instead of the old
+                // text AUTH command, so apply the same lifecycle here.
+                const bool ackSent =
+                    SendAck(
+                        socket,
+                        endpoint,
+                        account,
+                        packet.PacketId);
+
+                const bool welcomeSent =
+                    SendWelcome(
+                        socket,
+                        endpoint,
+                        account);
+
+                Logger(
+                    (ackSent && welcomeSent) ? lSUCCESS : lERROR,
+                    "District Handshake",
+                    "WelcomeDirect probe after NMT_HandshakeStart(26) for "
+                    "account %u; ACK sent=%d WELCOME sent=%d. "
+                    "No NMT_HandshakeChallenge/Response/Complete used.",
+                    static_cast<unsigned int>(account->GetId()),
+                    ackSent ? 1 : 0,
+                    welcomeSent ? 1 : 0);
 
                 return true;
             }
@@ -773,6 +807,7 @@ namespace
             return false;
 
         bool sawText = false;
+        bool sawLogin = false;
 
         for (const ApbUdp::Bunch& bunch : packet.Bunches)
         {
@@ -787,8 +822,18 @@ namespace
                     static_cast<unsigned int>(account->GetId()),
                     text.c_str());
 
-                if (text == "JOIN" ||
-                    text.compare(0, 5, "JOIN ") == 0)
+                if (text.compare(0, 6, "LOGIN ") == 0)
+                {
+                    sawLogin = true;
+
+                    Logger(
+                        lSUCCESS,
+                        "District Handshake",
+                        "LOGIN reached for account %u; replying with WELCOME.",
+                        static_cast<unsigned int>(account->GetId()));
+                }
+                else if (text == "JOIN" ||
+                         text.compare(0, 5, "JOIN ") == 0)
                 {
                     Logger(
                         lSUCCESS,
@@ -804,7 +849,31 @@ namespace
         if (sawText)
             SendAck(socket, endpoint, account, packet.PacketId);
 
+        if (sawLogin)
+            SendWelcome(socket, endpoint, account);
+
         return sawText;
+    }
+
+    bool PacketContainsHandshakeStart(
+        const ApbUdp::Packet& packet)
+    {
+        for (const ApbUdp::Bunch& bunch : packet.Bunches)
+        {
+            std::uint8_t messageType = 0;
+            std::vector<std::uint8_t> payload;
+
+            if (ApbUdp::ReadBinaryControlMessage(
+                    bunch,
+                    messageType,
+                    payload) &&
+                messageType == NMT_HandshakeStart)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     bool TryParseEncrypted(
@@ -981,14 +1050,42 @@ namespace
                 wasEncrypted = parsed;
             }
 
-            // The first AUTH packet in the reference protocol is plaintext.
+            // Before an endpoint is bound, the only plaintext packet we accept
+            // from this newer client is a packet containing NMT_HandshakeStart.
+            // The generic parser is intentionally tolerant of unknown trailing
+            // framing, so random ciphertext must not be allowed to "win" just
+            // because it accidentally resembles ACK/data bits.
             if (!parsed)
             {
-                parsed =
-                    ApbUdp::ParsePacket(
+                ApbUdp::Packet rawCandidate;
+
+                if (ApbUdp::ParsePacket(
                         receiveBuffer.data(),
                         static_cast<std::size_t>(received),
-                        packet);
+                        rawCandidate))
+                {
+                    if (endpointAccount != nullptr ||
+                        PacketContainsHandshakeStart(rawCandidate))
+                    {
+                        packet = rawCandidate;
+                        parsed = true;
+                    }
+                    else
+                    {
+                        Logger(
+                            lINFO,
+                            "District UE3",
+                            "Rejected accidental raw parse from %s; "
+                            "no NMT_HandshakeStart in unbound plaintext packet.",
+                            EndpointText(remoteAddress).c_str());
+                    }
+                }
+                else
+                {
+                    // Preserve the most useful parser error for final logging if
+                    // decryption with pending account keys also fails.
+                    packet = rawCandidate;
+                }
             }
 
             // Compatibility probe: if this client encrypts even the first
