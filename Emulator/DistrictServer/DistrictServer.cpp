@@ -824,18 +824,38 @@ bool SendPackageUses(
         //   | INT PackageFlags | INT Generation | FString | BYTE
         // Три FString становятся FName в структуре клиента.
     static const UsesEntry kPackages[] =
+{
     {
+        "Core",
         {
-            "Core",
-            {
-                0x0FE825BC,
-                0x4970D0BC,
-                0xE10969A8,
-                0x4C498AF9
-            },
-            1
+            0x0FE825BC,
+            0x4970D0BC,
+            0xE10969A8,
+            0x4C498AF9
         },
-    };
+        2
+    },
+    {
+        "Engine",
+        {
+            0x8CC8C348,
+            0x4498F5A3,
+            0x05567188,
+            0x79EC40E0
+        },
+        2
+    },
+    {
+        "APBGame",
+        {
+            0x726ED7C5,
+            0x49A968E8,
+            0x50E644AA,
+            0x50ED3A99
+        },
+        2
+    },
+};
 
         bool allSent = true;
 
@@ -1013,8 +1033,9 @@ bool SendPackageUses(
                         url.c_str(),
                         static_cast<unsigned long long>(uniqueId));
 
+					SendPackageUses(socket, endpoint, account);   // <- должен быть активен
                     SendNetWelcome(socket, endpoint, account);
-                    SendPackageUses(socket, endpoint, account);   // <- должен быть активен
+                    
                     handledAny = true;
                     continue;
                 }
@@ -1267,8 +1288,49 @@ bool SendPackageUses(
                         "actor channel.",
                         static_cast<unsigned int>(account->GetId()));
 
-                    // Пока ничего не отвечаем: открытие actor channel требует
-                    // NetIndex архетипа, а карта NetIndex для 1.13.1 ещё не снята.
+                    // Runtime-confirmed APB 1.13.1 PlayerController open:
+                    //   APBGame.Default__cAPBPlayerController global NetIndex=46279
+                    //   bNetInitialRotation=false
+                    //   NetPlayerIndex=0 (main local viewport)
+                    //
+                    // Reliable sequence numbers are per-channel. Channel 0 is
+                    // ControlChannel, so the first actor channel starts at
+                    // ChIndex=1, ChSequence=1.
+                    {
+                        constexpr std::uint16_t playerChannel = 1u;
+                        constexpr std::uint16_t playerSequence = 1u;
+                        constexpr std::uint32_t playerArchetype = 46279u;
+
+                        std::vector<std::uint8_t> playerControllerOpen =
+                            ApbUdp::BuildPlayerControllerOpenPacket(
+                                account->AllocateServerPacketId(),
+                                playerChannel,
+                                playerSequence,
+                                playerArchetype,
+                                0.0f,
+                                0.0f,
+                                0.0f,
+                                0u);
+
+                        const bool sent = SendProtectedPacket(
+                            socket,
+                            endpoint,
+                            account,
+                            playerControllerOpen,
+                            "PLAYERCONTROLLER-OPEN");
+
+                        Logger(
+                            sent ? lSUCCESS : lERROR,
+                            "District Net",
+                            "PlayerController actor open sent=%d "
+                            "ch=%u seq=%u archetypeNetIndex=%u "
+                            "NetPlayerIndex=0",
+                            sent ? 1 : 0,
+                            static_cast<unsigned int>(playerChannel),
+                            static_cast<unsigned int>(playerSequence),
+                            static_cast<unsigned int>(playerArchetype));
+                    }
+
                     continue;
                 }
 

@@ -201,6 +201,22 @@ namespace ApbUdp
         float spawnY,
         float spawnZ);
 
+    // Initial actor-channel open for the connection's PlayerController.
+    // APB 1.13.1 consumes archetype, compressed location, optional rotation,
+    // then BYTE NetPlayerIndex. Runtime values for this build:
+    //   Default__cAPBPlayerController global NetIndex = 46279
+    //   bNetInitialRotation = false
+    //   NetPlayerIndex = 0 for the main local viewport.
+    std::vector<std::uint8_t> BuildPlayerControllerOpenPacket(
+        std::uint32_t serverPacketId,
+        std::uint16_t channelIndex,
+        std::uint16_t channelSequence,
+        std::uint32_t archetypeNetIndex,
+        float spawnX,
+        float spawnY,
+        float spawnZ,
+        std::uint8_t netPlayerIndex);
+
     // Actor open bunch with a reflected property stream immediately after the
     // archetype reference and compressed spawn location. Used by isolated
     // lifecycle experiments where sending the same fields in later bunches is

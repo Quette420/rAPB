@@ -53,6 +53,7 @@ UO_OUTER = 0x2C
 UO_NAME_INDEX = 0x30
 UO_NAME_NUMBER = 0x34
 UO_CLASS = 0x38
+UPROPERTY_OFFSET = 0x64  # APB 1.13.1, CONFIRMED
 
 INDEX_CANDIDATES = [0x04, 0x14, 0x18, 0x1C, 0x20, 0x24, 0x28]
 NET_CANDIDATES = [0x1C, 0x24, 0x28]
@@ -599,16 +600,24 @@ def find_object(objs, mem, groups, needle, off):
                 continue
 
             v = mem.try_u32(o + off, None)
+            cls = objs.class_name(o)
+
+            extra = ""
+            if cls.endswith("Property"):
+                prop_off = mem.try_u32(o + UPROPERTY_OFFSET, None)
+                if prop_off is not None:
+                    extra = " PropertyOffset=0x%X" % prop_off
 
             print(
                 "   %-46s пакет=%-20s класс=%-24s "
-                "NetIndex=%s addr=0x%08X"
+                "NetIndex=%s addr=0x%08X%s"
                 % (
                     objs.path(o),
                     pkg,
-                    objs.class_name(o),
+                    cls,
                     sgn32(v) if v is not None else "?",
                     o,
+                    extra,
                 )
             )
 
@@ -620,6 +629,393 @@ def find_object(objs, mem, groups, needle, off):
             "(объект может быть не загружен "
             "или имя отличается)"
         )
+
+
+def _find_package_root(objs, mem, groups, pkg):
+    lst = groups.get(pkg)
+    if not lst:
+        return None
+
+    candidates = []
+
+    for o in lst:
+        try:
+            outer = mem.ptr(o + UO_OUTER)
+        except MemErr:
+            continue
+
+        if outer != 0:
+            continue
+
+        if objs.name(o) != pkg:
+            continue
+
+        candidates.append(o)
+
+    if not candidates:
+        return None
+
+    # Обычно единственный top-level UObject с этим именем и Outer == NULL
+    # является самим UPackage. Если их несколько, предпочитаем Class == Package.
+    for o in candidates:
+        if objs.class_name(o) == "Package":
+            return o
+
+    return candidates[0]
+
+
+def _collect_netindex_pairs(mem, group, netindex_off):
+    by_index = {}
+    duplicates = []
+
+    for o in group:
+        raw = mem.try_u32(o + netindex_off, None)
+        if raw is None:
+            continue
+
+        idx = sgn32(raw)
+        if idx < 0 or idx > 0x00FFFFFF:
+            continue
+
+        prev = by_index.get(idx)
+        if prev is not None and prev != o:
+            duplicates.append((idx, prev, o))
+            continue
+
+        by_index[idx] = o
+
+    return by_index, duplicates
+
+
+def _sample_pairs(by_index, limit=256):
+    items = sorted(by_index.items())
+    if len(items) <= limit:
+        return items
+
+    # Равномерный sample по всему диапазону, обязательно включая края.
+    out = []
+    last_pos = -1
+
+    for n in range(limit):
+        pos = int(round(n * (len(items) - 1) / float(limit - 1)))
+        if pos == last_pos:
+            continue
+        out.append(items[pos])
+        last_pos = pos
+
+    return out
+
+
+def _read_tarray_header(mem, addr):
+    data = mem.ptr(addr + 0x00)
+    num = mem.i32(addr + 0x04)
+    maxv = mem.i32(addr + 0x08)
+    return data, num, maxv
+
+
+def _scan_netobjects_candidates(
+    mem,
+    package_obj,
+    by_index,
+    scan_start=0x40,
+    scan_end=0x400,
+):
+    if not by_index:
+        return []
+
+    max_idx = max(by_index)
+    sample = _sample_pairs(by_index)
+
+    candidates = []
+
+    for off in range(scan_start, scan_end, 4):
+        try:
+            data, num, maxv = _read_tarray_header(mem, package_obj + off)
+        except MemErr:
+            continue
+
+        # NetObjects.Num обязан покрывать максимальный живой NetIndex.
+        if not data:
+            continue
+        if num <= max_idx:
+            continue
+        if num < 0 or num > 2_000_000:
+            continue
+        if maxv < num or maxv > 4_000_000:
+            continue
+
+        matched = 0
+        failed = False
+
+        for idx, expected_obj in sample:
+            try:
+                actual = mem.ptr(data + idx * 4)
+            except MemErr:
+                failed = True
+                break
+
+            if actual != expected_obj:
+                failed = True
+                break
+
+            matched += 1
+
+        if failed:
+            continue
+
+        candidates.append(
+            {
+                "off": off,
+                "data": data,
+                "num": num,
+                "max": maxv,
+                "sample_matches": matched,
+                "sample_total": len(sample),
+            }
+        )
+
+    return candidates
+
+
+def _count_non_null_ptrs(mem, data, num):
+    count = 0
+
+    for i in range(num):
+        try:
+            if mem.ptr(data + i * 4):
+                count += 1
+        except MemErr:
+            return None
+
+    return count
+
+
+def _read_generation_array(mem, package_obj, netobjects_off):
+    # UE3 UPackage declaration:
+    #   TArray<UObject*> NetObjects;
+    #   INT CurrentNumNetObjects;
+    #   TArray<INT> GenerationNetObjectCount;
+    current_addr = package_obj + netobjects_off + 0x0C
+    gen_addr = package_obj + netobjects_off + 0x10
+
+    current = mem.i32(current_addr)
+    data, num, maxv = _read_tarray_header(mem, gen_addr)
+
+    if num < 0 or num > 64 or maxv < num or maxv > 256:
+        return current, data, num, maxv, None
+
+    values = []
+    for i in range(num):
+        values.append(mem.i32(data + i * 4))
+
+    return current, data, num, maxv, values
+
+
+def probe_package_net(
+    objs,
+    mem,
+    groups,
+    pkg,
+    netindex_off,
+    scan_start=0x40,
+    scan_end=0x400,
+):
+    print("\n== probe UPackage net state: %s ==" % pkg)
+
+    group = groups.get(pkg)
+    if not group:
+        print("!! пакет %r не найден в группировке" % pkg)
+        return None
+
+    package_obj = _find_package_root(objs, mem, groups, pkg)
+    if not package_obj:
+        print("!! не найден top-level UPackage object %r" % pkg)
+        return None
+
+    print(
+        "   UPackage=0x%08X class=%s"
+        % (package_obj, objs.class_name(package_obj))
+    )
+
+    by_index, duplicates = _collect_netindex_pairs(
+        mem,
+        group,
+        netindex_off,
+    )
+
+    if not by_index:
+        print("!! в пакете нет объектов с валидным NetIndex")
+        return None
+
+    max_idx = max(by_index)
+
+    print(
+        "   runtime объектов с NetIndex: %d, диапазон 0..%d"
+        % (len(by_index), max_idx)
+    )
+
+    if duplicates:
+        print(
+            "!! обнаружено %d duplicate NetIndex; "
+            "проверка NetObjects ненадёжна"
+            % len(duplicates)
+        )
+        for idx, a, b in duplicates[:5]:
+            print(
+                "      idx=%d  0x%08X / 0x%08X"
+                % (idx, a, b)
+            )
+        return None
+
+    candidates = _scan_netobjects_candidates(
+        mem,
+        package_obj,
+        by_index,
+        scan_start=scan_start,
+        scan_end=scan_end,
+    )
+
+    if not candidates:
+        print(
+            "!! NetObjects не найден в UPackage+0x%X..+0x%X"
+            % (scan_start, scan_end)
+        )
+        print(
+            "   попробуйте увеличить --package-scan-end, "
+            "например до 0x800"
+        )
+        return None
+
+    print("   кандидаты NetObjects:")
+
+    for c in candidates:
+        print(
+            "      +0x%03X  Data=0x%08X Num=%d Max=%d "
+            "mapping=%d/%d"
+            % (
+                c["off"],
+                c["data"],
+                c["num"],
+                c["max"],
+                c["sample_matches"],
+                c["sample_total"],
+            )
+        )
+
+    # Полное отображение NetObjects[NetIndex] == UObject уже делает этот
+    # инвариант практически уникальным. При нескольких кандидатах
+    # предпочитаем минимальный Num, затем меньший offset.
+    candidates.sort(key=lambda c: (c["num"], c["off"]))
+    c = candidates[0]
+
+    if len(candidates) > 1:
+        print(
+            "!! кандидатов несколько; выбран +0x%03X. "
+            "Сверьте остальные строки."
+            % c["off"]
+        )
+
+    print(
+        "   -> NetObjects = UPackage+0x%03X"
+        % c["off"]
+    )
+
+    non_null = _count_non_null_ptrs(
+        mem,
+        c["data"],
+        c["num"],
+    )
+
+    if non_null is not None:
+        print(
+            "      NetObjects: Num=%d Max=%d non-null=%d"
+            % (c["num"], c["max"], non_null)
+        )
+    else:
+        print(
+            "      NetObjects: Num=%d Max=%d "
+            "(не удалось посчитать non-null)"
+            % (c["num"], c["max"])
+        )
+
+    try:
+        current, gen_data, gen_num, gen_max, gen_values = \
+            _read_generation_array(mem, package_obj, c["off"])
+    except MemErr as exc:
+        print(
+            "!! NetObjects найден, но соседние поля "
+            "не прочитались: %s"
+            % exc
+        )
+        return c
+
+    print(
+        "      CurrentNumNetObjects @ +0x%03X = %d"
+        % (c["off"] + 0x0C, current)
+    )
+
+    if non_null is not None:
+        print(
+            "      CurrentNum vs non-null: %s"
+            % ("MATCH" if current == non_null else "DIFF")
+        )
+
+    print(
+        "      GenerationNetObjectCount @ +0x%03X: "
+        "Data=0x%08X Num=%d Max=%d"
+        % (
+            c["off"] + 0x10,
+            gen_data,
+            gen_num,
+            gen_max,
+        )
+    )
+
+    if gen_values is None:
+        print(
+            "      !! header GenerationNetObjectCount "
+            "не прошёл sanity-check"
+        )
+        return c
+
+    print(
+        "      generations = [%s]"
+        % ", ".join(str(v) for v in gen_values)
+    )
+
+    if gen_values:
+        local_generation = len(gen_values)
+        latest_count = gen_values[-1]
+
+        print(
+            "      LocalGeneration=%d  "
+            "GetNetObjectCount(LocalGeneration-1)=%d"
+            % (local_generation, latest_count)
+        )
+
+        if latest_count == c["num"]:
+            print(
+                "      Generation.Last == NetObjects.Num: MATCH"
+            )
+        else:
+            print(
+                "      Generation.Last != NetObjects.Num: "
+                "%d vs %d"
+                % (latest_count, c["num"])
+            )
+
+        print(
+            "      USES candidate: Generation=%d "
+            "ObjectCount=%d"
+            % (local_generation, latest_count)
+        )
+
+    c["non_null"] = non_null
+    c["current_num"] = current
+    c["generation_num"] = gen_num
+    c["generation_values"] = gen_values
+
+    return c
 
 
 # ---------------------------------------------------------------------------
@@ -675,6 +1071,30 @@ def main():
     ap.add_argument("--dump-package")
     ap.add_argument("--out")
     ap.add_argument("--find")
+
+    ap.add_argument(
+        "--probe-package-net",
+        action="append",
+        default=[],
+        metavar="PKG",
+        help=(
+            "найти живой UPackage::NetObjects по инварианту "
+            "NetObjects[UObject.NetIndex] == UObject; "
+            "можно указать несколько раз"
+        ),
+    )
+
+    ap.add_argument(
+        "--package-scan-start",
+        default="0x40",
+        help="начало скана UPackage для NetObjects (default: 0x40)",
+    )
+
+    ap.add_argument(
+        "--package-scan-end",
+        default="0x400",
+        help="конец скана UPackage для NetObjects (default: 0x400)",
+    )
 
     a = ap.parse_args()
 
@@ -800,7 +1220,7 @@ def main():
                 % (UO_INDEX, internal)
             )
 
-        if not expects:
+        if not expects and not a.probe_package_net:
             print(
                 "\n!! для фазы 2 нужен хотя бы "
                 "один --expect PKG=N"
@@ -812,21 +1232,52 @@ def main():
 
     # Phase 2
     if off is None:
-        off = phase2(
-            mem,
-            groups,
-            expects,
-            internal,
-        )
+        if expects:
+            off = phase2(
+                mem,
+                groups,
+                expects,
+                internal,
+            )
 
-        if off is None:
-            return 1
-
+            if off is None:
+                return 1
+        elif a.probe_package_net:
+            # InternalIndex уже подтверждён фазой 1; для package probe
+            # используем наиболее вероятный/подтверждаемый NetIndex +0x24.
+            off = 0x24
+            print(
+                "\nдля --probe-package-net без --expect "
+                "используем NetIndex +0x24"
+            )
     else:
         print(
             "\noffset задан вручную: +0x%02X"
             % off
         )
+
+    # UPackage runtime net-state probe
+    if a.probe_package_net:
+        scan_start = conv(a.package_scan_start)
+        scan_end = conv(a.package_scan_end)
+
+        if scan_end <= scan_start:
+            print(
+                "!! --package-scan-end должен быть больше "
+                "--package-scan-start"
+            )
+            return 2
+
+        for pkg in a.probe_package_net:
+            probe_package_net(
+                objs,
+                mem,
+                groups,
+                pkg,
+                off,
+                scan_start=scan_start,
+                scan_end=scan_end,
+            )
 
     # Diagnostics
     if a.dump_package:

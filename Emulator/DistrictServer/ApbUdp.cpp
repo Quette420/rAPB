@@ -1213,6 +1213,8 @@ namespace ApbUdp
             float spawnY,
             float spawnZ,
             bool writeZeroInitialRotation,
+            bool writeNetPlayerIndex,
+            std::uint8_t netPlayerIndex,
             const ActorInitialEnumByteFieldWire* fields,
             std::size_t fieldCount)
         {
@@ -1235,6 +1237,9 @@ namespace ApbUdp
                 payload.WriteBit(false);
                 payload.WriteBit(false);
             }
+
+            if (writeNetPlayerIndex)
+                payload.WriteBits(netPlayerIndex, 8u);
 
             if (fields != nullptr)
             {
@@ -1292,6 +1297,35 @@ namespace ApbUdp
             spawnY,
             spawnZ,
             false,
+            false,
+            0,
+            nullptr,
+            0);
+    }
+
+    std::vector<std::uint8_t> BuildPlayerControllerOpenPacket(
+        std::uint32_t serverPacketId,
+        std::uint16_t channelIndex,
+        std::uint16_t channelSequence,
+        std::uint32_t archetypeNetIndex,
+        float spawnX,
+        float spawnY,
+        float spawnZ,
+        std::uint8_t netPlayerIndex)
+    {
+        // Default__cAPBPlayerController.bNetInitialRotation is FALSE in
+        // APB 1.13.1, so no compressed rotator is written here.
+        return BuildActorOpenPacketInternal(
+            serverPacketId,
+            channelIndex,
+            channelSequence,
+            archetypeNetIndex,
+            spawnX,
+            spawnY,
+            spawnZ,
+            false,
+            true,
+            netPlayerIndex,
             nullptr,
             0);
     }
@@ -1316,6 +1350,8 @@ namespace ApbUdp
             spawnY,
             spawnZ,
             true,
+            false,
+            0,
             fields,
             fieldCount);
     }
