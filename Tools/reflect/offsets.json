@@ -1,67 +1,55 @@
 {
-  "_build": "APB Reloaded 1.13.1, UE3 build 3908 (клиент сообщает minVer=3077 ver=3908)",
-  "_status": "живой памятью подтверждены только сетевые константы; адреса классов не сняты",
-
-  "net_bunch_header": {
-    "_confirmed": "побитовым разбором клиентского packet 0, 279 бит без остатка",
-    "packet_id_bits": 30,
-    "order": [
-      "bIsAck:1", "bControl:1", "bOpen:1", "bClose:1",
-      "bReliable:1", "bIsReplicationPaused:1",
-      "ChIndex:SerializeInt(1023)",
-      "ChSequence:SerializeInt(1024)",
-      "ChType:SerializeInt(8)",
-      "BunchDataBits:SerializeInt(4096)"
-    ],
-    "_rejected": [
-      "bIsReplicationPaused перед bReliable — даёт rel=0 и несходящуюся длину",
-      "BunchDataBits 13 бит — артефакт разбора обрезанного дампа",
-      "10-битный name-токен между ChType и длиной — 128 был самой длиной"
-    ]
-  },
-
-  "control_messages": {
-    "_confirmed": ["0 Hello", "1 Welcome", "3 Challenge", "4 Netspeed", "5 Login"],
-    "_probable": ["9 Join (без параметров, приходит сразу после Welcome)"],
-    "_apb_specific": ["26 HandshakeStart", "27 HandshakeChallenge", "28 HandshakeResponse", "29 HandshakeComplete"],
-    "signatures": {
-      "Hello": "int32 MinVer, int32 Ver, int32 Unknown",
-      "Welcome": "FString LevelName, FString GameName, int32 bStrippedData",
-      "Challenge": "int32 ServerNetworkVersion, FString Challenge",
-      "Login": "FString ClientResponse, FString URL, uint64 UniqueNetId",
-      "HandshakeStart": "uint8 Platform, uint32 AccountId, uint8[20] Token"
+  "UNetConnection": {
+    "PackageMap": {
+      "offset": "0xE0",
+      "status": "static/decomp confirmed; live pointer check pending"
     }
   },
 
-  "UNetConnection": {
-    "_source": "декомпиляция UNetPendingLevel::ReceiveNextFile / UDownload::CleanUp",
-    "PackageMap": "0xE0",
-    "Download": "0x8F9C"
-  },
-
   "UPackageMap": {
-    "List.Data": "0x40",
-    "List.Num": "0x44"
+    "List.Data": {
+      "offset": "0x40",
+      "status": "RUNTIME CONFIRMED"
+    },
+    "List.Num": {
+      "offset": "0x44",
+      "status": "RUNTIME CONFIRMED"
+    }
   },
 
   "FPackageInfo": {
-    "_unverified": "размер и позиция флагов выведены из шага цикла, в памяти не читались",
-    "size": "0x50",
-    "PackageFlags": "0x2C",
-    "PKG_Need": "0x8000"
+    "Parent": "0x08",
+    "Guid": "0x0C",
+    "ObjectBase": "0x1C",
+    "ObjectCount": "0x20",
+    "LocalGeneration": "0x24",
+    "RemoteGeneration": "0x28",
+
+    "size": {
+      "value": "0x50",
+      "status": "UNCONFIRMED until List.Num >= 2"
+    },
+
+    "PackageFlags": {
+      "value": "0x2C",
+      "status": "layout-derived, not independently runtime-confirmed"
+    }
   },
 
-  "UDownload": {
-    "Connection": "0x40",
-    "_field_0x5C": "освобождаемый буфер/receiver"
+  "UPackage": {
+    "Guid": "0x6C",
+    "NetObjects": "0x80",
+    "CurrentNumNetObjects": "0x8C",
+    "GenerationNetObjectCount": "0x90"
   },
 
-  "functions": {
-    "UNetPendingLevel::NotifyReceivedText": "0x11554892",
-    "FNetControlMessage<NMT_Welcome>::Receive": "0x11303BE0",
-    "UNetPendingLevel::ReceiveNextFile": "0x115557E0",
-    "UNetConnection::ReceiveFile": "0x112A77A0",
-    "UDownload::CleanUp": "0x1154FD50",
-    "GUseSeekFreeLoading": "0x12549BF4"
+  "UObject": {
+    "InternalIndex": "0x20",
+    "NetIndex": "0x24",
+    "nDynRefsIndex": "0x28",
+    "Outer": "0x2C",
+    "Name.Index": "0x30",
+    "Name.Number": "0x34",
+    "Class": "0x38"
   }
 }
