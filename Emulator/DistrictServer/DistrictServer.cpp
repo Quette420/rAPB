@@ -805,11 +805,55 @@ namespace
     }
 
     struct UsesEntry
+{
+    const char*   Name;
+    std::uint32_t Guid[4];
+    std::int32_t  Generation;
+    std::uint32_t NetObjectCount;   // из живого клиента, не из парсера
+};
+
+ // NMT_Uses(7), порядок подтверждён по FPackageInfo::SerializeWire:
+        //   FGuid(16) | FString PackageName | FString | FString
+        //   | INT PackageFlags | INT Generation | FString | BYTE
+        // Три FString становятся FName в структуре клиента.
+const UsesEntry kPackages[] =
+{
+    { "Core",    { 0x0FE825BC, 0x4970D0BC, 0xE10969A8, 0x4C498AF9 }, 2,  1575 },
+    { "Engine",  { 0x8CC8C348, 0x4498F5A3, 0x05567188, 0x79EC40E0 }, 2, 31931 },
+    { "APBGame", { 0x726ED7C5, 0x49A968E8, 0x50E644AA, 0x50ED3A99 }, 2, 30964 },
+};
+
+constexpr std::uint32_t kBadNetIndex = 0xFFFFFFFFu;
+// APBGame.Default__cAPBPlayerController, локальный NetIndex.
+// Подтверждено live probe: NetIndex=12773 @0x06BD2B40.
+// Не путать с классом cAPBPlayerController -- он на 12772.
+constexpr std::uint32_t kPlayerControllerLocalNetIndex = 12773u;
+// APBGame.Default__cAPBGameReplicationInfo, локальный NetIndex.
+// Live probe: NetIndex=13049 @0x06BD6130.
+constexpr std::uint32_t kGriLocalNetIndex = 13049u;
+
+// UPackageMap::Compute() назначает основания как бегущую сумму по списку
+// в порядке отправки Uses. Порядок наш, поэтому индексы задаём мы.
+std::uint32_t PackageFirstNetIndex(const char* name)
+{
+
+    std::uint32_t base = 0;
+    for (const UsesEntry& e : kPackages)
     {
-        const char*   Name;
-        std::uint32_t Guid[4];
-        std::int32_t  Generation;
-    };
+        if (std::strcmp(e.Name, name) == 0)
+            return base;
+        base += e.NetObjectCount;
+    }
+    Logger(lERROR, "District Net",
+        "Package '%s' is not in kPackages", name);
+    return kBadNetIndex;
+}
+
+std::uint32_t GlobalNetIndex(const char* package, std::uint32_t localNetIndex)
+{
+    const std::uint32_t base = PackageFirstNetIndex(package);
+    return base == kBadNetIndex ? kBadNetIndex : base + localNetIndex;
+}
 
 bool SendPackageUses(
         SOCKET socket,
@@ -818,45 +862,7 @@ bool SendPackageUses(
     {
         if (account == nullptr)
             return false;
-
-        // NMT_Uses(7), порядок подтверждён по FPackageInfo::SerializeWire:
-        //   FGuid(16) | FString PackageName | FString | FString
-        //   | INT PackageFlags | INT Generation | FString | BYTE
-        // Три FString становятся FName в структуре клиента.
-    static const UsesEntry kPackages[] =
-{
-    {
-        "Core",
-        {
-            0x0FE825BC,
-            0x4970D0BC,
-            0xE10969A8,
-            0x4C498AF9
-        },
-        2
-    },
-    {
-        "Engine",
-        {
-            0x8CC8C348,
-            0x4498F5A3,
-            0x05567188,
-            0x79EC40E0
-        },
-        2
-    },
-    {
-        "APBGame",
-        {
-            0x726ED7C5,
-            0x49A968E8,
-            0x50E644AA,
-            0x50ED3A99
-        },
-        2
-    },
-};
-
+ 
         bool allSent = true;
 
         for (const UsesEntry& e : kPackages)
@@ -1297,9 +1303,18 @@ bool SendPackageUses(
                     // ControlChannel, so the first actor channel starts at
                     // ChIndex=1, ChSequence=1.
                     {
-                        constexpr std::uint16_t playerChannel = 1u;
-                        constexpr std::uint16_t playerSequence = 1u;
-                        constexpr std::uint32_t playerArchetype = 46279u;
+                        constexpr std::uint16_t playerChannel   = 2u;
+						constexpr std::uint16_t playerSequence  = 1u;
+
+						const std::uint32_t playerArchetype =
+    					GlobalNetIndex("APBGame", kPlayerControllerLocalNetIndex);
+
+						if (playerArchetype == kBadNetIndex)
+						{
+    						Logger(lERROR, "District Net",
+        					"Cannot open PlayerController: APBGame is not in the Uses list");
+    						continue;
+						}
 
                         std::vector<std::uint8_t> playerControllerOpen =
                             ApbUdp::BuildPlayerControllerOpenPacket(
@@ -1329,6 +1344,39 @@ bool SendPackageUses(
                             static_cast<unsigned int>(playerChannel),
                             static_cast<unsigned int>(playerSequence),
                             static_cast<unsigned int>(playerArchetype));
+						                    // GameReplicationInfo. Клиент не выходит из загрузочного
+                    // экрана, пока WorldInfo.GRI не реплицирован.
+                    // Канал 3: 0=Control, 1=Voice, 2=PlayerController.
+                    {
+                        constexpr std::uint16_t griChannel  = 3u;
+                        constexpr std::uint16_t griSequence = 1u;
+
+                        const std::uint32_t griArchetype =
+                            GlobalNetIndex("APBGame", kGriLocalNetIndex);
+
+                        if (griArchetype != kBadNetIndex)
+                        {
+                            std::vector<std::uint8_t> griOpen =
+                                ApbUdp::BuildActorOpenPacket(
+                                    account->AllocateServerPacketId(),
+                                    griChannel,
+                                    griSequence,
+                                    griArchetype,
+                                    0.0f, 0.0f, 0.0f);
+
+                            const bool griSent = SendProtectedPacket(
+                                socket, endpoint, account, griOpen,
+                                "GRI-OPEN");
+
+                            Logger(griSent ? lSUCCESS : lERROR, "District Net",
+                                "GRI actor open sent=%d ch=%u seq=%u "
+                                "archetypeNetIndex=%u",
+                                griSent ? 1 : 0,
+                                static_cast<unsigned int>(griChannel),
+                                static_cast<unsigned int>(griSequence),
+                                static_cast<unsigned int>(griArchetype));
+                        }
+                    }
                     }
 
                     continue;
@@ -1580,7 +1628,7 @@ bool SendPackageUses(
         if (account == nullptr)
             return false;
 
-        constexpr std::uint16_t kControllerChannel = 1u;
+        constexpr std::uint16_t kControllerChannel = 2u;
         constexpr std::uint16_t kDistrictEnterAnswerSequence = 2u;
         constexpr std::uint32_t kControllerFieldMax = 684u;
         constexpr std::uint32_t kAskDistrictEnterField = 138u;
@@ -1598,15 +1646,33 @@ bool SendPackageUses(
             std::size_t parameterBits = 0;
             std::string decodeError;
 
-            if (!ApbUdp::DecodeActorFieldIndex(
+                       const bool decoded = ApbUdp::DecodeActorFieldIndex(
                     bunch,
                     kControllerFieldMax,
                     fieldIndex,
                     parameterBits,
-                    decodeError))
+                    decodeError);
+
+            if (!decoded)
             {
+                Logger(lWARN, "District RX",
+                    "ch=%u rel=%d seq=%u bits=%u DECODE FAILED: %s",
+                    static_cast<unsigned int>(bunch.ChannelIndex),
+                    bunch.Reliable ? 1 : 0,
+                    static_cast<unsigned int>(bunch.ChannelSequence),
+                    static_cast<unsigned int>(bunch.DataBitCount),
+                    decodeError.c_str());
                 continue;
             }
+
+            Logger(lINFO, "District RX",
+                "ch=%u rel=%d seq=%u bits=%u field=%u paramBits=%u",
+                static_cast<unsigned int>(bunch.ChannelIndex),
+                bunch.Reliable ? 1 : 0,
+                static_cast<unsigned int>(bunch.ChannelSequence),
+                static_cast<unsigned int>(bunch.DataBitCount),
+                static_cast<unsigned int>(fieldIndex),
+                static_cast<unsigned int>(parameterBits));
 
             if (fieldIndex != kAskDistrictEnterField)
                 continue;
@@ -2099,6 +2165,14 @@ int main()
 {
     Log_Clear();
 
+	static_assert(sizeof(kPackages) / sizeof(kPackages[0]) == 3, "");
+	// в инициализации сервера:
+	Logger(lINFO, "District Net",
+    "PackageMap plan: Core@0 Engine@%u APBGame@%u, "
+    "Default__cAPBPlayerController -> %u",
+    PackageFirstNetIndex("Engine"),
+    PackageFirstNetIndex("APBGame"),
+    GlobalNetIndex("APBGame", kPlayerControllerLocalNetIndex));
     g_cfg =
         new Configuration(
             "Configs\\District.conf");
