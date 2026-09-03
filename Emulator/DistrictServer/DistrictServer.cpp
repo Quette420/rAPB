@@ -30,6 +30,44 @@ namespace
 
     std::vector<Account*> g_accounts;
     std::mutex g_accountsMutex;
+	// ---------------------------------------------------------------------
+// Reliable sequence нумеруется ОТДЕЛЬНО на каждый канал.
+// UNetConnection держит InReliable[ChIndex] и проверяет
+// InReliable < ChSequence, поэтому повторно использованный номер
+// молча отбрасывается как дубликат.
+// ---------------------------------------------------------------------
+std::mutex g_channelSequenceMutex;
+std::map<std::pair<std::uint32_t, std::uint16_t>, std::uint16_t>
+    g_channelSequences;
+
+std::uint16_t AllocateChannelSequence(
+    Account* account,
+    std::uint16_t channelIndex)
+{
+    const std::uint32_t accountId =
+        account != nullptr ? account->GetId() : 0u;
+
+    std::lock_guard<std::mutex> guard(g_channelSequenceMutex);
+    std::uint16_t& next =
+        g_channelSequences[std::make_pair(accountId, channelIndex)];
+    ++next;                 // первый bunch на свежем канале = 1
+    return next;
+}
+
+void ResetChannelSequences(Account* account)
+{
+    const std::uint32_t accountId =
+        account != nullptr ? account->GetId() : 0u;
+
+    std::lock_guard<std::mutex> guard(g_channelSequenceMutex);
+    for (auto it = g_channelSequences.begin();
+         it != g_channelSequences.end(); )
+    {
+        it = (it->first.first == accountId)
+            ? g_channelSequences.erase(it)
+            : std::next(it);
+    }
+}
 
     std::atomic<bool> g_udpStarted(false);
     SOCKET g_udpSocket = INVALID_SOCKET;
@@ -831,6 +869,22 @@ constexpr std::uint32_t kPlayerControllerLocalNetIndex = 12773u;
 // APBGame.Default__cAPBGameReplicationInfo, локальный NetIndex.
 // Live probe: NetIndex=13049 @0x06BD6130.
 constexpr std::uint32_t kGriLocalNetIndex = 13049u;
+// Клиент локально открывает два канала до первого серверного пакета:
+//   0 -> ControlChannel (type 1)
+//   1 -> VoiceChannel   (type 4)
+// Actor-bunch на канале 1 достаётся голосовому каналу и молча
+// отбрасывается. Первый свободный слот -- 2.
+constexpr std::uint16_t kControllerChannel = 2u;
+constexpr std::uint16_t kGriChannel        = 3u;
+constexpr std::uint16_t kPawnChannel       = 4u;
+
+// LIVE FClassNetCache, APB 1.13.1:
+constexpr std::uint32_t kControllerFieldMax = 684u;   // cAPBPlayerController
+constexpr std::uint32_t kGriFieldMax        = 63u;    // cAPBGameReplicationInfo
+constexpr std::uint32_t kFieldAskDistrictEnter = 138u;
+constexpr std::uint32_t kFieldAnsDistrictEnter = 139u;
+constexpr std::uint32_t kFieldServerUseAutoReady = 670u;
+constexpr std::uint32_t kFieldServerSyncState    = 80u;
 
 // UPackageMap::Compute() назначает основания как бегущую сумму по списку
 // в порядке отправки Uses. Порядок наш, поэтому индексы задаём мы.
@@ -1279,104 +1333,86 @@ bool SendPackageUses(
                     SendNetChallenge(socket, endpoint, account, packet.PacketId);
                     return true;
                 }
-                
-                if (messageType == NMT_Join)
+                                if (messageType == NMT_Join)
                 {
                     if (account == nullptr)
                         return true;
 
                     account->SetHandshakeState(
                         Account::HandshakeState::Complete);
+                    ResetChannelSequences(account);
 
                     Logger(lSUCCESS, "District Net",
-                        "NMT_Join(9) from account %u -- client finished the "
-                        "pending level and is waiting for its PlayerController "
-                        "actor channel.",
+                        "NMT_Join(9) from account %u",
                         static_cast<unsigned int>(account->GetId()));
 
-                    // Runtime-confirmed APB 1.13.1 PlayerController open:
-                    //   APBGame.Default__cAPBPlayerController global NetIndex=46279
-                    //   bNetInitialRotation=false
-                    //   NetPlayerIndex=0 (main local viewport)
-                    //
-                    // Reliable sequence numbers are per-channel. Channel 0 is
-                    // ControlChannel, so the first actor channel starts at
-                    // ChIndex=1, ChSequence=1.
+                    // PlayerController.
+                    // Архетип: 33506 (база APBGame) + 12773 (local) = 46279.
+                    // Default__cAPBPlayerController.bNetInitialRotation=false,
+                    // поэтому поворот не пишем; NetPlayerIndex=0 -- локальный
+                    // вьюпорт, именно он заставляет клиента считать актора
+                    // своим контроллером.
+                    const std::uint32_t playerArchetype =
+                        GlobalNetIndex("APBGame", kPlayerControllerLocalNetIndex);
+
+                    if (playerArchetype == kBadNetIndex)
                     {
-                        constexpr std::uint16_t playerChannel   = 2u;
-						constexpr std::uint16_t playerSequence  = 1u;
-
-						const std::uint32_t playerArchetype =
-    					GlobalNetIndex("APBGame", kPlayerControllerLocalNetIndex);
-
-						if (playerArchetype == kBadNetIndex)
-						{
-    						Logger(lERROR, "District Net",
-        					"Cannot open PlayerController: APBGame is not in the Uses list");
-    						continue;
-						}
-
-                        std::vector<std::uint8_t> playerControllerOpen =
-                            ApbUdp::BuildPlayerControllerOpenPacket(
-                                account->AllocateServerPacketId(),
-                                playerChannel,
-                                playerSequence,
-                                playerArchetype,
-                                0.0f,
-                                0.0f,
-                                0.0f,
-                                0u);
-
-                        const bool sent = SendProtectedPacket(
-                            socket,
-                            endpoint,
-                            account,
-                            playerControllerOpen,
-                            "PLAYERCONTROLLER-OPEN");
-
-                        Logger(
-                            sent ? lSUCCESS : lERROR,
-                            "District Net",
-                            "PlayerController actor open sent=%d "
-                            "ch=%u seq=%u archetypeNetIndex=%u "
-                            "NetPlayerIndex=0",
-                            sent ? 1 : 0,
-                            static_cast<unsigned int>(playerChannel),
-                            static_cast<unsigned int>(playerSequence),
-                            static_cast<unsigned int>(playerArchetype));
-						                    // GameReplicationInfo. Клиент не выходит из загрузочного
-                    // экрана, пока WorldInfo.GRI не реплицирован.
-                    // Канал 3: 0=Control, 1=Voice, 2=PlayerController.
-                    {
-                        constexpr std::uint16_t griChannel  = 3u;
-                        constexpr std::uint16_t griSequence = 1u;
-
-                        const std::uint32_t griArchetype =
-                            GlobalNetIndex("APBGame", kGriLocalNetIndex);
-
-                        if (griArchetype != kBadNetIndex)
-                        {
-                            std::vector<std::uint8_t> griOpen =
-                                ApbUdp::BuildActorOpenPacket(
-                                    account->AllocateServerPacketId(),
-                                    griChannel,
-                                    griSequence,
-                                    griArchetype,
-                                    0.0f, 0.0f, 0.0f);
-
-                            const bool griSent = SendProtectedPacket(
-                                socket, endpoint, account, griOpen,
-                                "GRI-OPEN");
-
-                            Logger(griSent ? lSUCCESS : lERROR, "District Net",
-                                "GRI actor open sent=%d ch=%u seq=%u "
-                                "archetypeNetIndex=%u",
-                                griSent ? 1 : 0,
-                                static_cast<unsigned int>(griChannel),
-                                static_cast<unsigned int>(griSequence),
-                                static_cast<unsigned int>(griArchetype));
-                        }
+                        Logger(lERROR, "District Net",
+                            "APBGame is not in the Uses list");
+                        continue;
                     }
+
+                    const std::uint16_t playerSequence =
+                        AllocateChannelSequence(account, kControllerChannel);
+
+                    std::vector<std::uint8_t> playerControllerOpen =
+                        ApbUdp::BuildPlayerControllerOpenPacket(
+                            account->AllocateServerPacketId(),
+                            kControllerChannel,
+                            playerSequence,
+                            playerArchetype,
+                            0.0f, 0.0f, 0.0f,
+                            0u);
+
+                    const bool pcSent = SendProtectedPacket(
+                        socket, endpoint, account,
+                        playerControllerOpen, "PLAYERCONTROLLER-OPEN");
+
+                    Logger(pcSent ? lSUCCESS : lERROR, "District Net",
+                        "PlayerController open sent=%d ch=%u seq=%u "
+                        "archetypeNetIndex=%u NetPlayerIndex=0",
+                        pcSent ? 1 : 0,
+                        static_cast<unsigned int>(kControllerChannel),
+                        static_cast<unsigned int>(playerSequence),
+                        static_cast<unsigned int>(playerArchetype));
+
+                    // GameReplicationInfo.
+                    // Архетип: 33506 + 13049 = 46555.
+                    const std::uint32_t griArchetype =
+                        GlobalNetIndex("APBGame", kGriLocalNetIndex);
+
+                    if (griArchetype != kBadNetIndex)
+                    {
+                        const std::uint16_t griSequence =
+                            AllocateChannelSequence(account, kGriChannel);
+
+                        std::vector<std::uint8_t> griOpen =
+                            ApbUdp::BuildActorOpenPacket(
+                                account->AllocateServerPacketId(),
+                                kGriChannel,
+                                griSequence,
+                                griArchetype,
+                                0.0f, 0.0f, 0.0f);
+
+                        const bool griSent = SendProtectedPacket(
+                            socket, endpoint, account, griOpen, "GRI-OPEN");
+
+                        Logger(griSent ? lSUCCESS : lERROR, "District Net",
+                            "GRI open sent=%d ch=%u seq=%u archetypeNetIndex=%u",
+                            griSent ? 1 : 0,
+                            static_cast<unsigned int>(kGriChannel),
+                            static_cast<unsigned int>(griSequence),
+                            static_cast<unsigned int>(griArchetype));
                     }
 
                     continue;
@@ -1628,12 +1664,6 @@ bool SendPackageUses(
         if (account == nullptr)
             return false;
 
-        constexpr std::uint16_t kControllerChannel = 2u;
-        constexpr std::uint16_t kDistrictEnterAnswerSequence = 2u;
-        constexpr std::uint32_t kControllerFieldMax = 684u;
-        constexpr std::uint32_t kAskDistrictEnterField = 138u;
-        constexpr std::uint32_t kAnswerDistrictEnterField = 139u;
-
         for (const ApbUdp::Bunch& bunch : packet.Bunches)
         {
             if (bunch.Kind != ApbUdp::BunchKind::Data ||
@@ -1674,57 +1704,49 @@ bool SendPackageUses(
                 static_cast<unsigned int>(fieldIndex),
                 static_cast<unsigned int>(parameterBits));
 
-            if (fieldIndex != kAskDistrictEnterField)
+                        if (fieldIndex == kFieldServerSyncState ||
+                fieldIndex == kFieldServerUseAutoReady)
+            {
+                // Клиент сообщает, ответа не ждёт.
+                continue;
+            }
+
+            if (fieldIndex != kFieldAskDistrictEnter)
                 continue;
 
             const std::int32_t districtUid =
                 static_cast<std::int32_t>(
                     g_cfg != nullptr ? g_cfg->GetDistrictType() : 1);
 
-            // RPC parameters are not serialized like replicated IntProperty
-            // fields.  UActorChannel::ReceivedBunch reads a one-bit
-            // non-default/presence selector before every non-bool RPC
-            // parameter and calls NetSerializeItem only when that bit is set.
-            //
-            // BuildActorParamsFieldPacket(kind="int") writes exactly:
-            //   presence=1, raw int32
-            // for each parameter.
             std::vector<ApbUdp::DebugParam> params(3u);
-            params[0].Kind = "int";
-            params[0].A = 0;           // nReturnCode: success
-            params[1].Kind = "int";
-            params[1].A = districtUid; // nDistrictUID
-            params[2].Kind = "int";
-            params[2].A = 1;           // nInstanceNo
+            params[0].Kind = "int";  params[0].A = 0;           // nReturnCode
+            params[1].Kind = "int";  params[1].A = districtUid; // nDistrictUID
+            params[2].Kind = "int";  params[2].A = 1;           // nInstanceNo
+
+            const std::uint16_t answerSequence =
+                AllocateChannelSequence(account, kControllerChannel);
 
             std::vector<std::uint8_t> answer =
                 ApbUdp::BuildActorParamsFieldPacket(
                     account->AllocateServerPacketId(),
                     kControllerChannel,
-                    kDistrictEnterAnswerSequence,
-                    kAnswerDistrictEnterField,
+                    answerSequence,
+                    kFieldAnsDistrictEnter,
                     kControllerFieldMax,
                     params);
 
-            const bool sent =
-                SendProtectedPacket(
-                    socket,
-                    endpoint,
-                    account,
-                    answer,
-                    "DISTRICT-ENTER-ANSWER");
+            const bool sent = SendProtectedPacket(
+                socket, endpoint, account, answer, "DISTRICT-ENTER-ANSWER");
 
-            Logger(
-                sent ? lSUCCESS : lERROR,
-                "District Handshake",
-                "GC2DS_ASK_DISTRICT_ENTER field=%u -> "
-                "DS2GC_ANS_DISTRICT_ENTER field=%u sent=%d "
-                "returnCode=0 districtUID=%d instanceNo=1 "
-                "ch=1 seq=2 fieldMax=%u requestParamBits=%u",
-                static_cast<unsigned int>(kAskDistrictEnterField),
-                static_cast<unsigned int>(kAnswerDistrictEnterField),
+            Logger(sent ? lSUCCESS : lERROR, "District Handshake",
+                "ASK(%u) -> ANS(%u) sent=%d returnCode=0 districtUID=%d "
+                "instanceNo=1 ch=%u seq=%u fieldMax=%u reqParamBits=%u",
+                static_cast<unsigned int>(kFieldAskDistrictEnter),
+                static_cast<unsigned int>(kFieldAnsDistrictEnter),
                 sent ? 1 : 0,
                 districtUid,
+                static_cast<unsigned int>(kControllerChannel),
+                static_cast<unsigned int>(answerSequence),
                 static_cast<unsigned int>(kControllerFieldMax),
                 static_cast<unsigned int>(parameterBits));
 
