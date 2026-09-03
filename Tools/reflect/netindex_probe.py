@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-netindex_probe.py -- определение offset UObject::NetIndex в APB 1.13.1
+netindex_probe_v22.py -- runtime UE3 reflection/network inspector; определение offset UObject::NetIndex в APB 1.13.1
 и снятие локальных NetIndex из живой памяти клиента.
 
 Кладётся рядом с apb_reflect.py (Tools/reflect/). Из apb_reflect берётся
@@ -40,6 +40,10 @@ import argparse
 import sys
 import ctypes
 import struct
+import json
+import csv
+import math
+from pathlib import Path
 from collections import defaultdict
 
 import apb_reflect as R
@@ -2856,6 +2860,283 @@ def probe_playercontroller_netfields(
 
 
 # ---------------------------------------------------------------------------
+# Live class-instance / inheritance probe
+# ---------------------------------------------------------------------------
+
+def _find_class_by_path(objs, groups, wanted_path):
+    for o in _iter_all_group_objects(groups):
+        try:
+            if (
+                objs.class_name(o) == "Class"
+                and objs.path(o) == wanted_path
+            ):
+                return o
+        except Exception:
+            pass
+    return None
+
+
+def _is_class_or_subclass_of(mem, objs, cls_obj, target_cls):
+    cur = cls_obj
+    seen = set()
+
+    while cur and cur not in seen:
+        seen.add(cur)
+
+        if cur == target_cls:
+            return True
+
+        cur = _class_super(
+            mem,
+            objs,
+            cur,
+            verbose=False,
+        )
+
+    return False
+
+
+def _active_default_package_bases(
+    objs,
+    mem,
+    groups,
+    netindex_off,
+):
+    expected = _expected_map_state(
+        objs,
+        mem,
+        groups,
+        DEFAULT_MAP_PACKAGES,
+        netindex_off,
+    )
+
+    if expected is None:
+        return {}
+
+    return {
+        row["name"]: {
+            "base": row["object_base"],
+            "count": row["object_count"],
+        }
+        for row in expected
+    }
+
+
+def probe_class_instances(
+    objs,
+    mem,
+    groups,
+    class_path,
+    netindex_off,
+    include_subclasses=True,
+    limit=200,
+):
+    print(
+        "\n== live class instances: %s =="
+        % class_path
+    )
+
+    target_cls = _find_class_by_path(
+        objs,
+        groups,
+        class_path,
+    )
+
+    if not target_cls:
+        print("!! UClass не найден")
+        return None
+
+    print(
+        "   target UClass=0x%08X"
+        % target_cls
+    )
+
+    print("   UClass inheritance:")
+    cur = target_cls
+    seen = set()
+    depth = 0
+
+    while cur and cur not in seen and depth < 64:
+        seen.add(cur)
+
+        print(
+            "      %2d 0x%08X %s"
+            % (
+                depth,
+                cur,
+                objs.path(cur),
+            )
+        )
+
+        cur = _class_super(
+            mem,
+            objs,
+            cur,
+            verbose=False,
+        )
+        depth += 1
+
+    bases = _active_default_package_bases(
+        objs,
+        mem,
+        groups,
+        netindex_off,
+    )
+
+    matches = []
+
+    for pkg, lst in groups.items():
+        for o in lst:
+            cls_ptr = mem.try_u32(
+                o + UO_CLASS,
+                None,
+            )
+
+            if not cls_ptr:
+                continue
+
+            if include_subclasses:
+                is_match = _is_class_or_subclass_of(
+                    mem,
+                    objs,
+                    cls_ptr,
+                    target_cls,
+                )
+            else:
+                is_match = cls_ptr == target_cls
+
+            if not is_match:
+                continue
+
+            raw_net = mem.try_u32(
+                o + netindex_off,
+                None,
+            )
+
+            local_net = (
+                sgn32(raw_net)
+                if raw_net is not None
+                else None
+            )
+
+            global_net = None
+            base_info = bases.get(pkg)
+
+            if (
+                base_info is not None
+                and local_net is not None
+                and 0 <= local_net < base_info["count"]
+            ):
+                global_net = (
+                    base_info["base"]
+                    + local_net
+                )
+
+            matches.append(
+                {
+                    "obj": o,
+                    "path": objs.path(o),
+                    "name": objs.name(o),
+                    "class": objs.class_name(o),
+                    "class_ptr": cls_ptr,
+                    "package": pkg,
+                    "local_net": local_net,
+                    "global_net": global_net,
+                }
+            )
+
+    matches.sort(
+        key=lambda r: (
+            r["package"],
+            r["class"],
+            r["path"],
+            r["obj"],
+        )
+    )
+
+    print(
+        "   matching live objects: %d%s"
+        % (
+            len(matches),
+            " (target + subclasses)"
+            if include_subclasses
+            else " (exact class only)",
+        )
+    )
+
+    if not matches:
+        print("      <none>")
+        return {
+            "target_class": target_cls,
+            "matches": [],
+        }
+
+    for row in matches[:limit]:
+        local_text = (
+            str(row["local_net"])
+            if row["local_net"] is not None
+            else "?"
+        )
+        global_text = (
+            str(row["global_net"])
+            if row["global_net"] is not None
+            else "-"
+        )
+
+        print(
+            "      0x%08X %-28s "
+            "pkg=%-24s localNet=%-7s globalNet=%-7s"
+            % (
+                row["obj"],
+                row["class"],
+                row["package"],
+                local_text,
+                global_text,
+            )
+        )
+        print(
+            "            %s"
+            % row["path"]
+        )
+
+    if len(matches) > limit:
+        print(
+            "      ... ещё %d"
+            % (len(matches) - limit)
+        )
+
+    by_package = defaultdict(int)
+    net_supported = 0
+
+    for row in matches:
+        by_package[row["package"]] += 1
+        if row["global_net"] is not None:
+            net_supported += 1
+
+    print("\n   package summary:")
+
+    for pkg, count in sorted(
+        by_package.items(),
+        key=lambda kv: (-kv[1], kv[0]),
+    ):
+        print(
+            "      %-28s %d"
+            % (pkg, count)
+        )
+
+    print(
+        "\n   objects directly addressable through current "
+        "Core/Engine/APBGame PackageMap: %d/%d"
+        % (net_supported, len(matches))
+    )
+
+    return {
+        "target_class": target_cls,
+        "matches": matches,
+    }
+
+
+# ---------------------------------------------------------------------------
 # UFunction parameter / RPC signature probe
 # ---------------------------------------------------------------------------
 
@@ -3657,6 +3938,17 @@ def _validate_classnetcache_candidate(
     if class_ptr != expected_class:
         return None
 
+    # Strong independent invariant: live FClassNetCache::Super must correspond
+    # to the live UClass::SuperField.  This is especially important for
+    # classes with zero own NetFields, where an arbitrary zeroed structure
+    # containing the UClass pointer could otherwise look valid.
+    expected_super_class = _class_super(
+        mem,
+        objs,
+        expected_class,
+        verbose=False,
+    )
+
     fields_base_raw = mem.try_u32(
         candidate + FCLASSNETCACHE_FIELDS_BASE,
         None,
@@ -3698,6 +3990,27 @@ def _validate_classnetcache_candidate(
     fields_num = sgn32(fields_num_raw)
     fields_max = sgn32(fields_max_raw)
 
+    if expected_super_class:
+        if not super_ptr:
+            return None
+
+        actual_super_class = mem.try_u32(
+            super_ptr + FCLASSNETCACHE_CLASS,
+            None,
+        )
+
+        if actual_super_class != expected_super_class:
+            return None
+    else:
+        # Core.Object/root-class cache has no superclass.
+        if super_ptr:
+            actual_super_class = mem.try_u32(
+                super_ptr + FCLASSNETCACHE_CLASS,
+                None,
+            )
+            if actual_super_class:
+                return None
+
     if fields_base < 0 or fields_base > 10000:
         return None
 
@@ -3712,6 +4025,30 @@ def _validate_classnetcache_candidate(
 
     if fields_num > 0 and not fields_data:
         return None
+
+    if expected_super_class:
+        super_fields_base_raw = mem.try_u32(
+            super_ptr + FCLASSNETCACHE_FIELDS_BASE,
+            None,
+        )
+        super_fields_num_raw = mem.try_u32(
+            super_ptr + FCLASSNETCACHE_FIELDS + 4,
+            None,
+        )
+
+        if (
+            super_fields_base_raw is None
+            or super_fields_num_raw is None
+        ):
+            return None
+
+        super_get_max = (
+            sgn32(super_fields_base_raw)
+            + sgn32(super_fields_num_raw)
+        )
+
+        if fields_base != super_get_max:
+            return None
 
     sample_num = min(fields_num, 128)
 
@@ -3851,21 +4188,33 @@ def probe_live_classnetcache(
     mem,
     groups,
     target_handles=(80, 138, 139, 158),
+    target_class_path="APBGame.cAPBPlayerController",
+    name_filters=(),
 ):
     print(
         "\n== direct live FClassNetCache probe =="
     )
 
+    if "." not in target_class_path:
+        print(
+            "!! --classnetcache-class должен быть Package.Class, "
+            "например APBGame.cAPBPlayerController"
+        )
+        return None
+
+    target_package, target_class_name = target_class_path.split(".", 1)
+
     target_class = _find_class_object(
         objs,
         groups,
-        "APBGame",
-        "cAPBPlayerController",
+        target_package,
+        target_class_name,
     )
 
     if not target_class:
         print(
-            "!! APBGame.cAPBPlayerController UClass не найден"
+            "!! %s UClass не найден"
+            % target_class_path
         )
         return None
 
@@ -3932,7 +4281,7 @@ def probe_live_classnetcache(
     if not candidates:
         print(
             "!! валидный FClassNetCache для "
-            "cAPBPlayerController не найден"
+            "%s не найден" % target_class_path
         )
         print(
             "   Это не доказывает отсутствие cache: "
@@ -4100,6 +4449,79 @@ def probe_live_classnetcache(
             )
         )
 
+    normalized_filters = tuple(
+        f.strip().lower()
+        for f in name_filters
+        if f.strip()
+    )
+
+    if normalized_filters:
+        print(
+            "\n   DIRECT live cache name search:"
+        )
+        print(
+            "      filters: %s"
+            % ", ".join(normalized_filters)
+        )
+
+        matches = []
+
+        for c in chain:
+            records = _read_fieldnetcache_records(
+                objs,
+                mem,
+                c["fields_data"],
+                c["fields_num"],
+                limit=None,
+            )
+
+            if records is None:
+                continue
+
+            for rec in records:
+                haystack = (
+                    rec["name"] + " " + rec["path"]
+                ).lower()
+
+                matched = [
+                    f
+                    for f in normalized_filters
+                    if f in haystack
+                ]
+
+                if matched:
+                    row = dict(rec)
+                    row["matched"] = matched
+                    matches.append(row)
+
+        matches.sort(
+            key=lambda r: (
+                r["index"],
+                r["path"],
+            )
+        )
+
+        if not matches:
+            print("      <none>")
+        else:
+            for rec in matches:
+                print(
+                    "      %3d -> %-18s %s"
+                    % (
+                        rec["index"],
+                        rec["class"],
+                        rec["path"],
+                    )
+                )
+                print(
+                    "            ConditionIndex=%d "
+                    "matches=%s"
+                    % (
+                        rec["condition"],
+                        ",".join(rec["matched"]),
+                    )
+                )
+
     print(
         "\n   proof status:"
     )
@@ -4115,9 +4537,4294 @@ def probe_live_classnetcache(
     }
 
 
+
+# ---------------------------------------------------------------------------
+# v18 operator-oriented commands
+# ---------------------------------------------------------------------------
+
+# APB 1.13.1 layout follows the stock 32-bit UE3 UFunction layout:
+# UObject(0x40) + UField.Next(4) + UStruct fields -> FunctionFlags at +0x88.
+# Keep this explicitly separate from UProperty::PropertyFlags.
+UFUNCTION_FLAGS = 0x88
+
+_FUNCTION_FLAG_NAMES = (
+    (0x00000001, "Final"),
+    (0x00000002, "Defined"),
+    (0x00000004, "Iterator"),
+    (0x00000008, "Latent"),
+    (0x00000010, "PreOperator"),
+    (0x00000020, "Singular"),
+    (0x00000040, "Net"),
+    (0x00000080, "NetReliable"),
+    (0x00000100, "Simulated"),
+    (0x00000200, "Exec"),
+    (0x00000400, "Native"),
+    (0x00000800, "Event"),
+    (0x00001000, "Operator"),
+    (0x00002000, "Static"),
+    (0x00004000, "HasOptionalParms"),
+    (0x00008000, "Const"),
+    (0x00020000, "Public"),
+    (0x00040000, "Private"),
+    (0x00080000, "Protected"),
+    (0x00100000, "Delegate"),
+    (0x00200000, "NetServer"),
+    (0x00400000, "HasOutParms"),
+    (0x00800000, "HasDefaults"),
+    (0x01000000, "NetClient"),
+    (0x02000000, "DLLImport"),
+)
+
+_PROPERTY_FLAG_NAMES_FULL = (
+    (0x0000000000000001, "Editable"),
+    (0x0000000000000002, "Const"),
+    (0x0000000000000004, "Input"),
+    (0x0000000000000008, "ExportObject"),
+    (0x0000000000000010, "OptionalParm"),
+    (0x0000000000000020, "Net"),
+    (0x0000000000000040, "EditFixedSize"),
+    (0x0000000000000080, "Parm"),
+    (0x0000000000000100, "OutParm"),
+    (0x0000000000000200, "SkipParm"),
+    (0x0000000000000400, "ReturnParm"),
+    (0x0000000000000800, "CoerceParm"),
+    (0x0000000000001000, "Native"),
+    (0x0000000000002000, "Transient"),
+    (0x0000000000004000, "Config"),
+    (0x0000000000008000, "Localized"),
+    (0x0000000000020000, "EditConst"),
+    (0x0000000000040000, "GlobalConfig"),
+    (0x0000000000080000, "Component"),
+    (0x0000000000100000, "AlwaysInit"),
+    (0x0000000000200000, "DuplicateTransient"),
+    (0x0000000000400000, "CtorLink"),
+    (0x0000000000800000, "NoExport"),
+    (0x0000000001000000, "NoImport"),
+    (0x0000000002000000, "NoClear"),
+    (0x0000000004000000, "EditInline"),
+    (0x0000000010000000, "EditInlineUse"),
+    (0x0000000020000000, "Deprecated"),
+    (0x0000000040000000, "DataBinding"),
+    (0x0000000080000000, "SerializeText"),
+    (0x0000000100000000, "RepNotify"),
+    (0x0000000200000000, "Interp"),
+    (0x0000000400000000, "NonTransactional"),
+    (0x0000000800000000, "EditorOnly"),
+    (0x0000001000000000, "NotForConsole"),
+    (0x0000002000000000, "RepRetry"),
+    (0x0000004000000000, "PrivateWrite"),
+    (0x0000008000000000, "ProtectedWrite"),
+    (0x0000010000000000, "ArchetypeProperty"),
+    (0x0000020000000000, "EditHide"),
+    (0x0000040000000000, "EditTextBox"),
+    (0x0000100000000000, "CrossLevelPassive"),
+    (0x0000200000000000, "CrossLevelActive"),
+)
+
+
+def _format_named_flags(flags, table):
+    if flags is None:
+        return "?"
+    parts = []
+    known = 0
+    for bit, name in table:
+        if flags & bit:
+            parts.append("0x%X:%s" % (bit, name))
+            known |= bit
+    unknown = flags & ~known
+    if unknown:
+        parts.append("0x%X:Unknown" % unknown)
+    return ";".join(parts) + (";" if parts else "")
+
+
+def _function_flags_data(mem, fn):
+    flags = mem.try_u32(fn + UFUNCTION_FLAGS, None)
+    return flags, _format_named_flags(flags, _FUNCTION_FLAG_NAMES)
+
+
+def _property_flags_full_text(flags):
+    return _format_named_flags(flags, _PROPERTY_FLAG_NAMES_FULL)
+
+
+def _resolve_one_uclass(objs, groups, query):
+    matches = _resolve_uclass_query(objs, groups, query)
+    if not matches:
+        print("!! UClass не найден: %s" % query)
+        return None
+    if len(matches) != 1:
+        print("!! имя класса неоднозначно: %s" % query)
+        for o in matches[:50]:
+            print("   0x%08X %s" % (o, objs.path(o)))
+        print("   Укажи полный Package.Class.")
+        return None
+    return matches[0]
+
+
+def _class_chain_target_to_root(objs, mem, target):
+    out = []
+    cur = target
+    seen = set()
+    while cur and cur not in seen and len(out) < 128:
+        seen.add(cur)
+        out.append(cur)
+        cur = _class_super(mem, objs, cur, verbose=False)
+    return out
+
+
+def _class_chain_root_to_target(objs, mem, target):
+    return list(reversed(_class_chain_target_to_root(objs, mem, target)))
+
+
+def _direct_properties_for_class(objs, mem, cls_obj):
+    out = []
+    for child in _walk_struct_children(objs, mem, cls_obj):
+        if not child["class"].endswith("Property"):
+            continue
+        flags = _try_u64(mem, child["obj"] + UPROPERTY_FLAGS)
+        if flags is not None and (flags & CPF_PARM):
+            continue
+        out.append(child["obj"])
+    return out
+
+
+def _direct_functions_for_class(objs, mem, cls_obj, include_states=True):
+    out = []
+    for child in _walk_struct_children(objs, mem, cls_obj):
+        if child["class"] == "Function":
+            out.append((child["obj"], None))
+        elif include_states and child["class"] == "State":
+            state_path = child["path"]
+            for sc in _walk_struct_children(objs, mem, child["obj"]):
+                if sc["class"] == "Function":
+                    out.append((sc["obj"], state_path))
+    return out
+
+
+def command_instances(
+    objs,
+    mem,
+    groups,
+    query,
+    netindex_off,
+    include_subclasses=True,
+    limit=200,
+):
+    target = _resolve_one_uclass(objs, groups, query)
+    if target is None:
+        return None
+    return probe_class_instances(
+        objs,
+        mem,
+        groups,
+        objs.path(target),
+        netindex_off,
+        include_subclasses=include_subclasses,
+        limit=limit,
+    )
+
+
+def _known_object_addresses(groups):
+    # build_groups already performed the expensive GObjects traversal.
+    return {
+        o
+        for lst in groups.values()
+        for o in lst
+    }
+
+
+def _read_fstring_live(mem, addr, max_chars=512):
+    data = mem.try_u32(addr, None)
+    num = mem.try_u32(addr + 4, None)
+    maxv = mem.try_u32(addr + 8, None)
+    if data is None or num is None or maxv is None:
+        return "<unreadable FString>"
+    num = sgn32(num)
+    maxv = sgn32(maxv)
+    if num < 0 or maxv < num or num > 1_000_000:
+        return "<invalid FString Data=0x%08X Num=%d Max=%d>" % (
+            data or 0, num, maxv
+        )
+    if not data or num == 0:
+        return '""'
+    take = min(num, max_chars)
+    try:
+        raw = mem.read(data, take * 2)
+        text = raw.decode("utf-16-le", "replace").rstrip("\x00")
+    except Exception:
+        return "<unreadable FString Data=0x%08X Num=%d Max=%d>" % (
+            data, num, maxv
+        )
+    suffix = "..." if num > max_chars else ""
+    return '%r%s (Num=%d Max=%d Data=0x%08X)' % (
+        text, suffix, num, maxv, data
+    )
+
+
+def _safe_raw_hex(mem, addr, size, limit=32):
+    if size is None or size <= 0:
+        size = 4
+    take = min(int(size), limit)
+    try:
+        raw = mem.read(addr, take)
+        text = " ".join("%02X" % b for b in raw)
+        if size > take:
+            text += " ..."
+        return text
+    except Exception:
+        return "<unreadable>"
+
+
+def _instance_property_value(
+    objs,
+    mem,
+    known_objects,
+    instance,
+    prop,
+):
+    cls = objs.class_name(prop)
+    off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+    elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None)
+    arr = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None)
+    if off is None:
+        return "<offset unreadable>"
+    addr = instance + off
+
+    try:
+        if cls == "BoolProperty":
+            mask = mem.try_u32(prop + UPROPERTY_TYPE_SLOT, 0) or 0
+            raw = mem.try_u32(addr, None)
+            if raw is None:
+                return "<unreadable>"
+            return "%s (raw=0x%08X mask=0x%08X)" % (
+                "true" if (raw & mask) else "false",
+                raw,
+                mask,
+            )
+
+        if cls == "ByteProperty":
+            raw = mem.read(addr, 1)[0]
+            enum_ptr = mem.try_u32(prop + UPROPERTY_TYPE_SLOT, None) or 0
+            if enum_ptr:
+                enum_info = _read_enum_names(objs, mem, enum_ptr, limit=512)
+                if enum_info and raw < len(enum_info["names"]):
+                    return "%d (%s)" % (raw, enum_info["names"][raw])
+            return str(raw)
+
+        if cls == "IntProperty":
+            return str(struct.unpack("<i", mem.read(addr, 4))[0])
+
+        if cls in ("UIntProperty",):
+            return str(struct.unpack("<I", mem.read(addr, 4))[0])
+
+        if cls == "FloatProperty":
+            v = struct.unpack("<f", mem.read(addr, 4))[0]
+            return "%.9g" % v
+
+        if cls == "DoubleProperty":
+            v = struct.unpack("<d", mem.read(addr, 8))[0]
+            return "%.17g" % v
+
+        if cls in ("QWordProperty", "UInt64Property"):
+            return str(struct.unpack("<Q", mem.read(addr, 8))[0])
+
+        if cls == "NameProperty":
+            idx, number = struct.unpack("<II", mem.read(addr, 8))
+            return "%s (Index=%d Number=%d)" % (
+                objs.names.fmt(idx, number), idx, number
+            )
+
+        if cls == "StrProperty":
+            return _read_fstring_live(mem, addr)
+
+        if cls in (
+            "ObjectProperty",
+            "ClassProperty",
+            "ComponentProperty",
+            "InterfaceProperty",
+        ):
+            ptr = mem.try_u32(addr, None)
+            if ptr is None:
+                return "<unreadable>"
+            if not ptr:
+                return "<null>"
+            if ptr in known_objects:
+                return "0x%08X %s" % (ptr, objs.path(ptr))
+            return "0x%08X <not in recognized GObjects set>" % ptr
+
+        if cls == "ArrayProperty":
+            data = mem.try_u32(addr, None)
+            num = mem.try_u32(addr + 4, None)
+            maxv = mem.try_u32(addr + 8, None)
+            if data is None or num is None or maxv is None:
+                return "<unreadable TArray>"
+            return "TArray(Data=0x%08X Num=%d Max=%d)" % (
+                data or 0, sgn32(num), sgn32(maxv)
+            )
+
+        if cls == "StructProperty":
+            return "raw[%s] %s" % (
+                _fmt_optional_int(elem, hex_mode=True),
+                _safe_raw_hex(mem, addr, elem),
+            )
+
+        if cls == "MapProperty":
+            return "raw %s" % _safe_raw_hex(mem, addr, max(elem or 0, 12))
+
+        if cls == "DelegateProperty":
+            return "raw %s" % _safe_raw_hex(mem, addr, elem or 12)
+
+        size = (elem or 1) * max(arr or 1, 1)
+        return "raw[%s] %s" % (
+            _fmt_optional_int(size, hex_mode=True),
+            _safe_raw_hex(mem, addr, size),
+        )
+    except Exception as exc:
+        return "<read error: %s>" % exc
+
+
+def dump_instance_fields(
+    objs,
+    mem,
+    groups,
+    address,
+    netindex_off,
+    include_inherited=False,
+):
+    known_objects = _known_object_addresses(groups)
+    if address not in known_objects:
+        print(
+            "!! 0x%08X не найден среди распознанных live GObjects"
+            % address
+        )
+        return None
+
+    cls_obj = mem.try_u32(address + UO_CLASS, None) or 0
+    if not cls_obj:
+        print("!! UObject::Class unreadable/null")
+        return None
+
+    package_bases = _active_default_package_bases(
+        objs, mem, groups, netindex_off
+    )
+    ident = _object_net_identity(
+        objs, mem, address, netindex_off, package_bases
+    )
+
+    print("\n============================================================")
+    print("INSTANCE FIELD STATE: 0x%08X" % address)
+    print("============================================================")
+    print("[OBJECT]")
+    print("  Path              : %s" % objs.path(address))
+    print("  Class             : %s" % objs.path(cls_obj))
+    print("  Address           : 0x%08X" % address)
+    print("  Package           : %s" % (ident["package"] or "-"))
+    print("  UObject NetIndex  : %s" % _fmt_optional_int(ident["local_netindex"]))
+    print("  Global NetIndex   : %s" % _fmt_optional_int(ident["global_netindex"]))
+    print(
+        "  Field scope       : %s"
+        % ("own + inherited" if include_inherited else "own only")
+    )
+
+    chain = (
+        _class_chain_root_to_target(objs, mem, cls_obj)
+        if include_inherited
+        else [cls_obj]
+    )
+
+    rows = []
+    for owner in chain:
+        for prop in _direct_properties_for_class(objs, mem, owner):
+            off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+            flags = _try_u64(mem, prop + UPROPERTY_FLAGS)
+            rows.append({
+                "owner": objs.path(owner),
+                "prop": prop,
+                "name": objs.name(prop),
+                "type": objs.class_name(prop),
+                "offset": off,
+                "element_size": mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None),
+                "array_dim": mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None),
+                "flags": flags,
+                "details": _property_type_details(objs, mem, prop),
+                "value": _instance_property_value(
+                    objs, mem, known_objects, address, prop
+                ),
+            })
+
+    rows.sort(
+        key=lambda r: (
+            r["offset"] if r["offset"] is not None else 0xFFFFFFFF,
+            r["owner"],
+            r["name"],
+        )
+    )
+
+    print("\n[FIELDS] %d" % len(rows))
+    for r in rows:
+        print(
+            "  %-8s %-18s %-36s = %s"
+            % (
+                _fmt_optional_int(r["offset"], hex_mode=True),
+                r["type"],
+                r["name"],
+                r["value"],
+            )
+        )
+        print("           owner=%s" % r["owner"])
+        print(
+            "           elem=%s arr=%s flags=%s"
+            % (
+                _fmt_optional_int(r["element_size"], hex_mode=True),
+                _fmt_optional_int(r["array_dim"]),
+                _property_flags_full_text(r["flags"]),
+            )
+        )
+        if r["details"]:
+            print("           %s" % r["details"])
+
+    return rows
+
+
+def list_class_functions(
+    objs,
+    mem,
+    groups,
+    query,
+    netindex_off,
+    include_inherited=False,
+):
+    target = _resolve_one_uclass(objs, groups, query)
+    if target is None:
+        return None
+
+    package_bases = _active_default_package_bases(
+        objs, mem, groups, netindex_off
+    )
+    classes = (
+        _class_chain_root_to_target(objs, mem, target)
+        if include_inherited
+        else [target]
+    )
+
+    # Try live cache first; fall back to derived mapping.
+    live = _find_live_classnetcache_quiet(objs, mem, target)
+    if live:
+        field_map = live["field_map"]
+        mapping_source = "LIVE"
+        field_max = live["cache"]["get_max_index"]
+    else:
+        derived = _reconstruct_classnet_field_map(
+            objs,
+            mem,
+            _class_chain_root_to_target(objs, mem, target),
+            netindex_off,
+            package_bases,
+        )
+        field_map = derived["field_map"] if derived else {}
+        mapping_source = "DERIVED" if derived else "NONE"
+        field_max = derived["get_max_index"] if derived else None
+
+    print("\n============================================================")
+    print("CLASS FUNCTIONS: %s" % objs.path(target))
+    print("============================================================")
+    print(
+        "scope=%s networkMapping=%s fieldMax=%s"
+        % (
+            "own+inherited" if include_inherited else "own",
+            mapping_source,
+            _fmt_optional_int(field_max),
+        )
+    )
+
+    rows = []
+    for owner in classes:
+        for fn, state in _direct_functions_for_class(objs, mem, owner):
+            sig = _function_signature_data(
+                objs, mem, fn, netindex_off, package_bases
+            )
+            net = field_map.get(fn)
+            flags, flags_text = _function_flags_data(mem, fn)
+            rows.append((owner, state, sig, net, flags, flags_text))
+
+    rows.sort(
+        key=lambda row: (
+            objs.path(row[0]),
+            row[1] or "",
+            row[2]["name"],
+        )
+    )
+
+    for owner, state, sig, net, flags, flags_text in rows:
+        ret = "void"
+        if sig["returns"]:
+            ret = ", ".join(
+                "%s %s" % (p["type"], p["name"])
+                for p in sig["returns"]
+            )
+        params = ", ".join(
+            "%s %s" % (p["type"], p["name"])
+            for p in sig["params"]
+        )
+        field_text = (
+            "%d [%s]" % (net["field_index"], net["source"])
+            if net else "-"
+        )
+        scope = objs.path(owner)
+        if state:
+            scope += " :: state " + state
+        print("\n  %s %s(%s)" % (ret, sig["name"], params))
+        print("      owner=%s" % scope)
+        print(
+            "      UFunction=0x%08X localNet=%s globalNet=%s FieldIndex=%s"
+            % (
+                sig["address"],
+                _fmt_optional_int(sig["local_netindex"]),
+                _fmt_optional_int(sig["global_netindex"]),
+                field_text,
+            )
+        )
+        print(
+            "      FunctionFlags=0x%08X %s"
+            % ((flags or 0), flags_text)
+        )
+        for i, p in enumerate(sig["params"]):
+            print(
+                "      param[%02d] %-18s %-28s off=%s %s"
+                % (
+                    i,
+                    p["type"],
+                    p["name"],
+                    _fmt_optional_int(p["offset"], hex_mode=True),
+                    p["details"] or "",
+                )
+            )
+
+    print("\n[SUMMARY] functions=%d" % len(rows))
+    return rows
+
+
+def _supported_direct_netfields(
+    objs,
+    mem,
+    cls_obj,
+    netindex_off,
+    package_bases,
+):
+    supported = {
+        pkg: info["count"]
+        for pkg, info in package_bases.items()
+    }
+    out = []
+    for field in _get_class_netfields_for_validation(objs, mem, cls_obj):
+        raw = mem.try_u32(field + netindex_off, None)
+        if raw is None:
+            continue
+        local_net = sgn32(raw)
+        pkg = _outermost_package_name(objs, mem, field)
+        if (
+            local_net < 0
+            or pkg not in supported
+            or local_net >= supported[pkg]
+        ):
+            continue
+        out.append(field)
+    return out
+
+
+def dump_class_netfields_compact(
+    objs,
+    mem,
+    groups,
+    query,
+    netindex_off,
+    include_inherited=False,
+):
+    target = _resolve_one_uclass(objs, groups, query)
+    if target is None:
+        return None
+
+    package_bases = _active_default_package_bases(
+        objs, mem, groups, netindex_off
+    )
+    chain = _class_chain_root_to_target(objs, mem, target)
+    if not chain:
+        return None
+
+    derived = _reconstruct_classnet_field_map(
+        objs, mem, chain, netindex_off, package_bases
+    )
+    if derived is None:
+        print("!! невозможно построить derived ClassNetCache mapping")
+        return None
+
+    # Prefer actual heap cache when it exists, but the output remains usable
+    # for classes whose cache has not yet been instantiated by UE3.
+    live = _find_live_classnetcache_quiet(objs, mem, target)
+    if live is not None:
+        field_map = live["field_map"]
+        source = "LIVE heap FClassNetCache"
+        field_max = live["cache"]["get_max_index"]
+        own_base = live["cache"]["fields_base"]
+        own_fields = [
+            rec["field"]
+            for rec in (
+                _read_fieldnetcache_records(
+                    objs,
+                    mem,
+                    live["cache"]["fields_data"],
+                    live["cache"]["fields_num"],
+                    limit=None,
+                ) or []
+            )
+        ]
+    else:
+        field_map = derived["field_map"]
+        source = "DERIVED from UClass::NetFields + PackageMap"
+        target_row = derived["rows"][-1]
+        own_base = target_row["fields_base"]
+        field_max = target_row["max_index"]
+        own_fields = _supported_direct_netfields(
+            objs, mem, target, netindex_off, package_bases
+        )
+
+    parent = _class_super(mem, objs, target, verbose=False)
+    parent_name = objs.path(parent) if parent else "<none>"
+    target_name = objs.name(target)
+    package = _outermost_package_name(objs, mem, target)
+
+    print("\n============================================================")
+    print("CLASS NETFIELDS: %s" % objs.path(target))
+    print("============================================================")
+    print(
+        "class %s extends %s"
+        % (
+            target_name,
+            objs.name(parent) if parent else "<none>",
+        )
+    )
+    print(
+        "  base=%d ownSlots=%d fieldMax=%d (%s) [%s] order=ordinal asc"
+        % (
+            own_base,
+            len(own_fields),
+            field_max,
+            source,
+            package,
+        )
+    )
+
+    fields_to_print = []
+    if include_inherited:
+        for cls in chain:
+            fields_to_print.extend(
+                _supported_direct_netfields(
+                    objs, mem, cls, netindex_off, package_bases
+                )
+            )
+    else:
+        fields_to_print = own_fields
+
+    # Deduplicate and sort by actual mapping handle.
+    unique = []
+    seen = set()
+    for field in fields_to_print:
+        if field in seen:
+            continue
+        seen.add(field)
+        if field in field_map:
+            unique.append(field)
+    unique.sort(key=lambda f: field_map[f]["field_index"])
+
+    for field in unique:
+        net = field_map[field]
+        kind = objs.class_name(field)
+        name = objs.name(field)
+        if kind == "Function":
+            flags, flags_text = _function_flags_data(mem, field)
+            kind_text = "function"
+            flag_text = flags_text
+        else:
+            flags = _try_u64(mem, field + UPROPERTY_FLAGS)
+            kind_text = "property"
+            flag_text = _property_flags_full_text(flags)
+        print(
+            "    %-4d %-42s [%-8s] %s"
+            % (
+                net["field_index"],
+                name,
+                kind_text,
+                flag_text,
+            )
+        )
+
+    print(
+        "\n  mappingSource=%s; UObject NetIndex and FieldIndex are separate spaces."
+        % source
+    )
+    print(
+        "  UFunction::FunctionFlags is read at +0x%X (stock UE3/APB layout); "
+        "verify against known RPCs when moving to another build."
+        % UFUNCTION_FLAGS
+    )
+    return {
+        "target": target,
+        "source": source,
+        "base": own_base,
+        "own_slots": len(own_fields),
+        "field_max": field_max,
+        "fields": unique,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# One-command structured UClass dump
+# ---------------------------------------------------------------------------
+
+def _resolve_uclass_query(objs, groups, query):
+    q = query.strip()
+    if not q:
+        return []
+
+    exact_path = []
+    exact_name = []
+    q_lower = q.lower()
+    partial = []
+
+    for o in _iter_all_group_objects(groups):
+        try:
+            if objs.class_name(o) != "Class":
+                continue
+            name = objs.name(o)
+            path = objs.path(o)
+        except Exception:
+            continue
+
+        if path == q:
+            exact_path.append(o)
+        elif name == q:
+            exact_name.append(o)
+        elif q_lower in name.lower() or q_lower in path.lower():
+            partial.append(o)
+
+    if exact_path:
+        return exact_path
+    if exact_name:
+        return exact_name
+    return partial
+
+
+def _object_net_identity(
+    objs,
+    mem,
+    obj,
+    netindex_off,
+    package_bases,
+):
+    try:
+        package = _outermost_package_name(
+            objs,
+            mem,
+            obj,
+        )
+    except Exception:
+        package = None
+
+    raw = mem.try_u32(
+        obj + netindex_off,
+        None,
+    )
+    local_netindex = (
+        sgn32(raw)
+        if raw is not None
+        else None
+    )
+
+    global_netindex = None
+    base_info = package_bases.get(package)
+
+    if (
+        base_info is not None
+        and local_netindex is not None
+        and 0 <= local_netindex < base_info["count"]
+    ):
+        global_netindex = (
+            base_info["base"]
+            + local_netindex
+        )
+
+    return {
+        "package": package,
+        "local_netindex": local_netindex,
+        "global_netindex": global_netindex,
+    }
+
+
+def _walk_struct_children(
+    objs,
+    mem,
+    struct_obj,
+    max_nodes=20000,
+):
+    # UClass/UState/UFunction all derive from UStruct in this target.
+    return _walk_function_children(
+        objs,
+        mem,
+        struct_obj,
+        max_nodes=max_nodes,
+    )
+
+
+def _function_signature_data(
+    objs,
+    mem,
+    fn,
+    netindex_off,
+    package_bases,
+):
+    ident = _object_net_identity(
+        objs,
+        mem,
+        fn,
+        netindex_off,
+        package_bases,
+    )
+
+    children = _walk_function_children(
+        objs,
+        mem,
+        fn,
+    )
+
+    params = []
+    returns = []
+
+    for child in children:
+        obj = child["obj"]
+        cls = child["class"]
+
+        if not cls.endswith("Property"):
+            continue
+
+        flags = _try_u64(
+            mem,
+            obj + UPROPERTY_FLAGS,
+        )
+
+        if flags is None or not (flags & CPF_PARM):
+            continue
+
+        row = {
+            "address": obj,
+            "name": child["name"],
+            "path": child["path"],
+            "type": cls,
+            "offset": mem.try_u32(
+                obj + UPROPERTY_OFFSET_LIVE,
+                None,
+            ),
+            "element_size": mem.try_u32(
+                obj + UPROPERTY_ELEMENT_SIZE,
+                None,
+            ),
+            "array_dim": mem.try_u32(
+                obj + UPROPERTY_ARRAY_DIM,
+                None,
+            ),
+            "property_size": mem.try_u32(
+                obj + UPROPERTY_PROPERTY_SIZE,
+                None,
+            ),
+            "flags": flags,
+            "flags_text": _format_property_flags(flags),
+            "details": _property_type_details(
+                objs,
+                mem,
+                obj,
+            ),
+        }
+
+        if flags & CPF_RETURN_PARM:
+            returns.append(row)
+        else:
+            params.append(row)
+
+    return {
+        "address": fn,
+        "name": objs.name(fn),
+        "path": objs.path(fn),
+        "package": ident["package"],
+        "local_netindex": ident["local_netindex"],
+        "global_netindex": ident["global_netindex"],
+        "property_size": mem.try_u32(
+            fn + 0x54,
+            None,
+        ),
+        "params": params,
+        "returns": returns,
+    }
+
+
+def _collect_class_reflection_members(
+    objs,
+    mem,
+    class_chain_root_to_target,
+    netindex_off,
+    package_bases,
+):
+    properties = []
+    functions = []
+    other = []
+
+    for cls_obj in class_chain_root_to_target:
+        owner_path = objs.path(cls_obj)
+        direct = _walk_struct_children(
+            objs,
+            mem,
+            cls_obj,
+        )
+
+        for child in direct:
+            obj = child["obj"]
+            kind = child["class"]
+
+            if kind.endswith("Property"):
+                flags = _try_u64(
+                    mem,
+                    obj + UPROPERTY_FLAGS,
+                )
+
+                # Parameters belong to UFunctions, not directly to a UClass;
+                # this is only a defensive guard.
+                if flags is not None and (flags & CPF_PARM):
+                    continue
+
+                ident = _object_net_identity(
+                    objs,
+                    mem,
+                    obj,
+                    netindex_off,
+                    package_bases,
+                )
+
+                properties.append({
+                    "address": obj,
+                    "owner": owner_path,
+                    "name": child["name"],
+                    "path": child["path"],
+                    "type": kind,
+                    "offset": mem.try_u32(
+                        obj + UPROPERTY_OFFSET_LIVE,
+                        None,
+                    ),
+                    "element_size": mem.try_u32(
+                        obj + UPROPERTY_ELEMENT_SIZE,
+                        None,
+                    ),
+                    "array_dim": mem.try_u32(
+                        obj + UPROPERTY_ARRAY_DIM,
+                        None,
+                    ),
+                    "property_size": mem.try_u32(
+                        obj + UPROPERTY_PROPERTY_SIZE,
+                        None,
+                    ),
+                    "flags": flags,
+                    "flags_text": _format_property_flags(flags),
+                    "details": _property_type_details(
+                        objs,
+                        mem,
+                        obj,
+                    ),
+                    "package": ident["package"],
+                    "local_netindex": ident["local_netindex"],
+                    "global_netindex": ident["global_netindex"],
+                })
+                continue
+
+            if kind == "Function":
+                fn = _function_signature_data(
+                    objs,
+                    mem,
+                    obj,
+                    netindex_off,
+                    package_bases,
+                )
+                fn["owner"] = owner_path
+                fn["state"] = None
+                functions.append(fn)
+                continue
+
+            # State functions are UFunctions nested under UState rather than
+            # directly under the UClass. Include them so overrides such as
+            # cAPBPlayerController.Dead.ClientReceiveRespawnInfo are not lost.
+            if kind == "State":
+                state_path = child["path"]
+
+                for state_child in _walk_struct_children(
+                    objs,
+                    mem,
+                    obj,
+                ):
+                    if state_child["class"] != "Function":
+                        continue
+
+                    fn = _function_signature_data(
+                        objs,
+                        mem,
+                        state_child["obj"],
+                        netindex_off,
+                        package_bases,
+                    )
+                    fn["owner"] = owner_path
+                    fn["state"] = state_path
+                    functions.append(fn)
+
+                continue
+
+            other.append({
+                "address": obj,
+                "owner": owner_path,
+                "name": child["name"],
+                "path": child["path"],
+                "type": kind,
+            })
+
+    return properties, functions, other
+
+
+def _find_live_classnetcache_quiet(
+    objs,
+    mem,
+    target_class,
+):
+    expected_netfields = _get_class_netfields_for_validation(
+        objs,
+        mem,
+        target_class,
+    )
+
+    hits = _scan_process_u32(
+        mem.pid,
+        target_class,
+        max_hits=50000,
+    )
+
+    candidates = []
+
+    for hit in hits:
+        candidate = hit - FCLASSNETCACHE_CLASS
+
+        if candidate <= 0:
+            continue
+
+        parsed = _validate_classnetcache_candidate(
+            objs,
+            mem,
+            candidate,
+            target_class,
+            expected_netfields,
+        )
+
+        if parsed is not None:
+            candidates.append(parsed)
+
+    by_addr = {
+        c["addr"]: c
+        for c in candidates
+    }
+    candidates = list(by_addr.values())
+
+    if not candidates:
+        return None
+
+    candidates.sort(
+        key=lambda c: (
+            -c["sample_expected_member"],
+            -c["sample_valid_type"],
+            c["addr"],
+        )
+    )
+
+    cache = candidates[0]
+    chain = []
+    cur = cache
+    seen = set()
+
+    while cur and cur["addr"] not in seen:
+        seen.add(cur["addr"])
+        chain.append(cur)
+
+        super_addr = cur["super"]
+        if not super_addr:
+            break
+
+        parent = _validate_super_cache(
+            objs,
+            mem,
+            super_addr,
+        )
+
+        if parent is None:
+            break
+
+        cur = parent
+
+    field_map = {}
+
+    for cache_node in chain:
+        records = _read_fieldnetcache_records(
+            objs,
+            mem,
+            cache_node["fields_data"],
+            cache_node["fields_num"],
+            limit=None,
+        )
+
+        if records is None:
+            continue
+
+        for rec in records:
+            field_map[rec["field"]] = {
+                "field_index": rec["index"],
+                "condition_index": rec["condition"],
+                "source": "LIVE",
+            }
+
+    return {
+        "cache": cache,
+        "chain": chain,
+        "field_map": field_map,
+    }
+
+
+def _reconstruct_classnet_field_map(
+    objs,
+    mem,
+    class_chain_root_to_target,
+    netindex_off,
+    package_bases,
+):
+    if not package_bases:
+        return None
+
+    supported = {
+        pkg: info["count"]
+        for pkg, info in package_bases.items()
+    }
+
+    field_map = {}
+    next_handle = 0
+    rows = []
+
+    for cls_obj in class_chain_root_to_target:
+        netfields = _get_class_netfields_for_validation(
+            objs,
+            mem,
+            cls_obj,
+        )
+
+        fields_base = next_handle
+        added = 0
+
+        for field in netfields:
+            raw = mem.try_u32(
+                field + netindex_off,
+                None,
+            )
+
+            if raw is None:
+                continue
+
+            local_net = sgn32(raw)
+            pkg = _outermost_package_name(
+                objs,
+                mem,
+                field,
+            )
+
+            if (
+                local_net < 0
+                or pkg not in supported
+                or local_net >= supported[pkg]
+            ):
+                continue
+
+            field_map[field] = {
+                "field_index": next_handle,
+                "condition_index": None,
+                "source": "DERIVED",
+            }
+
+            next_handle += 1
+            added += 1
+
+        rows.append({
+            "class": objs.path(cls_obj),
+            "fields_base": fields_base,
+            "added": added,
+            "max_index": next_handle,
+        })
+
+    return {
+        "field_map": field_map,
+        "get_max_index": next_handle,
+        "rows": rows,
+    }
+
+
+def _fmt_optional_int(value, hex_mode=False):
+    if value is None:
+        return "-"
+    if hex_mode:
+        return "0x%X" % value
+    return str(value)
+
+
+def _compact_type_name(prop_type, details):
+    # Keep the exact reflection type authoritative; append pointed-to type
+    # metadata instead of pretending to reconstruct full C++ declarations.
+    if details:
+        return "%s {%s}" % (prop_type, details)
+    return prop_type
+
+
+def dump_class_structured(
+    objs,
+    mem,
+    groups,
+    query,
+    netindex_off,
+    json_path=None,
+):
+    print(
+        "\n============================================================"
+    )
+    print(
+        "CLASS DUMP: %s"
+        % query
+    )
+    print(
+        "============================================================"
+    )
+
+    matches = _resolve_uclass_query(
+        objs,
+        groups,
+        query,
+    )
+
+    if not matches:
+        print("!! UClass не найден")
+        return None
+
+    if len(matches) != 1:
+        print(
+            "!! запрос неоднозначен: найдено %d UClass"
+            % len(matches)
+        )
+        for cls_obj in matches[:50]:
+            print(
+                "   0x%08X %s"
+                % (
+                    cls_obj,
+                    objs.path(cls_obj),
+                )
+            )
+        if len(matches) > 50:
+            print(
+                "   ... ещё %d"
+                % (len(matches) - 50)
+            )
+        print(
+            "   Укажи полный Package.Class."
+        )
+        return None
+
+    target_class = matches[0]
+    target_path = objs.path(target_class)
+
+    package_bases = _active_default_package_bases(
+        objs,
+        mem,
+        groups,
+        netindex_off,
+    )
+
+    target_ident = _object_net_identity(
+        objs,
+        mem,
+        target_class,
+        netindex_off,
+        package_bases,
+    )
+
+    # Target -> root, then root -> target.
+    chain_target_to_root = []
+    cur = target_class
+    seen = set()
+
+    while cur and cur not in seen and len(chain_target_to_root) < 128:
+        seen.add(cur)
+        chain_target_to_root.append(cur)
+        cur = _class_super(
+            mem,
+            objs,
+            cur,
+            verbose=False,
+        )
+
+    chain = list(reversed(chain_target_to_root))
+
+    print("\n[CLASS]")
+    print(
+        "  Path              : %s"
+        % target_path
+    )
+    print(
+        "  Address           : 0x%08X"
+        % target_class
+    )
+    print(
+        "  Package           : %s"
+        % (target_ident["package"] or "-")
+    )
+    print(
+        "  UObject NetIndex  : %s (local package index)"
+        % _fmt_optional_int(
+            target_ident["local_netindex"],
+        )
+    )
+    print(
+        "  Global NetIndex   : %s (current PackageMap)"
+        % _fmt_optional_int(
+            target_ident["global_netindex"],
+        )
+    )
+
+    print("\n[INHERITANCE] root -> target")
+    for depth, cls_obj in enumerate(chain):
+        ident = _object_net_identity(
+            objs,
+            mem,
+            cls_obj,
+            netindex_off,
+            package_bases,
+        )
+
+        print(
+            "  %2d 0x%08X %-55s "
+            "localNet=%-7s globalNet=%s"
+            % (
+                depth,
+                cls_obj,
+                objs.path(cls_obj),
+                _fmt_optional_int(
+                    ident["local_netindex"],
+                ),
+                _fmt_optional_int(
+                    ident["global_netindex"],
+                ),
+            )
+        )
+
+    print("\n[NETWORK CACHE]")
+    live_cache = _find_live_classnetcache_quiet(
+        objs,
+        mem,
+        target_class,
+    )
+
+    if live_cache is not None:
+        network_source = "LIVE"
+        network_map = live_cache["field_map"]
+        get_max_index = live_cache["cache"]["get_max_index"]
+
+        print(
+            "  Source            : LIVE heap FClassNetCache"
+        )
+        print(
+            "  Cache address     : 0x%08X"
+            % live_cache["cache"]["addr"]
+        )
+        print(
+            "  GetMaxIndex       : %d"
+            % get_max_index
+        )
+        print(
+            "  Cache chain nodes : %d"
+            % len(live_cache["chain"])
+        )
+    else:
+        derived = _reconstruct_classnet_field_map(
+            objs,
+            mem,
+            chain,
+            netindex_off,
+            package_bases,
+        )
+
+        if derived is not None:
+            network_source = "DERIVED"
+            network_map = derived["field_map"]
+            get_max_index = derived["get_max_index"]
+
+            print(
+                "  Source            : DERIVED from UClass::NetFields "
+                "+ current PackageMap"
+            )
+            print(
+                "  GetMaxIndex       : %d [DERIVED, not direct heap proof]"
+                % get_max_index
+            )
+        else:
+            network_source = "NONE"
+            network_map = {}
+            get_max_index = None
+
+            print(
+                "  Source            : unavailable"
+            )
+            print(
+                "  FieldIndex        : cannot be assigned"
+            )
+
+    properties, functions, other = _collect_class_reflection_members(
+        objs,
+        mem,
+        chain,
+        netindex_off,
+        package_bases,
+    )
+
+    for row in properties:
+        net = network_map.get(row["address"])
+        row["field_index"] = (
+            net["field_index"]
+            if net is not None
+            else None
+        )
+        row["condition_index"] = (
+            net["condition_index"]
+            if net is not None
+            else None
+        )
+        row["field_index_source"] = (
+            net["source"]
+            if net is not None
+            else None
+        )
+
+    for row in functions:
+        net = network_map.get(row["address"])
+        row["field_index"] = (
+            net["field_index"]
+            if net is not None
+            else None
+        )
+        row["condition_index"] = (
+            net["condition_index"]
+            if net is not None
+            else None
+        )
+        row["field_index_source"] = (
+            net["source"]
+            if net is not None
+            else None
+        )
+
+    print(
+        "\n[PROPERTIES] %d total, inherited included"
+        % len(properties)
+    )
+    print(
+        "  Off      Type               Name"
+        "                              Owner"
+    )
+    print(
+        "  -------- ------------------ -------------------------------- "
+        "---------------------------------------------"
+    )
+
+    for p in properties:
+        off_text = _fmt_optional_int(
+            p["offset"],
+            hex_mode=True,
+        )
+
+        print(
+            "  %-8s %-18s %-32s %s"
+            % (
+                off_text,
+                p["type"],
+                p["name"],
+                p["owner"],
+            )
+        )
+        print(
+            "           addr=0x%08X localNet=%s globalNet=%s "
+            "FieldIndex=%s%s"
+            % (
+                p["address"],
+                _fmt_optional_int(
+                    p["local_netindex"],
+                ),
+                _fmt_optional_int(
+                    p["global_netindex"],
+                ),
+                _fmt_optional_int(
+                    p["field_index"],
+                ),
+                (
+                    " [%s]" % p["field_index_source"]
+                    if p["field_index_source"]
+                    else ""
+                ),
+            )
+        )
+        print(
+            "           Elem=%s Arr=%s PropSize=%s Flags=%s"
+            % (
+                _fmt_optional_int(
+                    p["element_size"],
+                    hex_mode=True,
+                ),
+                _fmt_optional_int(
+                    p["array_dim"],
+                ),
+                _fmt_optional_int(
+                    p["property_size"],
+                    hex_mode=True,
+                ),
+                p["flags_text"],
+            )
+        )
+        if p["condition_index"] is not None:
+            print(
+                "           ConditionIndex=%d"
+                % p["condition_index"]
+            )
+        if p["details"]:
+            print(
+                "           %s"
+                % p["details"]
+            )
+
+    print(
+        "\n[FUNCTIONS] %d total, inherited/state overrides included"
+        % len(functions)
+    )
+
+    for fn in functions:
+        scope = fn["owner"]
+        if fn["state"]:
+            scope += " :: state " + fn["state"]
+
+        return_text = "void"
+        if fn["returns"]:
+            return_text = ", ".join(
+                r["type"] + " " + r["name"]
+                for r in fn["returns"]
+            )
+
+        params_text = ", ".join(
+            "%s %s"
+            % (
+                p["type"],
+                p["name"],
+            )
+            for p in fn["params"]
+        )
+
+        print(
+            "\n  %s %s(%s)"
+            % (
+                return_text,
+                fn["name"],
+                params_text,
+            )
+        )
+        print(
+            "      owner=%s"
+            % scope
+        )
+        print(
+            "      addr=0x%08X localNet=%s globalNet=%s "
+            "FieldIndex=%s%s"
+            % (
+                fn["address"],
+                _fmt_optional_int(
+                    fn["local_netindex"],
+                ),
+                _fmt_optional_int(
+                    fn["global_netindex"],
+                ),
+                _fmt_optional_int(
+                    fn["field_index"],
+                ),
+                (
+                    " [%s]" % fn["field_index_source"]
+                    if fn["field_index_source"]
+                    else ""
+                ),
+            )
+        )
+        if fn["condition_index"] is not None:
+            print(
+                "      ConditionIndex=%d"
+                % fn["condition_index"]
+            )
+        print(
+            "      ParamsFrame/PropertySize=%s"
+            % _fmt_optional_int(
+                fn["property_size"],
+                hex_mode=True,
+            )
+        )
+
+        for i, p in enumerate(fn["params"]):
+            print(
+                "      param[%02d] %-18s %-28s "
+                "off=%s elem=%s arr=%s"
+                % (
+                    i,
+                    p["type"],
+                    p["name"],
+                    _fmt_optional_int(
+                        p["offset"],
+                        hex_mode=True,
+                    ),
+                    _fmt_optional_int(
+                        p["element_size"],
+                        hex_mode=True,
+                    ),
+                    _fmt_optional_int(
+                        p["array_dim"],
+                    ),
+                )
+            )
+            if p["details"]:
+                print(
+                    "                %s"
+                    % p["details"]
+                )
+
+        for p in fn["returns"]:
+            print(
+                "      return    %-18s %-28s off=%s"
+                % (
+                    p["type"],
+                    p["name"],
+                    _fmt_optional_int(
+                        p["offset"],
+                        hex_mode=True,
+                    ),
+                )
+            )
+            if p["details"]:
+                print(
+                    "                %s"
+                    % p["details"]
+                )
+
+    networked_properties = sum(
+        1
+        for p in properties
+        if p["field_index"] is not None
+    )
+    networked_functions = sum(
+        1
+        for fn in functions
+        if fn["field_index"] is not None
+    )
+
+    print("\n[SUMMARY]")
+    print(
+        "  Properties        : %d (%d networked)"
+        % (
+            len(properties),
+            networked_properties,
+        )
+    )
+    print(
+        "  Functions         : %d (%d networked/RPC)"
+        % (
+            len(functions),
+            networked_functions,
+        )
+    )
+    print(
+        "  Other UField nodes: %d"
+        % len(other)
+    )
+    print(
+        "  Network mapping   : %s"
+        % network_source
+    )
+    print(
+        "  GetMaxIndex       : %s"
+        % _fmt_optional_int(get_max_index)
+    )
+    print(
+        "\n  IMPORTANT: UObject NetIndex/global NetIndex and "
+        "FClassNetCache FieldIndex are different index spaces."
+    )
+
+    report = {
+        "query": query,
+        "class": {
+            "address": target_class,
+            "path": target_path,
+            "package": target_ident["package"],
+            "local_netindex": target_ident["local_netindex"],
+            "global_netindex": target_ident["global_netindex"],
+        },
+        "inheritance": [
+            {
+                "address": cls_obj,
+                "path": objs.path(cls_obj),
+                **_object_net_identity(
+                    objs,
+                    mem,
+                    cls_obj,
+                    netindex_off,
+                    package_bases,
+                ),
+            }
+            for cls_obj in chain
+        ],
+        "network": {
+            "source": network_source,
+            "get_max_index": get_max_index,
+            "cache_address": (
+                live_cache["cache"]["addr"]
+                if live_cache is not None
+                else None
+            ),
+        },
+        "properties": properties,
+        "functions": functions,
+        "other_fields": other,
+    }
+
+    if json_path:
+        out_path = Path(json_path)
+        out_path.write_text(
+            json.dumps(
+                report,
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+            newline="\n",
+        )
+        print(
+            "\n[JSON] written: %s"
+            % out_path
+        )
+
+    return report
+
+# ---------------------------------------------------------------------------
+# Old-CSV signature guided native struct storage discovery
+# ---------------------------------------------------------------------------
+
+def _csv_is_empty(value):
+    if value is None:
+        return True
+    text = str(value).strip()
+    if not text:
+        return True
+    return text.lower() in ("nan", "none", "null")
+
+
+def _csv_number(value):
+    if _csv_is_empty(value):
+        return None
+    text = str(value).strip()
+    try:
+        if any(c in text.lower() for c in (".", "e")):
+            v = float(text)
+            if not math.isfinite(v):
+                return None
+            return v
+        return int(text, 0)
+    except Exception:
+        try:
+            v = float(text)
+            if not math.isfinite(v):
+                return None
+            return v
+        except Exception:
+            return None
+
+
+def _schema_column_runtime_offset(mem, col):
+    prop = col["prop"]
+    off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+    elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None) or 1
+    if off is None:
+        return None
+    return int(off) + int(col.get("element_index", 0)) * int(elem)
+
+
+def _csv_supported_schema(schema):
+    supported = {}
+    for col in schema:
+        cls = col["class"]
+        if cls in (
+            "BoolProperty",
+            "ByteProperty",
+            "IntProperty",
+            "UIntProperty",
+            "FloatProperty",
+            "DoubleProperty",
+            "StrProperty",
+        ):
+            supported[col["column"]] = col
+    return supported
+
+
+def _csv_compare_value(runtime_value, csv_value, cls):
+    if _csv_is_empty(csv_value):
+        return None
+
+    if cls == "StrProperty":
+        old = str(csv_value).replace("\r\n", "\n").replace("\r", "\n").strip()
+        cur = "" if runtime_value is None else str(runtime_value)
+        cur = cur.replace("\r\n", "\n").replace("\r", "\n").strip()
+        return cur == old
+
+    old_num = _csv_number(csv_value)
+    if old_num is None or runtime_value is None:
+        return None
+
+    try:
+        if cls in ("FloatProperty", "DoubleProperty"):
+            cur = float(runtime_value)
+            old = float(old_num)
+            if not math.isfinite(cur):
+                return False
+            tol = max(1.0e-4, abs(old) * 2.5e-4)
+            return abs(cur - old) <= tol
+
+        return int(runtime_value) == int(old_num)
+    except Exception:
+        return False
+
+
+def _strict_row_semantics(objs, mem, base, schema):
+    """
+    Independent current-build sanity checks.
+    This does NOT compare against the old CSV.
+    """
+    checked = 0
+    good = 0
+    nonempty_strings = 0
+
+    # Bool backing words: no unknown bits outside the reflected masks.
+    bool_masks = defaultdict(int)
+    bool_offsets = {}
+    for col in schema:
+        if col["class"] != "BoolProperty":
+            continue
+        prop = col["prop"]
+        off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+        if off is None:
+            continue
+        mask = mem.try_u32(prop + UPROPERTY_TYPE_SLOT, 0) or 0
+        bool_masks[int(off)] |= int(mask)
+        bool_offsets[int(off)] = prop
+
+    for off, mask in bool_masks.items():
+        raw = mem.try_u32(base + off, None)
+        checked += 1
+        if raw is not None and (raw & ~mask) == 0:
+            good += 1
+
+    # Byte enums have a real reflected cardinality in this build.
+    seen_byte_props = set()
+    for col in schema:
+        if col["class"] != "ByteProperty":
+            continue
+        prop = col["prop"]
+        if prop in seen_byte_props:
+            continue
+        seen_byte_props.add(prop)
+
+        slot = mem.try_u32(prop + UPROPERTY_TYPE_SLOT, None)
+        if not slot:
+            continue
+        info = _read_enum_names(objs, mem, slot, limit=1)
+        if info is None or info["num"] <= 0:
+            continue
+
+        off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+        arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None) or 1
+        elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None) or 1
+        if off is None:
+            continue
+
+        for j in range(min(int(arrdim), 8)):
+            try:
+                v = mem.read(base + off + j * elem, 1)[0]
+            except Exception:
+                checked += 1
+                continue
+            checked += 1
+            # Allow 0xFF as a common enum "none"/sentinel representation.
+            if v == 0xFF or v < info["num"]:
+                good += 1
+
+    # FString headers and contents must be structurally valid.
+    seen_string_props = set()
+    for col in schema:
+        if col["class"] != "StrProperty":
+            continue
+        prop = col["prop"]
+        if prop in seen_string_props:
+            continue
+        seen_string_props.add(prop)
+
+        off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+        arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None) or 1
+        elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None) or 12
+        if off is None:
+            continue
+
+        for j in range(min(int(arrdim), 4)):
+            addr = base + off + j * elem
+            checked += 2
+            if _validate_fstring_header(mem, addr):
+                good += 2
+                nr = mem.try_u32(addr + 4, None)
+                if nr is not None and sgn32(nr) > 1:
+                    nonempty_strings += 1
+
+    # Float data should be finite and within a broad gameplay range.
+    for col in schema:
+        cls = col["class"]
+        if cls not in ("FloatProperty", "DoubleProperty"):
+            continue
+        off = _schema_column_runtime_offset(mem, col)
+        if off is None:
+            continue
+        checked += 1
+        try:
+            if cls == "DoubleProperty":
+                v = struct.unpack("<d", mem.read(base + off, 8))[0]
+            else:
+                v = struct.unpack("<f", mem.read(base + off, 4))[0]
+            if math.isfinite(v) and abs(v) <= 1.0e8:
+                good += 1
+        except Exception:
+            pass
+
+    # Int fields with enum-ish naming should not look like arbitrary pointers.
+    for col in schema:
+        if col["class"] not in ("IntProperty", "UIntProperty"):
+            continue
+        name = col["column"].lower()
+        if not (name.startswith("m_e") or name.startswith("e")):
+            continue
+        off = _schema_column_runtime_offset(mem, col)
+        if off is None:
+            continue
+        checked += 1
+        try:
+            raw = mem.read(base + off, 4)
+            if col["class"] == "UIntProperty":
+                v = struct.unpack("<I", raw)[0]
+                if v <= 1_000_000:
+                    good += 1
+            else:
+                v = struct.unpack("<i", raw)[0]
+                if -1 <= v <= 1_000_000:
+                    good += 1
+        except Exception:
+            pass
+
+    ratio = (float(good) / checked) if checked else 1.0
+    return {
+        "good": good,
+        "checked": checked,
+        "ratio": ratio,
+        "nonempty_strings": nonempty_strings,
+    }
+
+
+def _match_row_to_csv(objs, mem, known_objects, base, row, shared_cols):
+    compared = 0
+    matched = 0
+    mismatches = []
+
+    for name, col in shared_cols.items():
+        old = row.get(name)
+        if _csv_is_empty(old):
+            continue
+
+        cur = _sdd_scalar_at(
+            objs,
+            mem,
+            known_objects,
+            base,
+            col["prop"],
+            col.get("element_index", 0),
+        )
+
+        ok = _csv_compare_value(cur, old, col["class"])
+        if ok is None:
+            continue
+
+        compared += 1
+        if ok:
+            matched += 1
+        elif len(mismatches) < 8:
+            mismatches.append((name, old, cur))
+
+    ratio = (float(matched) / compared) if compared else 0.0
+    return {
+        "compared": compared,
+        "matched": matched,
+        "ratio": ratio,
+        "mismatches": mismatches,
+    }
+
+
+def _csv_anchor_candidates(rows, shared_cols, mem, requested=None):
+    """
+    Return (rarity, magnitude, row_index, column_name, int_value, runtime_offset)
+    tuples. Only 32-bit integer current fields are used because the existing
+    process scanner can search them efficiently and exactly.
+    """
+    allowed = {}
+    for name, col in shared_cols.items():
+        if col["class"] not in ("IntProperty", "UIntProperty"):
+            continue
+        if requested and name.lower() != requested.lower():
+            continue
+        off = _schema_column_runtime_offset(mem, col)
+        if off is None:
+            continue
+        allowed[name] = (col, off)
+
+    if requested and not allowed:
+        return []
+
+    frequencies = {}
+    for name in allowed:
+        freq = defaultdict(int)
+        for row in rows:
+            v = _csv_number(row.get(name))
+            if v is None:
+                continue
+            try:
+                iv = int(v)
+            except Exception:
+                continue
+            if float(v) != float(iv):
+                continue
+            freq[iv] += 1
+        frequencies[name] = freq
+
+    anchors = []
+    for ri, row in enumerate(rows):
+        for name, (col, off) in allowed.items():
+            v = _csv_number(row.get(name))
+            if v is None:
+                continue
+            try:
+                iv = int(v)
+            except Exception:
+                continue
+            if float(v) != float(iv):
+                continue
+            # Zero produces too many raw hits and carries little identity.
+            if iv == 0:
+                continue
+            if col["class"] == "UIntProperty" and not (0 <= iv <= 0xFFFFFFFF):
+                continue
+            if col["class"] == "IntProperty" and not (-0x80000000 <= iv <= 0x7FFFFFFF):
+                continue
+
+            freq = frequencies[name].get(iv, 999999)
+            # Prefer values that occur once in the old table and larger
+            # magnitudes (fewer accidental occurrences in arbitrary memory).
+            anchors.append(
+                (
+                    freq,
+                    -min(abs(iv), 2_000_000_000),
+                    ri,
+                    name,
+                    iv,
+                    off,
+                )
+            )
+
+    anchors.sort()
+    return anchors
+
+
+def scan_struct_csv_signature(
+    objs,
+    mem,
+    groups,
+    struct_query,
+    csv_path,
+    anchor_field=None,
+    anchor_rows=8,
+    min_row_match=0.70,
+    min_semantic=0.85,
+    max_hits=150000,
+    max_results=20,
+    validate_prefix=12,
+):
+    st = _resolve_one_struct(objs, groups, struct_query)
+    if st is None:
+        return None
+
+    stride = mem.try_u32(st + 0x54, None)
+    if not isinstance(stride, int) or stride <= 0:
+        print("!! bad struct PropertySize/stride")
+        return None
+
+    path = Path(csv_path)
+    if not path.exists():
+        print("!! signature CSV not found: %s" % csv_path)
+        return None
+
+    with path.open("r", newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+        csv_fields = list(reader.fieldnames or [])
+
+    if not rows:
+        print("!! signature CSV has no rows")
+        return None
+
+    schema = _sdd_expand_row_schema(objs, mem, st)
+    supported = _csv_supported_schema(schema)
+    shared_names = [name for name in csv_fields if name in supported]
+    shared = {name: supported[name] for name in shared_names}
+
+    print("\n============================================================")
+    print("STRUCT CSV SIGNATURE SCAN: %s" % objs.path(st))
+    print("============================================================")
+    print("  current stride       : 0x%X (%d)" % (stride, stride))
+    print("  old CSV              : %s" % csv_path)
+    print("  old CSV rows         : %d" % len(rows))
+    print("  old CSV columns      : %d" % len(csv_fields))
+    print("  current columns      : %d" % len(schema))
+    print("  exact shared columns : %d" % len(shared_names))
+    if shared_names:
+        print("    %s" % ", ".join(shared_names))
+    print("  NOTE: CSV supplies signatures only; current reflection owns the layout.")
+
+    if len(shared_names) < 3:
+        print("!! too few exact shared columns for a useful signature scan")
+        return []
+
+    anchors = _csv_anchor_candidates(
+        rows,
+        shared,
+        mem,
+        requested=anchor_field,
+    )
+
+    if not anchors:
+        print("!! no usable 32-bit integer anchor column/value found")
+        if anchor_field:
+            print("   requested --csv-anchor: %s" % anchor_field)
+        return []
+
+    # Keep one or a few highly distinctive anchors per old row, while
+    # spreading anchors across different rows.
+    chosen = []
+    seen_rows = set()
+    for item in anchors:
+        ri = item[2]
+        if ri in seen_rows:
+            continue
+        chosen.append(item)
+        seen_rows.add(ri)
+        if len(chosen) >= max(1, int(anchor_rows)):
+            break
+
+    print("\n[ANCHORS]")
+    for freq, negmag, ri, name, value, off in chosen:
+        print(
+            "  oldRow=%-4d %-32s value=%-12d currentOff=0x%X oldFrequency=%d"
+            % (ri, name, value, off, freq)
+        )
+
+    known = _known_object_addresses(groups)
+    base_votes = defaultdict(list)
+    raw_row_candidates = 0
+
+    for freq, negmag, ri, name, value, off in chosen:
+        hits = _scan_process_u32(mem.pid, value, max_hits=max_hits)
+        print(
+            "  scan %-32s=%d -> %d raw hits"
+            % (name, value, len(hits))
+        )
+
+        for hit in hits:
+            row_base = hit - off
+            if row_base < 0x10000 or (row_base & 0x3):
+                continue
+
+            try:
+                mem.read(row_base, min(stride, 16))
+            except Exception:
+                continue
+
+            semantic = _strict_row_semantics(
+                objs,
+                mem,
+                row_base,
+                schema,
+            )
+            if semantic["ratio"] < min_semantic:
+                continue
+
+            matched = _match_row_to_csv(
+                objs,
+                mem,
+                known,
+                row_base,
+                rows[ri],
+                shared,
+            )
+            if matched["compared"] < min(4, len(shared_names)):
+                continue
+            if matched["ratio"] < min_row_match:
+                continue
+
+            raw_row_candidates += 1
+            table_base = row_base - ri * stride
+            if table_base < 0x10000:
+                continue
+
+            base_votes[table_base].append(
+                {
+                    "row_index": ri,
+                    "row_base": row_base,
+                    "anchor": name,
+                    "anchor_value": value,
+                    "row_match": matched,
+                    "semantic": semantic,
+                }
+            )
+
+    print("\n  signature-compatible row hits: %d" % raw_row_candidates)
+    print("  candidate table bases        : %d" % len(base_votes))
+
+    results = []
+    prefix_n = min(len(rows), max(1, int(validate_prefix)))
+
+    for table_base, votes in base_votes.items():
+        total_compared = 0
+        total_matched = 0
+        good_rows = 0
+        semantic_good = 0
+        prefix_details = []
+
+        for ri in range(prefix_n):
+            row_base = table_base + ri * stride
+            try:
+                mem.read(row_base, min(stride, 16))
+            except Exception:
+                continue
+
+            semantic = _strict_row_semantics(
+                objs,
+                mem,
+                row_base,
+                schema,
+            )
+            if semantic["ratio"] >= min_semantic:
+                semantic_good += 1
+
+            m = _match_row_to_csv(
+                objs,
+                mem,
+                known,
+                row_base,
+                rows[ri],
+                shared,
+            )
+            total_compared += m["compared"]
+            total_matched += m["matched"]
+            if (
+                m["compared"] >= min(4, len(shared_names))
+                and m["ratio"] >= min_row_match
+                and semantic["ratio"] >= min_semantic
+            ):
+                good_rows += 1
+
+            if ri < 5:
+                prefix_details.append(
+                    (ri, m["matched"], m["compared"], m["ratio"], semantic["ratio"])
+                )
+
+        field_ratio = (
+            float(total_matched) / total_compared
+            if total_compared
+            else 0.0
+        )
+
+        # Multiple independently-found anchor rows voting for the exact same
+        # base are very strong evidence.
+        unique_vote_rows = len(set(v["row_index"] for v in votes))
+        score = (
+            field_ratio * 100.0
+            + good_rows * 4.0
+            + semantic_good * 1.5
+            + unique_vote_rows * 12.0
+        )
+
+        results.append(
+            {
+                "data": table_base,
+                "votes": votes,
+                "vote_rows": unique_vote_rows,
+                "prefix_rows": prefix_n,
+                "good_rows": good_rows,
+                "semantic_good": semantic_good,
+                "matched": total_matched,
+                "compared": total_compared,
+                "field_ratio": field_ratio,
+                "score": score,
+                "prefix_details": prefix_details,
+            }
+        )
+
+    results.sort(
+        key=lambda r: (
+            -r["vote_rows"],
+            -r["good_rows"],
+            -r["field_ratio"],
+            -r["score"],
+            r["data"],
+        )
+    )
+
+    print("\n[CANDIDATE DATA BASES] total=%d showing<=%d" % (
+        len(results), max_results
+    ))
+
+    if not results:
+        print("  <none>")
+        print(
+            "  No old-order signature matched strongly enough. "
+            "This can mean reordered rows, substantially changed values, "
+            "or a non-contiguous/container layout."
+        )
+        return []
+
+    for i, r in enumerate(results[:max_results]):
+        print(
+            "  #%02d Data=0x%08X votes=%d goodPrefix=%d/%d "
+            "fieldMatch=%.1f%% semantic=%d/%d score=%.2f"
+            % (
+                i,
+                r["data"],
+                r["vote_rows"],
+                r["good_rows"],
+                r["prefix_rows"],
+                r["field_ratio"] * 100.0,
+                r["semantic_good"],
+                r["prefix_rows"],
+                r["score"],
+            )
+        )
+        for ri, ma, co, ratio, sem in r["prefix_details"]:
+            print(
+                "       oldRow=%-3d fields=%d/%d (%.1f%%) semantic=%.1f%%"
+                % (
+                    ri, ma, co, ratio * 100.0, sem * 100.0
+                )
+            )
+
+    print("\n  Inspect/export a DATA candidate (not a TArray header):")
+    print(
+        "    --dump-struct-run %s --data-address 0xADDRESS "
+        "--row-count N --table-limit 8"
+        % objs.path(st)
+    )
+
+    return results
+
+
+def dump_struct_run(
+    objs,
+    mem,
+    groups,
+    struct_query,
+    data_addr,
+    row_count,
+    limit=None,
+    csv_path=None,
+    json_path=None,
+):
+    st = _resolve_one_struct(objs, groups, struct_query)
+    if st is None:
+        return None
+
+    stride = mem.try_u32(st + 0x54, None)
+    if not isinstance(stride, int) or stride <= 0:
+        print("!! bad struct stride")
+        return None
+
+    count = int(row_count)
+    if count <= 0 or count > 1_000_000:
+        print("!! invalid --row-count")
+        return None
+
+    try:
+        mem.read(data_addr, min(stride, 16))
+        mem.read(data_addr + (count - 1) * stride, min(stride, 16))
+    except Exception:
+        print("!! requested DATA range is not fully readable")
+        return None
+
+    schema = _sdd_expand_row_schema(objs, mem, st)
+    known = _known_object_addresses(groups)
+    take = count if limit is None else min(count, max(0, int(limit)))
+
+    rows = []
+    print("\n============================================================")
+    print("STRUCT CONTIGUOUS RUN DUMP: %s" % objs.path(st))
+    print("============================================================")
+    print("  Data    : 0x%08X" % data_addr)
+    print("  rows    : %d%s" % (
+        take,
+        " (limited from %d)" % count if take != count else "",
+    ))
+    print("  stride  : 0x%X" % stride)
+    print("  columns : %d" % len(schema))
+
+    for i in range(take):
+        base = data_addr + i * stride
+        row = {
+            "__index": i,
+            "__address": "0x%08X" % base,
+        }
+        for col in schema:
+            row[col["column"]] = _sdd_scalar_at(
+                objs,
+                mem,
+                known,
+                base,
+                col["prop"],
+                col.get("element_index", 0),
+            )
+        rows.append(row)
+
+        print("\n  [%d] @0x%08X" % (i, base))
+        for col in schema:
+            print(
+                "      %-36s = %r"
+                % (col["column"], row[col["column"]])
+            )
+
+    if csv_path:
+        fields = ["__index", "__address"] + [
+            c["column"] for c in schema
+        ]
+        with open(
+            csv_path,
+            "w",
+            newline="",
+            encoding="utf-8-sig",
+        ) as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            w.writerows(rows)
+        print("\nCSV saved: %s" % csv_path)
+
+    if json_path:
+        payload = {
+            "struct": objs.path(st),
+            "data": "0x%08X" % data_addr,
+            "row_count": count,
+            "stride": stride,
+            "rows": rows,
+        }
+        Path(json_path).write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print("JSON saved: %s" % json_path)
+
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Generic UScriptStruct / nested-struct inspection
+# ---------------------------------------------------------------------------
+
+_STRUCT_OBJECT_CLASSES = ("ScriptStruct", "Struct")
+
+
+def _resolve_struct_query(objs, groups, query):
+    q = query.strip()
+    qlow = q.lower()
+    exact_path = []
+    exact_name = []
+    suffix = []
+    contains = []
+
+    for o in _iter_all_group_objects(groups):
+        try:
+            kind = objs.class_name(o)
+            if kind not in _STRUCT_OBJECT_CLASSES:
+                continue
+            path = objs.path(o)
+            name = objs.name(o)
+        except Exception:
+            continue
+
+        plow = path.lower()
+        nlow = name.lower()
+
+        if plow == qlow:
+            exact_path.append(o)
+        elif nlow == qlow:
+            exact_name.append(o)
+        elif plow.endswith("." + qlow):
+            suffix.append(o)
+        elif qlow in plow:
+            contains.append(o)
+
+    for bucket in (exact_path, exact_name, suffix, contains):
+        if bucket:
+            return sorted(
+                set(bucket),
+                key=lambda o: (objs.path(o), o),
+            )
+
+    return []
+
+
+def _resolve_one_struct(objs, groups, query):
+    matches = _resolve_struct_query(objs, groups, query)
+
+    if not matches:
+        print("!! UScriptStruct/Struct не найден: %s" % query)
+        return None
+
+    if len(matches) != 1:
+        print("!! имя struct неоднозначно: %s" % query)
+        for o in matches[:100]:
+            print(
+                "   0x%08X %-12s %s"
+                % (
+                    o,
+                    objs.class_name(o),
+                    objs.path(o),
+                )
+            )
+        print("   Укажи полный path, например APBGame.cWeapon.WeaponType.")
+        return None
+
+    return matches[0]
+
+
+def _struct_chain_root_to_target(objs, mem, target):
+    chain = []
+    cur = target
+    seen = set()
+
+    while cur and cur not in seen and len(chain) < 128:
+        seen.add(cur)
+        chain.append(cur)
+        cur = mem.try_u32(cur + 0x4C, None) or 0
+
+    return list(reversed(chain))
+
+
+def _struct_direct_properties(objs, mem, struct_obj):
+    out = []
+
+    for child in _walk_struct_children(objs, mem, struct_obj):
+        if not child["class"].endswith("Property"):
+            continue
+
+        prop = child["obj"]
+        flags = _try_u64(mem, prop + UPROPERTY_FLAGS)
+
+        # Parameters are UFunction frame members, not data fields.
+        if flags is not None and (flags & CPF_PARM):
+            continue
+
+        out.append(prop)
+
+    out.sort(
+        key=lambda p: (
+            mem.try_u32(p + UPROPERTY_OFFSET_LIVE, 0x7FFFFFFF),
+            objs.name(p),
+            p,
+        )
+    )
+    return out
+
+
+def _expanded_column_count(objs, mem, props):
+    count = 0
+    for prop in props:
+        arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None) or 1
+        count += max(1, int(arrdim))
+    return count
+
+
+def dump_struct_schema(
+    objs,
+    mem,
+    groups,
+    query,
+    include_inherited=False,
+):
+    target = _resolve_one_struct(objs, groups, query)
+    if target is None:
+        return None
+
+    chain = (
+        _struct_chain_root_to_target(objs, mem, target)
+        if include_inherited
+        else [target]
+    )
+
+    print("\n============================================================")
+    print("STRUCT DUMP: %s" % objs.path(target))
+    print("============================================================")
+    print("  Address      : 0x%08X" % target)
+    print("  UObjectClass : %s" % objs.class_name(target))
+
+    size = mem.try_u32(target + 0x54, None)
+    super_obj = mem.try_u32(target + 0x4C, None) or 0
+
+    print(
+        "  PropertySize : %s"
+        % (("0x%X" % size) if isinstance(size, int) else "?")
+    )
+    print(
+        "  SuperStruct  : %s"
+        % (
+            _describe_object_ptr(objs, super_obj)
+            if super_obj
+            else "<null>"
+        )
+    )
+    print(
+        "  scope        : %s"
+        % ("own + inherited" if include_inherited else "own only")
+    )
+
+    if include_inherited:
+        print("\n[STRUCT INHERITANCE] root -> target")
+        for i, st in enumerate(chain):
+            st_size = mem.try_u32(st + 0x54, None)
+            print(
+                "  %2d 0x%08X %-70s size=%s"
+                % (
+                    i,
+                    st,
+                    objs.path(st),
+                    ("0x%X" % st_size)
+                    if isinstance(st_size, int)
+                    else "?",
+                )
+            )
+
+    rows = []
+
+    for owner in chain:
+        owner_path = objs.path(owner)
+        for prop in _struct_direct_properties(objs, mem, owner):
+            off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+            elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None)
+            arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None) or 1
+            flags = _try_u64(mem, prop + UPROPERTY_FLAGS)
+
+            rows.append(
+                {
+                    "prop": prop,
+                    "owner": owner_path,
+                    "offset": off,
+                    "type": objs.class_name(prop),
+                    "name": objs.name(prop),
+                    "element_size": elem,
+                    "array_dim": arrdim,
+                    "flags": flags,
+                    "details": _property_type_details(
+                        objs,
+                        mem,
+                        prop,
+                    ),
+                }
+            )
+
+    rows.sort(
+        key=lambda r: (
+            r["offset"]
+            if isinstance(r["offset"], int)
+            else 0x7FFFFFFF,
+            r["owner"],
+            r["name"],
+        )
+    )
+
+    print("\n[FIELDS]")
+    if not rows:
+        print("  <none>")
+    else:
+        print(
+            "  Off      Type               Name"
+            "                              Owner"
+        )
+        print(
+            "  -------- ------------------ "
+            "--------------------------------- "
+            "---------------------------------------------"
+        )
+
+        for row in rows:
+            off_text = (
+                "0x%X" % row["offset"]
+                if isinstance(row["offset"], int)
+                else "?"
+            )
+            elem_text = (
+                "0x%X" % row["element_size"]
+                if isinstance(row["element_size"], int)
+                else "?"
+            )
+
+            print(
+                "  %-8s %-18s %-33s %s"
+                % (
+                    off_text,
+                    row["type"],
+                    row["name"],
+                    row["owner"],
+                )
+            )
+            print(
+                "           addr=0x%08X Elem=%s Arr=%s Flags=%s"
+                % (
+                    row["prop"],
+                    elem_text,
+                    row["array_dim"],
+                    _property_flags_full_text(row["flags"]),
+                )
+            )
+            if row["details"]:
+                print("           %s" % row["details"])
+
+    print(
+        "\n[SUMMARY] direct/included properties=%d "
+        "CSV-style expanded columns=%d"
+        % (
+            len(rows),
+            _expanded_column_count(
+                objs,
+                mem,
+                [r["prop"] for r in rows],
+            ),
+        )
+    )
+
+    return {
+        "struct": target,
+        "path": objs.path(target),
+        "size": size,
+        "rows": rows,
+    }
+
+
+def list_nested_structs(
+    objs,
+    mem,
+    groups,
+    class_query,
+    keyword_text=None,
+    with_schema=False,
+):
+    cls_obj = _resolve_one_uclass(objs, groups, class_query)
+    if cls_obj is None:
+        return None
+
+    class_path = objs.path(cls_obj)
+    filters = tuple(
+        part.strip().lower()
+        for part in (keyword_text or "").split(",")
+        if part.strip()
+    )
+
+    matches = []
+
+    for o in _iter_all_group_objects(groups):
+        try:
+            kind = objs.class_name(o)
+            if kind not in _STRUCT_OBJECT_CLASSES:
+                continue
+            path = objs.path(o)
+        except Exception:
+            continue
+
+        if not path.startswith(class_path + "."):
+            continue
+
+        if filters:
+            low = path.lower()
+            if not any(f in low for f in filters):
+                continue
+
+        matches.append(o)
+
+    matches.sort(key=lambda o: (objs.path(o), o))
+
+    print("\n============================================================")
+    print("NESTED STRUCTS UNDER: %s" % class_path)
+    print("============================================================")
+    print(
+        "  filter : %s"
+        % (", ".join(filters) if filters else "<none>")
+    )
+    print("  count  : %d" % len(matches))
+
+    if not matches:
+        print("  <none>")
+        return []
+
+    for st in matches:
+        size = mem.try_u32(st + 0x54, None)
+        props = _struct_direct_properties(objs, mem, st)
+
+        print(
+            "\n  0x%08X %-12s %s"
+            % (
+                st,
+                objs.class_name(st),
+                objs.path(st),
+            )
+        )
+        print(
+            "      size=%s fields=%d expandedColumns=%d"
+            % (
+                ("0x%X" % size)
+                if isinstance(size, int)
+                else "?",
+                len(props),
+                _expanded_column_count(objs, mem, props),
+            )
+        )
+
+        if with_schema:
+            for prop in props:
+                off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+                elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None)
+                arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None) or 1
+                flags = _try_u64(mem, prop + UPROPERTY_FLAGS)
+
+                print(
+                    "      +%-6s %-18s %-32s "
+                    "Elem=%-6s Arr=%-3s Flags=%s"
+                    % (
+                        ("0x%X" % off)
+                        if isinstance(off, int)
+                        else "?",
+                        objs.class_name(prop),
+                        objs.name(prop),
+                        ("0x%X" % elem)
+                        if isinstance(elem, int)
+                        else "?",
+                        arrdim,
+                        _property_flags_full_text(flags),
+                    )
+                )
+
+                details = _property_type_details(objs, mem, prop)
+                if details:
+                    print("               %s" % details)
+
+    return matches
+
+
+def discover_sdd_classes(
+    objs,
+    groups,
+    keyword_text="sdd",
+):
+    filters = tuple(
+        part.strip().lower()
+        for part in keyword_text.split(",")
+        if part.strip()
+    )
+
+    matches = []
+
+    for o in _iter_all_group_objects(groups):
+        try:
+            if objs.class_name(o) != "Class":
+                continue
+            path = objs.path(o)
+            name = objs.name(o)
+        except Exception:
+            continue
+
+        low = (name + " " + path).lower()
+
+        if filters and not any(f in low for f in filters):
+            continue
+
+        matches.append(o)
+
+    matches.sort(key=lambda o: (objs.path(o), o))
+
+    print("\n============================================================")
+    print("SDD / CLASS DISCOVERY")
+    print("============================================================")
+    print("  filters: %s" % ", ".join(filters))
+    print("  count  : %d" % len(matches))
+
+    for o in matches:
+        print("  0x%08X %s" % (o, objs.path(o)))
+
+    return matches
+
+
+# ---------------------------------------------------------------------------
+# Generic native TArray<UScriptStruct> storage scan / dump
+# ---------------------------------------------------------------------------
+
+def _struct_validation_plan(objs, mem, struct_obj):
+    props = _struct_direct_properties(objs, mem, struct_obj)
+    bool_masks = defaultdict(int)
+    strings = []
+    floats = []
+    names = []
+    objects = []
+    arrays = []
+    enumish = []
+    keys = []
+
+    for p in props:
+        cls = objs.class_name(p)
+        name = objs.name(p)
+        off = mem.try_u32(p + UPROPERTY_OFFSET_LIVE, None)
+        if off is None:
+            continue
+        arrdim = mem.try_u32(p + UPROPERTY_ARRAY_DIM, None) or 1
+        elem = mem.try_u32(p + UPROPERTY_ELEMENT_SIZE, None) or 1
+        if cls == 'BoolProperty':
+            mask = mem.try_u32(p + UPROPERTY_TYPE_SLOT, 0) or 0
+            bool_masks[off] |= mask
+        elif cls == 'StrProperty':
+            strings.append((p, off, arrdim, elem))
+        elif cls in ('FloatProperty','DoubleProperty'):
+            floats.append((p, off, arrdim, elem))
+        elif cls == 'NameProperty':
+            names.append((p, off, arrdim, elem))
+        elif cls in ('ObjectProperty','ClassProperty','ComponentProperty'):
+            objects.append((p, off, arrdim, elem))
+        elif cls == 'ArrayProperty':
+            arrays.append((p, off, arrdim, elem))
+        elif cls in ('IntProperty','UIntProperty','ByteProperty'):
+            low=name.lower()
+            if low.startswith('m_e') or low.startswith('e'):
+                enumish.append((p, off, arrdim, elem))
+            if (
+                low in ('m_eweapontype','m_einventoryitemtype','m_evehicle','m_evehiclesetuptype')
+                or low.endswith('secondarykey')
+                or low.endswith('type')
+            ):
+                keys.append((p, off, arrdim, elem))
+
+    # prefer semantically strong ID/key fields first
+    keys.sort(key=lambda x: (
+        0 if objs.name(x[0]).lower() in (
+            'm_eweapontype','m_einventoryitemtype','m_evehicle','m_evehiclesetuptype'
+        ) else 1,
+        x[1], objs.name(x[0])
+    ))
+    return {
+        'props': props,
+        'bool_masks': dict(bool_masks),
+        'strings': strings,
+        'floats': floats,
+        'names': names,
+        'objects': objects,
+        'arrays': arrays,
+        'enumish': enumish,
+        'keys': keys,
+    }
+
+
+def _validate_fstring_header(mem, addr):
+    data=mem.try_u32(addr,None); num=mem.try_u32(addr+4,None); maxv=mem.try_u32(addr+8,None)
+    if data is None or num is None or maxv is None:
+        return False
+    num=sgn32(num); maxv=sgn32(maxv)
+    if num < 0 or maxv < num or maxv > 1_000_000 or num > 100_000:
+        return False
+    if num == 0:
+        return data in (0, None) or maxv >= 0
+    if not data:
+        return False
+    try:
+        raw=mem.read(data, min(num,16)*2)
+        raw.decode('utf-16-le','strict')
+        return True
+    except Exception:
+        return False
+
+
+def _validate_tarray_header(mem, addr):
+    data=mem.try_u32(addr,None); num=mem.try_u32(addr+4,None); maxv=mem.try_u32(addr+8,None)
+    if data is None or num is None or maxv is None:
+        return False
+    num=sgn32(num); maxv=sgn32(maxv)
+    if num < 0 or maxv < num or maxv > 1_000_000:
+        return False
+    if num == 0:
+        return True
+    if not data or (data & 0x3):
+        return False
+    try:
+        mem.read(data,1)
+        return True
+    except Exception:
+        return False
+
+
+def _read_numeric_key(mem, objs, prop, row_addr):
+    cls=objs.class_name(prop)
+    off=mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+    if off is None: return None
+    try:
+        if cls == 'ByteProperty':
+            return mem.read(row_addr+off,1)[0]
+        if cls == 'IntProperty':
+            return struct.unpack('<i',mem.read(row_addr+off,4))[0]
+        if cls == 'UIntProperty':
+            return struct.unpack('<I',mem.read(row_addr+off,4))[0]
+    except Exception:
+        return None
+    return None
+
+
+def _score_struct_rows(objs, mem, known_objects, data, num, stride, plan, sample_rows=8):
+    sample=min(max(1,int(sample_rows)), num)
+    if sample <= 0:
+        return None
+    # spread samples over the whole table instead of only its prefix
+    if sample == 1:
+        indices=[0]
+    else:
+        indices=sorted(set(int(round(i*(num-1)/(sample-1))) for i in range(sample)))
+
+    good=0.0; checks=0.0; hard_fail=False
+    key_values=defaultdict(list)
+
+    for ri in indices:
+        row=data + ri*stride
+        try:
+            mem.read(row, min(stride,16))
+        except Exception:
+            hard_fail=True; break
+
+        for off,mask in plan['bool_masks'].items():
+            raw=mem.try_u32(row+off,None)
+            checks += 2
+            if raw is not None and (raw & ~mask) == 0:
+                good += 2
+
+        for p,off,arrdim,elem in plan['strings']:
+            for j in range(min(int(arrdim),4)):
+                checks += 4
+                if _validate_fstring_header(mem,row+off+j*elem):
+                    good += 4
+
+        for p,off,arrdim,elem in plan['floats']:
+            cls=objs.class_name(p)
+            for j in range(min(int(arrdim),8)):
+                checks += 1
+                try:
+                    if cls == 'DoubleProperty':
+                        v=struct.unpack('<d',mem.read(row+off+j*elem,8))[0]
+                    else:
+                        v=struct.unpack('<f',mem.read(row+off+j*elem,4))[0]
+                    if math.isfinite(v) and abs(v) < 1.0e12:
+                        good += 1
+                except Exception:
+                    pass
+
+        for p,off,arrdim,elem in plan['names']:
+            for j in range(min(int(arrdim),4)):
+                checks += 2
+                try:
+                    idx,number=struct.unpack('<II',mem.read(row+off+j*elem,8))
+                    if idx < objs.names.num and number < 1_000_000:
+                        good += 2
+                except Exception:
+                    pass
+
+        for p,off,arrdim,elem in plan['objects']:
+            for j in range(min(int(arrdim),4)):
+                checks += 2
+                ptr=mem.try_u32(row+off+j*elem,None)
+                if ptr is not None and (ptr == 0 or ptr in known_objects):
+                    good += 2
+
+        for p,off,arrdim,elem in plan['arrays']:
+            for j in range(min(int(arrdim),4)):
+                checks += 3
+                if _validate_tarray_header(mem,row+off+j*elem):
+                    good += 3
+
+        for p,off,arrdim,elem in plan['enumish']:
+            # Generic sanity only; many SDD enum-like fields are stored as INT IDs,
+            # so do not assume UEnum cardinality unless the property is ByteProperty.
+            for j in range(min(int(arrdim),8)):
+                checks += 0.5
+                try:
+                    cls=objs.class_name(p)
+                    if cls == 'ByteProperty':
+                        v=mem.read(row+off+j*elem,1)[0]
+                    elif cls == 'UIntProperty':
+                        v=struct.unpack('<I',mem.read(row+off+j*elem,4))[0]
+                    else:
+                        v=struct.unpack('<i',mem.read(row+off+j*elem,4))[0]
+                    if -1 <= v <= 10_000_000:
+                        good += 0.5
+                except Exception:
+                    pass
+
+        for p,off,arrdim,elem in plan['keys'][:4]:
+            v=_read_numeric_key(mem,objs,p,row)
+            if v is not None:
+                key_values[objs.name(p)].append(v)
+
+    if hard_fail or checks <= 0:
+        return None
+
+    # Distinctness of strong IDs is useful but only a bonus; tables can contain sentinels.
+    distinct_bonus=0.0
+    for name,vals in key_values.items():
+        if len(vals) >= 2:
+            distinct=len(set(vals))
+            distinct_bonus += min(5.0, 5.0 * distinct / len(vals))
+    score=100.0*good/checks + distinct_bonus
+    return {
+        'score':score,
+        'base_score':100.0*good/checks,
+        'checks':checks,
+        'good':good,
+        'sample_indices':indices,
+        'key_values':dict(key_values),
+    }
+
+
+def scan_struct_tarrays(objs, mem, groups, struct_query, counts, sample_rows=8, max_results=30, max_hits_per_count=100000):
+    st=_resolve_one_struct(objs,groups,struct_query)
+    if st is None: return None
+    stride=mem.try_u32(st+0x54,None)
+    if not isinstance(stride,int) or stride <= 0 or stride > 1024*1024:
+        print('!! invalid/unknown struct PropertySize')
+        return None
+    counts=sorted(set(int(x) for x in counts if int(x)>0))
+    if not counts:
+        print('!! --struct-counts must contain positive counts')
+        return None
+    plan=_struct_validation_plan(objs,mem,st)
+    known=_known_object_addresses(groups)
+
+    print('\n============================================================')
+    print('STRUCT TARRAY STORAGE SCAN: %s' % objs.path(st))
+    print('============================================================')
+    print('  stride       : 0x%X (%d)' % (stride,stride))
+    print('  count probes : %s' % ', '.join(str(x) for x in counts))
+    print('  sample rows  : %d' % sample_rows)
+    print('  NOTE         : count is a search heuristic, not proof of table identity.')
+
+    results=[]; seen=set()
+    for count in counts:
+        print('  scanning Num=%d ...' % count)
+        hits=_scan_process_u32(mem.pid,count,max_hits=max_hits_per_count)
+        print('    raw aligned Num hits: %d' % len(hits))
+        for hit in hits:
+            hdr=hit-4
+            if hdr in seen or hdr < 0x10000: continue
+            seen.add(hdr)
+            data=mem.try_u32(hdr,None); numraw=mem.try_u32(hdr+4,None); maxraw=mem.try_u32(hdr+8,None)
+            if data is None or numraw is None or maxraw is None: continue
+            num=sgn32(numraw); maxv=sgn32(maxraw)
+            if num != count or maxv < num or maxv > max(num+65536, num*32): continue
+            if not data or (data & 0x3): continue
+            # First/last row must be readable at the proposed stride.
+            try:
+                mem.read(data, min(stride,16))
+                mem.read(data+(num-1)*stride, min(stride,16))
+            except Exception:
+                continue
+            scored=_score_struct_rows(objs,mem,known,data,num,stride,plan,sample_rows=sample_rows)
+            if not scored: continue
+            results.append({
+                'header':hdr,'data':data,'num':num,'max':maxv,
+                **scored,
+            })
+
+    results.sort(key=lambda r:(-r['score'], abs(r['max']-r['num']), r['header']))
+    print('\n[CANDIDATES] total=%d showing<=%d' % (len(results),max_results))
+    if not results:
+        print('  <none>')
+        print('  This only rules out obvious TArray<struct> candidates for the requested counts; storage may use another container/layout/count.')
+        return []
+    for i,r in enumerate(results[:max_results]):
+        print('  #%02d TArray@0x%08X Data=0x%08X Num=%d Max=%d score=%.2f base=%.2f' % (
+            i,r['header'],r['data'],r['num'],r['max'],r['score'],r['base_score']))
+        if r['key_values']:
+            for name,vals in r['key_values'].items():
+                print('       %-28s %s' % (name, ', '.join(str(v) for v in vals)))
+    print('\n  To inspect/export a candidate:')
+    print('    --dump-struct-tarray %s --tarray-address 0xADDRESS --table-limit 8' % objs.path(st))
+    return results
+
+
+def dump_struct_tarray(objs, mem, groups, struct_query, tarray_addr, limit=None, csv_path=None, json_path=None):
+    st=_resolve_one_struct(objs,groups,struct_query)
+    if st is None: return None
+    stride=mem.try_u32(st+0x54,None)
+    if not isinstance(stride,int) or stride <= 0:
+        print('!! bad struct stride')
+        return None
+    data=mem.try_u32(tarray_addr,None); nr=mem.try_u32(tarray_addr+4,None); mr=mem.try_u32(tarray_addr+8,None)
+    if data is None or nr is None or mr is None:
+        print('!! TArray header unreadable at 0x%08X' % tarray_addr); return None
+    num=sgn32(nr); maxv=sgn32(mr)
+    if num < 0 or maxv < num or num > 1_000_000 or not data:
+        print('!! invalid TArray header: Data=0x%08X Num=%d Max=%d' % (data or 0,num,maxv)); return None
+    schema=_sdd_expand_row_schema(objs,mem,st)
+    known=_known_object_addresses(groups)
+    take=num if limit is None else min(num,max(0,int(limit)))
+    rows=[]
+    print('\n============================================================')
+    print('STRUCT TARRAY DUMP: %s' % objs.path(st))
+    print('============================================================')
+    print('  TArray : 0x%08X' % tarray_addr)
+    print('  Data   : 0x%08X' % data)
+    print('  Num/Max: %d/%d' % (num,maxv))
+    print('  stride : 0x%X' % stride)
+    print('  columns: %d' % len(schema))
+    print('  rows   : %d%s' % (take, ' (limited)' if take != num else ''))
+
+    for i in range(take):
+        base=data+i*stride
+        row={'__index':i,'__address':'0x%08X' % base}
+        for col in schema:
+            row[col['column']]=_sdd_scalar_at(objs,mem,known,base,col['prop'],col['element_index'])
+        rows.append(row)
+        print('\n  [%d] @0x%08X' % (i,base))
+        for col in schema:
+            print('      %-36s = %r' % (col['column'],row[col['column']]))
+
+    if csv_path:
+        fields=['__index','__address']+[c['column'] for c in schema]
+        with open(csv_path,'w',newline='',encoding='utf-8-sig') as f:
+            w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+        print('\nCSV saved: %s' % csv_path)
+    if json_path:
+        payload={'struct':objs.path(st),'tarray':'0x%08X'%tarray_addr,'data':'0x%08X'%data,'num':num,'max':maxv,'stride':stride,'rows':rows}
+        Path(json_path).write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
+        print('JSON saved: %s' % json_path)
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# cSDD reflection/native-storage discovery
+# ---------------------------------------------------------------------------
+
+def _sdd_keyword_list(raw):
+    if raw is None:
+        raw = "Weapon,Vehicle,Item,Ranged,Grenade,H2H,Setup"
+    return tuple(
+        part.strip().lower()
+        for part in raw.split(",")
+        if part.strip()
+    )
+
+
+def _sdd_name_matches(text, keywords):
+    if not keywords:
+        return True
+    low = text.lower()
+    return any(k in low for k in keywords)
+
+
+def _sdd_print_struct_schema(objs, mem, struct_obj, indent="    "):
+    size = mem.try_u32(struct_obj + 0x54, None)
+    fields = _sdd_struct_fields(objs, mem, struct_obj)
+    expanded = 0
+
+    print(
+        "%ssize=%s directProperties=%d"
+        % (
+            indent,
+            ("0x%X" % size) if isinstance(size, int) else "?",
+            len(fields),
+        )
+    )
+
+    for prop in fields:
+        name = objs.name(prop)
+        cls = objs.class_name(prop)
+        off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+        elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None)
+        arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None) or 1
+        flags = _try_u64(mem, prop + UPROPERTY_FLAGS)
+        expanded += max(1, int(arrdim))
+        details = _property_type_details(objs, mem, prop)
+
+        print(
+            "%s  +%-6s %-18s %-36s Elem=%-6s Arr=%-3s Flags=%s"
+            % (
+                indent,
+                ("0x%X" % off) if isinstance(off, int) else "?",
+                cls,
+                name,
+                ("0x%X" % elem) if isinstance(elem, int) else "?",
+                arrdim,
+                _format_property_flags(flags),
+            )
+        )
+        if details:
+            print("%s           %s" % (indent, details))
+
+    print("%sCSV-style expanded columns=%d" % (indent, expanded))
+
+
+def _sdd_print_function_signature(objs, mem, fn, netindex_off, package_bases, indent="    "):
+    d = _function_signature_data(
+        objs,
+        mem,
+        fn,
+        netindex_off,
+        package_bases,
+    )
+
+    ret = "void"
+    if d["returns"]:
+        ret = d["returns"][0]["type"]
+
+    params = ", ".join(
+        "%s %s" % (p["type"], p["name"])
+        for p in d["params"]
+    )
+
+    print(
+        "%s%s %s(%s)"
+        % (
+            indent,
+            ret,
+            d["path"],
+            params,
+        )
+    )
+    print(
+        "%s  UFunction=0x%08X localNet=%s globalNet=%s frameSize=%s"
+        % (
+            indent,
+            d["address"],
+            str(d["local_netindex"]) if d["local_netindex"] is not None else "-",
+            str(d["global_netindex"]) if d["global_netindex"] is not None else "-",
+            ("0x%X" % d["property_size"])
+            if isinstance(d["property_size"], int)
+            else "?",
+        )
+    )
+
+    for p in d["params"]:
+        print(
+            "%s    param +%-6s %-18s %-28s %s"
+            % (
+                indent,
+                ("0x%X" % p["offset"]) if isinstance(p["offset"], int) else "?",
+                p["type"],
+                p["name"],
+                p["details"],
+            )
+        )
+
+
+def sdd_discover(
+    objs,
+    mem,
+    groups,
+    netindex_off,
+    class_query="cSDD",
+    keyword_text=None,
+    max_global_matches=300,
+):
+    cls_obj = _resolve_one_uclass(objs, groups, class_query)
+    if cls_obj is None:
+        return None
+
+    target_path = objs.path(cls_obj)
+    keywords = _sdd_keyword_list(keyword_text)
+    package_bases = _active_default_package_bases(
+        objs,
+        mem,
+        groups,
+        netindex_off,
+    )
+
+    print("\n============================================================")
+    print("SDD DISCOVERY: %s" % target_path)
+    print("============================================================")
+    print("  UClass   : 0x%08X" % cls_obj)
+    print("  keywords : %s" % (", ".join(keywords) if keywords else "<all>"))
+
+    instances = _exact_instances_of_uclass(objs, mem, groups, cls_obj)
+    print("  exact instances:")
+    if not instances:
+        print("    <none>")
+    else:
+        for row in instances:
+            print(
+                "    0x%08X %-20s %s"
+                % (row["obj"], row["package"], row["path"])
+            )
+
+    # Direct cSDD reflection tree.
+    direct = _walk_struct_children(objs, mem, cls_obj)
+
+    funcs = []
+    nested_structs = []
+    nested_enums = []
+    direct_props = []
+    other = []
+
+    for child in direct:
+        kind = child["class"]
+        path = child["path"]
+        if not _sdd_name_matches(path, keywords):
+            continue
+
+        if kind == "Function":
+            funcs.append(child["obj"])
+        elif kind in ("ScriptStruct", "Struct"):
+            nested_structs.append(child["obj"])
+        elif kind == "Enum":
+            nested_enums.append(child["obj"])
+        elif kind.endswith("Property"):
+            direct_props.append(child["obj"])
+        else:
+            other.append(child["obj"])
+
+    print("\n[DIRECT cSDD PROPERTIES matching keywords]")
+    if not direct_props:
+        print("  <none>")
+    else:
+        for prop in direct_props:
+            print(
+                "  0x%08X %-18s %s +0x%s %s"
+                % (
+                    prop,
+                    objs.class_name(prop),
+                    objs.path(prop),
+                    ("%X" % mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, 0)),
+                    _property_type_details(objs, mem, prop),
+                )
+            )
+
+    print("\n[DIRECT cSDD FUNCTIONS matching keywords]")
+    if not funcs:
+        print("  <none>")
+    else:
+        for fn in funcs:
+            _sdd_print_function_signature(
+                objs,
+                mem,
+                fn,
+                netindex_off,
+                package_bases,
+                indent="  ",
+            )
+
+    print("\n[NESTED cSDD STRUCTS matching keywords]")
+    if not nested_structs:
+        print("  <none>")
+    else:
+        for struct_obj in nested_structs:
+            print(
+                "  %s @0x%08X"
+                % (
+                    objs.path(struct_obj),
+                    struct_obj,
+                )
+            )
+            _sdd_print_struct_schema(
+                objs,
+                mem,
+                struct_obj,
+                indent="    ",
+            )
+
+    print("\n[NESTED cSDD ENUMS matching keywords]")
+    if not nested_enums:
+        print("  <none>")
+    else:
+        for enum_obj in nested_enums:
+            info = _read_enum_names(objs, mem, enum_obj, limit=128)
+            if info is None:
+                print(
+                    "  %s @0x%08X <unreadable>"
+                    % (objs.path(enum_obj), enum_obj)
+                )
+                continue
+            names = ", ".join(info["names"])
+            if info["truncated"]:
+                names += ", ..."
+            print(
+                "  %s @0x%08X Num=%d"
+                % (
+                    objs.path(enum_obj),
+                    enum_obj,
+                    info["num"],
+                )
+            )
+            print("    %s" % names)
+
+    # Some generated structs/enums are not direct Children of the class but
+    # still live below cSDD in the Outer/path hierarchy.  Scan all already
+    # grouped GObjects for those.
+    nested_seen = set(nested_structs + nested_enums + funcs + direct_props)
+    path_matches = []
+
+    for o in _iter_all_group_objects(groups):
+        if o in nested_seen:
+            continue
+        try:
+            path = objs.path(o)
+            kind = objs.class_name(o)
+        except Exception:
+            continue
+
+        if not path.startswith(target_path + "."):
+            continue
+        if not _sdd_name_matches(path, keywords):
+            continue
+
+        if (
+            kind == "Function"
+            or kind == "Enum"
+            or kind in ("ScriptStruct", "Struct")
+            or kind.endswith("Property")
+        ):
+            path_matches.append(o)
+
+    print("\n[OTHER OBJECTS UNDER cSDD matching keywords]")
+    if not path_matches:
+        print("  <none>")
+    else:
+        for o in sorted(path_matches, key=lambda x: (objs.path(x), x)):
+            print(
+                "  0x%08X %-18s %s"
+                % (
+                    o,
+                    objs.class_name(o),
+                    objs.path(o),
+                )
+            )
+
+    # Finally search the whole object universe by keyword.  This catches
+    # SDD-related generated structs whose Outer is another helper class.
+    global_matches = []
+    for o in _iter_all_group_objects(groups):
+        try:
+            name = objs.name(o)
+            path = objs.path(o)
+            kind = objs.class_name(o)
+        except Exception:
+            continue
+
+        if not _sdd_name_matches(name + " " + path, keywords):
+            continue
+
+        if (
+            kind == "Function"
+            or kind == "Enum"
+            or kind in ("ScriptStruct", "Struct")
+            or kind.endswith("Property")
+            or kind == "Class"
+        ):
+            global_matches.append(o)
+
+    global_matches.sort(
+        key=lambda x: (
+            objs.class_name(x),
+            objs.path(x),
+            x,
+        )
+    )
+
+    print("\n[GLOBAL REFLECTION MATCHES]")
+    print("  total=%d showing<=%d" % (len(global_matches), max_global_matches))
+    for o in global_matches[:max_global_matches]:
+        print(
+            "  0x%08X %-18s %s"
+            % (
+                o,
+                objs.class_name(o),
+                objs.path(o),
+            )
+        )
+
+    print(
+        "\n  NOTE: this mode discovers schemas/accessors only. "
+        "If cSDD has no reflected table property, row storage must be "
+        "located through a native accessor/static pointer before CSV dumping."
+    )
+
+    return {
+        "class": cls_obj,
+        "instances": instances,
+        "functions": funcs,
+        "structs": nested_structs,
+        "enums": nested_enums,
+        "global_matches": global_matches,
+    }
+
+
+# ---------------------------------------------------------------------------
+# cSDD / static-data table discovery and dump
+# ---------------------------------------------------------------------------
+
+def _exact_instances_of_uclass(objs, mem, groups, cls_obj):
+    out = []
+    for pkg, lst in groups.items():
+        for o in lst:
+            if (mem.try_u32(o + UO_CLASS, None) or 0) != cls_obj:
+                continue
+            try:
+                out.append(
+                    {
+                        "obj": o,
+                        "package": pkg,
+                        "name": objs.name(o),
+                        "path": objs.path(o),
+                    }
+                )
+            except Exception:
+                out.append(
+                    {
+                        "obj": o,
+                        "package": pkg,
+                        "name": "<bad>",
+                        "path": "0x%08X" % o,
+                    }
+                )
+    out.sort(key=lambda r: (r["name"] != "Default__cSDD", r["path"], r["obj"]))
+    return out
+
+
+def _sdd_collect_properties(objs, mem, cls_obj, include_inherited=True):
+    chain = (
+        _class_chain_root_to_target(objs, mem, cls_obj)
+        if include_inherited
+        else [cls_obj]
+    )
+    out = []
+    for owner in chain:
+        for prop in _direct_properties_for_class(objs, mem, owner):
+            out.append((owner, prop))
+    return out
+
+
+def _sdd_table_descriptor(objs, mem, instance, owner, prop):
+    cls = objs.class_name(prop)
+    name = objs.name(prop)
+    off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+    elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None)
+    arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None)
+    flags = _try_u64(mem, prop + UPROPERTY_FLAGS)
+    slot = mem.try_u32(prop + UPROPERTY_TYPE_SLOT, None) or 0
+
+    row = {
+        "owner": objs.path(owner),
+        "prop": prop,
+        "name": name,
+        "class": cls,
+        "offset": off,
+        "element_size": elem,
+        "array_dim": arrdim,
+        "flags": flags,
+        "kind": None,
+        "data": None,
+        "num": None,
+        "max": None,
+        "inner": None,
+        "inner_class": None,
+        "row_struct": None,
+        "row_struct_path": None,
+        "stride": None,
+    }
+
+    if off is None:
+        return row
+
+    addr = instance + off
+
+    if cls == "ArrayProperty":
+        row["kind"] = "dynamic-array"
+        row["inner"] = slot or None
+        if slot:
+            try:
+                row["inner_class"] = objs.class_name(slot)
+            except Exception:
+                row["inner_class"] = "<bad>"
+
+        data = mem.try_u32(addr, None)
+        num = mem.try_u32(addr + 4, None)
+        maxv = mem.try_u32(addr + 8, None)
+        if data is not None and num is not None and maxv is not None:
+            row["data"] = data or 0
+            row["num"] = sgn32(num)
+            row["max"] = sgn32(maxv)
+
+        if slot:
+            row["stride"] = mem.try_u32(slot + UPROPERTY_ELEMENT_SIZE, None)
+            if row["inner_class"] == "StructProperty":
+                struct_obj = mem.try_u32(slot + UPROPERTY_TYPE_SLOT, None) or 0
+                row["row_struct"] = struct_obj or None
+                if struct_obj:
+                    try:
+                        row["row_struct_path"] = objs.path(struct_obj)
+                    except Exception:
+                        row["row_struct_path"] = "0x%08X" % struct_obj
+
+    elif cls == "StructProperty" and (arrdim or 0) > 1:
+        row["kind"] = "static-struct-array"
+        row["data"] = addr
+        row["num"] = int(arrdim)
+        row["max"] = int(arrdim)
+        row["stride"] = elem
+        row["row_struct"] = slot or None
+        if slot:
+            try:
+                row["row_struct_path"] = objs.path(slot)
+            except Exception:
+                row["row_struct_path"] = "0x%08X" % slot
+
+    elif (arrdim or 0) > 1:
+        row["kind"] = "static-array"
+        row["data"] = addr
+        row["num"] = int(arrdim)
+        row["max"] = int(arrdim)
+        row["stride"] = elem
+
+    return row
+
+
+def _sdd_score_instance(objs, mem, cls_obj, instance):
+    score = 0
+    tables = []
+    for owner, prop in _sdd_collect_properties(objs, mem, cls_obj, include_inherited=True):
+        d = _sdd_table_descriptor(objs, mem, instance, owner, prop)
+        if not d["kind"]:
+            continue
+        tables.append(d)
+        n = d.get("num")
+        m = d.get("max")
+        data = d.get("data")
+        if (
+            isinstance(n, int)
+            and isinstance(m, int)
+            and 0 <= n <= m <= 1000000
+            and (n == 0 or data)
+        ):
+            score += 1 + min(n, 1000)
+    return score, tables
+
+
+def _select_sdd_context(
+    objs,
+    mem,
+    groups,
+    class_query="cSDD",
+    explicit_instance=None,
+):
+    cls_obj = _resolve_one_uclass(objs, groups, class_query)
+    if cls_obj is None:
+        return None
+
+    instances = _exact_instances_of_uclass(objs, mem, groups, cls_obj)
+
+    if explicit_instance is not None:
+        for row in instances:
+            if row["obj"] == explicit_instance:
+                _, tables = _sdd_score_instance(objs, mem, cls_obj, explicit_instance)
+                return cls_obj, row, tables
+        print(
+            "!! --sdd-instance 0x%08X не является exact instance %s"
+            % (explicit_instance, objs.path(cls_obj))
+        )
+        return None
+
+    if not instances:
+        print(
+            "!! live instances %s не найдены; UClass есть, но читать таблицы не из чего"
+            % objs.path(cls_obj)
+        )
+        return None
+
+    ranked = []
+    for row in instances:
+        score, tables = _sdd_score_instance(objs, mem, cls_obj, row["obj"])
+        ranked.append((score, row, tables))
+
+    ranked.sort(
+        key=lambda x: (
+            -x[0],
+            x[1]["name"] != "Default__cSDD",
+            x[1]["path"],
+        )
+    )
+
+    score, row, tables = ranked[0]
+    return cls_obj, row, tables
+
+
+def sdd_scan(
+    objs,
+    mem,
+    groups,
+    class_query="cSDD",
+    explicit_instance=None,
+):
+    ctx = _select_sdd_context(
+        objs,
+        mem,
+        groups,
+        class_query=class_query,
+        explicit_instance=explicit_instance,
+    )
+    if ctx is None:
+        return None
+
+    cls_obj, chosen, tables = ctx
+    instances = _exact_instances_of_uclass(objs, mem, groups, cls_obj)
+
+    print("\n============================================================")
+    print("SDD SCAN: %s" % objs.path(cls_obj))
+    print("============================================================")
+    print("  UClass            : 0x%08X" % cls_obj)
+    print("  exact instances   : %d" % len(instances))
+    for row in instances:
+        score, _ = _sdd_score_instance(objs, mem, cls_obj, row["obj"])
+        selected = "  <== SELECTED" if row["obj"] == chosen["obj"] else ""
+        print(
+            "    0x%08X score=%d %-24s %s%s"
+            % (
+                row["obj"],
+                score,
+                row["package"],
+                row["path"],
+                selected,
+            )
+        )
+
+    print("\n[TABLE-LIKE PROPERTIES]")
+    table_rows = [d for d in tables if d.get("kind")]
+    table_rows.sort(
+        key=lambda d: (
+            d.get("offset") if d.get("offset") is not None else 0x7FFFFFFF,
+            d["name"],
+        )
+    )
+
+    if not table_rows:
+        print("  <none>")
+        print(
+            "  Возможно, SDD хранится в native non-reflected memory или "
+            "таблицы вложены в другой UObject."
+        )
+        return {
+            "class": cls_obj,
+            "instance": chosen["obj"],
+            "tables": [],
+        }
+
+    for d in table_rows:
+        num = d.get("num")
+        maxv = d.get("max")
+        stride = d.get("stride")
+        extra = ""
+        if d.get("row_struct_path"):
+            extra = " row=%s" % d["row_struct_path"]
+        elif d.get("inner"):
+            extra = " inner=%s" % _describe_object_ptr(objs, d["inner"])
+        print(
+            "  +0x%04X %-34s %-20s Num=%-6s Max=%-6s stride=%-6s%s"
+            % (
+                d["offset"] or 0,
+                d["name"],
+                d["kind"],
+                str(num) if num is not None else "?",
+                str(maxv) if maxv is not None else "?",
+                ("0x%X" % stride) if isinstance(stride, int) else "?",
+                extra,
+            )
+        )
+
+    return {
+        "class": cls_obj,
+        "instance": chosen["obj"],
+        "tables": table_rows,
+    }
+
+
+def _sdd_struct_fields(objs, mem, struct_obj):
+    fields = []
+    for child in _walk_struct_children(objs, mem, struct_obj):
+        if not child["class"].endswith("Property"):
+            continue
+        prop = child["obj"]
+        flags = _try_u64(mem, prop + UPROPERTY_FLAGS)
+        if flags is not None and (flags & CPF_PARM):
+            continue
+        fields.append(prop)
+    fields.sort(
+        key=lambda p: (
+            mem.try_u32(p + UPROPERTY_OFFSET_LIVE, 0x7FFFFFFF),
+            objs.name(p),
+        )
+    )
+    return fields
+
+
+def _sdd_scalar_at(
+    objs,
+    mem,
+    known_objects,
+    base,
+    prop,
+    element_index=0,
+):
+    cls = objs.class_name(prop)
+    off = mem.try_u32(prop + UPROPERTY_OFFSET_LIVE, None)
+    elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None) or 1
+    if off is None:
+        return None
+    addr = base + off + element_index * elem
+
+    try:
+        if cls == "BoolProperty":
+            mask = mem.try_u32(prop + UPROPERTY_TYPE_SLOT, 0) or 0
+            raw = mem.try_u32(addr, None)
+            if raw is None:
+                return None
+            return 1 if (raw & mask) else 0
+
+        if cls == "ByteProperty":
+            return mem.read(addr, 1)[0]
+
+        if cls == "IntProperty":
+            return struct.unpack("<i", mem.read(addr, 4))[0]
+
+        if cls == "UIntProperty":
+            return struct.unpack("<I", mem.read(addr, 4))[0]
+
+        if cls == "FloatProperty":
+            return struct.unpack("<f", mem.read(addr, 4))[0]
+
+        if cls == "DoubleProperty":
+            return struct.unpack("<d", mem.read(addr, 8))[0]
+
+        if cls in ("QWordProperty", "UInt64Property"):
+            return struct.unpack("<Q", mem.read(addr, 8))[0]
+
+        if cls == "NameProperty":
+            idx, number = struct.unpack("<II", mem.read(addr, 8))
+            return objs.names.fmt(idx, number)
+
+        if cls == "StrProperty":
+            text = _read_fstring_live(mem, addr)
+            # _read_fstring_live returns repr + metadata for human output.
+            data = mem.try_u32(addr, None)
+            num = mem.try_u32(addr + 4, None)
+            maxv = mem.try_u32(addr + 8, None)
+            if data is None or num is None or maxv is None:
+                return text
+            num = sgn32(num)
+            maxv = sgn32(maxv)
+            if not data or num <= 0 or maxv < num:
+                return ""
+            raw = mem.read(data, min(num, 1_000_000) * 2)
+            return raw.decode("utf-16-le", "replace").rstrip("\x00")
+
+        if cls in ("ObjectProperty", "ClassProperty", "ComponentProperty"):
+            ptr = mem.try_u32(addr, None) or 0
+            if not ptr:
+                return ""
+            if ptr in known_objects:
+                return objs.path(ptr)
+            return "0x%08X" % ptr
+
+        if cls == "StructProperty":
+            return _safe_raw_hex(mem, addr, elem, limit=min(elem, 64))
+
+        if cls == "ArrayProperty":
+            data = mem.try_u32(addr, None)
+            num = mem.try_u32(addr + 4, None)
+            maxv = mem.try_u32(addr + 8, None)
+            if data is None or num is None or maxv is None:
+                return "<bad TArray>"
+            return "TArray(0x%08X,%d,%d)" % (
+                data or 0, sgn32(num), sgn32(maxv)
+            )
+
+        return _safe_raw_hex(mem, addr, elem, limit=min(elem, 64))
+    except Exception:
+        return None
+
+
+def _sdd_expand_row_schema(objs, mem, struct_obj):
+    schema = []
+    for prop in _sdd_struct_fields(objs, mem, struct_obj):
+        name = objs.name(prop)
+        arrdim = mem.try_u32(prop + UPROPERTY_ARRAY_DIM, None) or 1
+        elem = mem.try_u32(prop + UPROPERTY_ELEMENT_SIZE, None) or 1
+        for i in range(max(1, int(arrdim))):
+            column = name if arrdim == 1 else "%s[%d]" % (name, i)
+            schema.append(
+                {
+                    "column": column,
+                    "prop": prop,
+                    "element_index": i,
+                    "element_size": elem,
+                    "class": objs.class_name(prop),
+                }
+            )
+    return schema
+
+
+def _sdd_resolve_table(tables, query):
+    q = query.lower()
+    exact = [d for d in tables if d["name"].lower() == q]
+    if len(exact) == 1:
+        return exact[0]
+    partial = [d for d in tables if q in d["name"].lower()]
+    if len(partial) == 1:
+        return partial[0]
+    matches = exact if exact else partial
+    if not matches:
+        print("!! SDD table/property не найдена: %s" % query)
+    else:
+        print("!! имя SDD table неоднозначно: %s" % query)
+        for d in matches:
+            print("   %s (%s)" % (d["name"], d["kind"]))
+    return None
+
+
+def sdd_dump_table(
+    objs,
+    mem,
+    groups,
+    table_query,
+    class_query="cSDD",
+    explicit_instance=None,
+    csv_path=None,
+    json_path=None,
+    limit=None,
+):
+    ctx = _select_sdd_context(
+        objs,
+        mem,
+        groups,
+        class_query=class_query,
+        explicit_instance=explicit_instance,
+    )
+    if ctx is None:
+        return None
+
+    cls_obj, chosen, tables = ctx
+    tables = [d for d in tables if d.get("kind")]
+    d = _sdd_resolve_table(tables, table_query)
+    if d is None:
+        print("\nAvailable table-like properties:")
+        for row in sorted(tables, key=lambda x: x["name"].lower()):
+            print("   %s" % row["name"])
+        return None
+
+    print("\n============================================================")
+    print("SDD TABLE: %s.%s" % (objs.path(cls_obj), d["name"]))
+    print("============================================================")
+    print("  instance   : 0x%08X %s" % (chosen["obj"], chosen["path"]))
+    print("  property   : 0x%08X +0x%X %s" % (
+        d["prop"], d["offset"] or 0, d["class"]
+    ))
+    print("  storage    : %s" % d["kind"])
+    print("  Num/Max    : %s/%s" % (d.get("num"), d.get("max")))
+    print("  Data       : 0x%08X" % (d.get("data") or 0))
+    print("  stride     : %s" % (
+        "0x%X" % d["stride"] if isinstance(d.get("stride"), int) else "?"
+    ))
+
+    known = _known_object_addresses(groups)
+    rows = []
+    headers = []
+
+    if d["kind"] in ("dynamic-array", "static-struct-array") and d.get("row_struct"):
+        struct_obj = d["row_struct"]
+        schema = _sdd_expand_row_schema(objs, mem, struct_obj)
+        headers = [x["column"] for x in schema]
+        print("  row struct : %s @0x%08X" % (
+            d.get("row_struct_path") or objs.path(struct_obj),
+            struct_obj,
+        ))
+        print("  columns    : %d" % len(headers))
+
+        num = d.get("num")
+        stride = d.get("stride")
+        data = d.get("data")
+        if (
+            not isinstance(num, int)
+            or num < 0
+            or num > 1_000_000
+            or not isinstance(stride, int)
+            or stride <= 0
+            or (num and not data)
+        ):
+            print("!! invalid table header/stride")
+            return None
+
+        take = num if limit is None else min(num, limit)
+        for i in range(take):
+            base = data + i * stride
+            row = {}
+            for col in schema:
+                row[col["column"]] = _sdd_scalar_at(
+                    objs,
+                    mem,
+                    known,
+                    base,
+                    col["prop"],
+                    col["element_index"],
+                )
+            rows.append(row)
+
+    elif d["kind"] == "dynamic-array" and d.get("inner"):
+        inner = d["inner"]
+        headers = [d["name"]]
+        num = d.get("num") or 0
+        stride = d.get("stride") or 1
+        data = d.get("data") or 0
+        take = num if limit is None else min(num, limit)
+        # Inner UProperty offset is normally zero for TArray element descriptors.
+        for i in range(take):
+            rows.append(
+                {
+                    d["name"]: _sdd_scalar_at(
+                        objs,
+                        mem,
+                        known,
+                        data + i * stride,
+                        inner,
+                        0,
+                    )
+                }
+            )
+
+    elif d["kind"] == "static-array":
+        headers = [d["name"]]
+        num = d.get("num") or 0
+        stride = d.get("stride") or 1
+        data = d.get("data") or 0
+        take = num if limit is None else min(num, limit)
+        for i in range(take):
+            # direct property offset must be neutralized; use a tiny raw fallback
+            rows.append(
+                {
+                    d["name"]: _safe_raw_hex(
+                        mem,
+                        data + i * stride,
+                        stride,
+                        limit=min(stride, 64),
+                    )
+                }
+            )
+
+    else:
+        print(
+            "!! table format пока не поддержан автоматически: %s"
+            % d["kind"]
+        )
+        return None
+
+    preview = rows[: min(len(rows), 20)]
+    if headers:
+        widths = {h: min(max(len(h), 10), 28) for h in headers}
+        for row in preview:
+            for h in headers:
+                widths[h] = min(
+                    max(widths[h], len(str(row.get(h, "")))),
+                    28,
+                )
+
+        print("\n[PREVIEW]")
+        print(" | ".join(h[:widths[h]].ljust(widths[h]) for h in headers))
+        print("-+-".join("-" * widths[h] for h in headers))
+        for row in preview:
+            print(
+                " | ".join(
+                    str(row.get(h, ""))[:widths[h]].ljust(widths[h])
+                    for h in headers
+                )
+            )
+        if len(rows) > len(preview):
+            print("... %d more rows" % (len(rows) - len(preview)))
+
+    if csv_path:
+        out = Path(csv_path)
+        with out.open("w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=headers)
+            writer.writeheader()
+            writer.writerows(rows)
+        print("\n[CSV] written: %s" % out)
+
+    if json_path:
+        out = Path(json_path)
+        out.write_text(
+            json.dumps(
+                {
+                    "class": objs.path(cls_obj),
+                    "instance": chosen,
+                    "table": {
+                        "name": d["name"],
+                        "kind": d["kind"],
+                        "num": d.get("num"),
+                        "max": d.get("max"),
+                        "stride": d.get("stride"),
+                        "row_struct": d.get("row_struct_path"),
+                    },
+                    "rows": rows,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+            newline="\n",
+        )
+        print("[JSON] written: %s" % out)
+
+    return rows
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -4170,6 +8877,328 @@ def main():
     ap.add_argument("--find")
 
     ap.add_argument(
+        "--instances",
+        metavar="CLASS",
+        help=(
+            "по имени класса вывести live UObject instances; "
+            "по умолчанию target class + subclasses"
+        ),
+    )
+    ap.add_argument(
+        "--instances-exact",
+        action="store_true",
+        help="для --instances искать только exact class",
+    )
+    ap.add_argument(
+        "--instance-fields",
+        metavar="ADDRESS",
+        help=(
+            "по адресу live UObject instance вывести значения его "
+            "reflection-visible полей"
+        ),
+    )
+    ap.add_argument(
+        "--fields-own",
+        action="store_true",
+        help="для --instance-fields вывести только поля фактического класса",
+    )
+    ap.add_argument(
+        "--fields-inherited",
+        action="store_true",
+        help="для --instance-fields вывести поля класса + всех родителей",
+    )
+    ap.add_argument(
+        "--class-functions",
+        metavar="CLASS",
+        help="по имени класса вывести функции и сигнатуры",
+    )
+    ap.add_argument(
+        "--functions-own",
+        action="store_true",
+        help="для --class-functions вывести только свои функции",
+    )
+    ap.add_argument(
+        "--functions-inherited",
+        action="store_true",
+        help="для --class-functions вывести свои + наследуемые функции",
+    )
+    ap.add_argument(
+        "--class-netfields",
+        metavar="CLASS",
+        help=(
+            "компактно вывести ClassNetCache field handles в формате "
+            "base/ownSlots/fieldMax + ordinal rows"
+        ),
+    )
+    ap.add_argument(
+        "--netfields-inherited",
+        action="store_true",
+        help="для --class-netfields дополнительно вывести inherited handles",
+    )
+
+    ap.add_argument(
+        "--scan-struct-csv",
+        metavar="STRUCT",
+        help=(
+            "искать native contiguous STRUCT rows по сигнатурам из старого CSV; "
+            "layout всегда берётся из текущего live UScriptStruct"
+        ),
+    )
+    ap.add_argument(
+        "--signature-csv",
+        metavar="FILE",
+        help="старый CSV для --scan-struct-csv (используется только как signature oracle)",
+    )
+    ap.add_argument(
+        "--csv-anchor",
+        metavar="COLUMN",
+        help=(
+            "принудительно использовать конкретную shared Int/UInt колонку как "
+            "memory anchor; по умолчанию выбираются редкие значения автоматически"
+        ),
+    )
+    ap.add_argument(
+        "--csv-anchor-rows",
+        default="8",
+        metavar="N",
+        help="сколько разных old rows использовать как independent anchors (default: 8)",
+    )
+    ap.add_argument(
+        "--csv-min-row-match",
+        default="0.70",
+        metavar="RATIO",
+        help="минимальная доля совпавших shared fields для anchor row (default: 0.70)",
+    )
+    ap.add_argument(
+        "--csv-min-semantic",
+        default="0.85",
+        metavar="RATIO",
+        help="минимальная independent live-schema sanity ratio (default: 0.85)",
+    )
+    ap.add_argument(
+        "--csv-validate-prefix",
+        default="12",
+        metavar="N",
+        help="сколько первых old rows проверять для inferred DATA base (default: 12)",
+    )
+    ap.add_argument(
+        "--csv-max-hits",
+        default="150000",
+        metavar="N",
+        help="максимум raw memory hits на один anchor value (default: 150000)",
+    )
+    ap.add_argument(
+        "--csv-max-results",
+        default="20",
+        metavar="N",
+        help="максимум DATA candidates в выводе (default: 20)",
+    )
+    ap.add_argument(
+        "--dump-struct-run",
+        metavar="STRUCT",
+        help="dump/export contiguous STRUCT rows по DATA address без TArray header",
+    )
+    ap.add_argument(
+        "--data-address",
+        metavar="ADDRESS",
+        help="DATA base для --dump-struct-run",
+    )
+    ap.add_argument(
+        "--row-count",
+        metavar="N",
+        help="число contiguous rows для --dump-struct-run",
+    )
+
+    ap.add_argument(
+        "--scan-struct-tarrays",
+        metavar="STRUCT",
+        help=(
+            "сканировать live memory на TArray<STRUCT> по заданным Num; "
+            "пример: APBGame.cWeapon.WeaponType"
+        ),
+    )
+    ap.add_argument(
+        "--struct-counts",
+        default="",
+        metavar="N[,N...]",
+        help=(
+            "candidate TArray.Num для --scan-struct-tarrays; старые counts можно "
+            "использовать только как heuristic, например 34,35"
+        ),
+    )
+    ap.add_argument(
+        "--storage-sample-rows",
+        default="8",
+        metavar="N",
+        help="сколько распределённых строк валидировать у каждого кандидата (default: 8)",
+    )
+    ap.add_argument(
+        "--storage-max-results",
+        default="30",
+        metavar="N",
+        help="максимум кандидатов в выводе (default: 30)",
+    )
+    ap.add_argument(
+        "--storage-max-hits",
+        default="100000",
+        metavar="N",
+        help="максимум raw Num hits на каждый count (default: 100000)",
+    )
+    ap.add_argument(
+        "--dump-struct-tarray",
+        metavar="STRUCT",
+        help="прочитать/выгрузить конкретный TArray<STRUCT> по адресу его 12-byte header",
+    )
+    ap.add_argument(
+        "--tarray-address",
+        metavar="ADDRESS",
+        help="адрес TArray header для --dump-struct-tarray",
+    )
+    ap.add_argument(
+        "--table-limit",
+        metavar="N",
+        help="ограничить число строк --dump-struct-tarray",
+    )
+    ap.add_argument(
+        "--table-csv",
+        metavar="FILE",
+        help="CSV output для --dump-struct-tarray",
+    )
+    ap.add_argument(
+        "--table-json",
+        metavar="FILE",
+        help="JSON output для --dump-struct-tarray",
+    )
+
+    ap.add_argument(
+        "--nested-structs",
+        metavar="CLASS",
+        help=(
+            "перечислить все nested UScriptStruct/Struct под UClass, "
+            "например cSDDWeapon или cWeapon"
+        ),
+    )
+    ap.add_argument(
+        "--struct-find",
+        default="",
+        metavar="TEXT[,TEXT...]",
+        help=(
+            "фильтр для --nested-structs по подстроке path"
+        ),
+    )
+    ap.add_argument(
+        "--structs-with-schema",
+        action="store_true",
+        help=(
+            "для --nested-structs сразу печатать поля каждой структуры"
+        ),
+    )
+    ap.add_argument(
+        "--dump-struct",
+        metavar="STRUCT",
+        help=(
+            "вывести точный layout UScriptStruct по имени/path, "
+            "например APBGame.cWeapon.WeaponType"
+        ),
+    )
+    ap.add_argument(
+        "--struct-fields-inherited",
+        action="store_true",
+        help=(
+            "для --dump-struct включить поля SuperStruct"
+        ),
+    )
+    ap.add_argument(
+        "--discover-classes",
+        nargs="?",
+        const="cSDD",
+        metavar="TEXT[,TEXT...]",
+        help=(
+            "найти UClass по подстрокам; без значения ищет cSDD"
+        ),
+    )
+
+    ap.add_argument(
+        "--sdd-discover",
+        nargs="?",
+        const="Weapon,Vehicle,Item,Ranged,Grenade,H2H,Setup",
+        metavar="KEYWORDS",
+        help=(
+            "исследовать reflection вокруг cSDD: функции-accessors, "
+            "nested structs/enums и глобальные reflection matches; "
+            "KEYWORDS — comma-list, по умолчанию Weapon,Vehicle,Item,"
+            "Ranged,Grenade,H2H,Setup"
+        ),
+    )
+
+    ap.add_argument(
+        "--sdd-scan",
+        nargs="?",
+        const="cSDD",
+        metavar="CLASS",
+        help=(
+            "найти live cSDD instance/CDO и перечислить table-like "
+            "ArrayProperty/static-array properties; без аргумента использует cSDD"
+        ),
+    )
+    ap.add_argument(
+        "--sdd-class",
+        default="cSDD",
+        metavar="CLASS",
+        help="класс SDD для --sdd-dump-table (default: cSDD)",
+    )
+    ap.add_argument(
+        "--sdd-instance",
+        metavar="ADDRESS",
+        help=(
+            "явно выбрать exact cSDD instance/CDO; иначе выбирается "
+            "instance с наиболее правдоподобными непустыми таблицами"
+        ),
+    )
+    ap.add_argument(
+        "--sdd-dump-table",
+        metavar="TABLE",
+        help=(
+            "выгрузить одну SDD table/property по имени/подстроке; "
+            "для array<struct> автоматически строит columns из UStruct reflection"
+        ),
+    )
+    ap.add_argument(
+        "--sdd-csv",
+        metavar="FILE",
+        help="сохранить --sdd-dump-table в CSV",
+    )
+    ap.add_argument(
+        "--sdd-json",
+        metavar="FILE",
+        help="сохранить --sdd-dump-table в JSON",
+    )
+    ap.add_argument(
+        "--sdd-limit",
+        metavar="N",
+        help="ограничить число выгружаемых строк SDD (для probe/preview)",
+    )
+
+    ap.add_argument(
+        "--dump-class",
+        metavar="CLASS",
+        help=(
+            "одной командой вывести UClass: address/inheritance, "
+            "properties+offsets/types, functions+signatures, "
+            "UObject NetIndex/global NetIndex и FClassNetCache FieldIndex; "
+            "принимает cAPBVehicle или APBGame.cAPBVehicle"
+        ),
+    )
+
+    ap.add_argument(
+        "--dump-class-json",
+        metavar="FILE",
+        help=(
+            "дополнительно сохранить --dump-class в JSON"
+        ),
+    )
+
+    ap.add_argument(
         "--probe-package-net",
         action="append",
         default=[],
@@ -4187,16 +9216,74 @@ def main():
         help=(
             "найти реальный heap FClassNetCache для "
             "cAPBPlayerController и напрямую вывести "
-            "GetMaxIndex/handles 80,138,139,158"
+            "GetMaxIndex/заданные FieldNetIndex"
+        ),
+    )
+
+    ap.add_argument(
+        "--classnetcache-handles",
+        default="80,138,139,158",
+        metavar="N[,N...]",
+        help=(
+            "FieldNetIndex для direct FClassNetCache::GetFromIndex; "
+            "decimal или 0xHEX, например 80,138,139,158,260"
+        ),
+    )
+
+    ap.add_argument(
+        "--classnetcache-class",
+        default="APBGame.cAPBPlayerController",
+        metavar="PACKAGE.CLASS",
+        help=(
+            "UClass для direct heap FClassNetCache probe; "
+            "default: APBGame.cAPBPlayerController"
+        ),
+    )
+
+    ap.add_argument(
+        "--classnetcache-find",
+        default="",
+        metavar="TEXT[,TEXT...]",
+        help=(
+            "искать подстроки по Name/Path во всех live FFieldNetCache "
+            "target class + super chain; например "
+            "Spawn,Streaming,District,Replication"
+        ),
+    )
+
+    ap.add_argument(
+        "--probe-class-instances",
+        metavar="PACKAGE.CLASS",
+        help=(
+            "найти live UObject instances указанного UClass и subclasses; "
+            "вывести path/package/local NetIndex/global PackageMap index"
+        ),
+    )
+
+    ap.add_argument(
+        "--class-instances-exact",
+        action="store_true",
+        help=(
+            "для --probe-class-instances искать только exact UClass, "
+            "не subclasses"
+        ),
+    )
+
+    ap.add_argument(
+        "--class-instances-limit",
+        default="200",
+        help=(
+            "максимум печатаемых instance rows (default: 200)"
         ),
     )
 
     ap.add_argument(
         "--probe-function-params",
-        metavar="FUNCTION",
+        metavar="FUNCTION[,FUNCTION...]",
         help=(
             "вывести live UFunction::Children и параметры CPF_Parm: "
-            "тип, Offset, размеры, flags и type-specific metadata"
+            "тип, Offset, размеры, flags и type-specific metadata; "
+            "можно передать несколько имён через запятую"
         ),
     )
 
@@ -4372,7 +9459,7 @@ def main():
                 % (UO_INDEX, internal)
             )
 
-        if not expects and not a.probe_package_net and not a.probe_packagemap and not a.probe_package_guids and not a.probe_playercontroller_open and not a.probe_playercontroller_netfields and not a.probe_function_params and not a.probe_live_classnetcache:
+        if not expects and not a.probe_package_net and not a.probe_packagemap and not a.probe_package_guids and not a.probe_playercontroller_open and not a.probe_playercontroller_netfields and not a.probe_function_params and not a.probe_live_classnetcache and not a.probe_class_instances and not a.dump_class and not a.instances and not a.instance_fields and not a.class_functions and not a.class_netfields and not a.sdd_scan and not a.sdd_dump_table and not a.sdd_discover and not a.nested_structs and not a.dump_struct and not a.discover_classes and not a.scan_struct_tarrays and not a.dump_struct_tarray and not a.scan_struct_csv and not a.dump_struct_run:
             print(
                 "\n!! для фазы 2 нужен хотя бы "
                 "один --expect PKG=N"
@@ -4394,7 +9481,7 @@ def main():
 
             if off is None:
                 return 1
-        elif a.probe_package_net or a.probe_packagemap or a.probe_package_guids or a.probe_playercontroller_open or a.probe_playercontroller_netfields or a.probe_function_params or a.probe_live_classnetcache:
+        elif a.probe_package_net or a.probe_packagemap or a.probe_package_guids or a.probe_playercontroller_open or a.probe_playercontroller_netfields or a.probe_function_params or a.probe_live_classnetcache or a.probe_class_instances or a.dump_class or a.instances or a.instance_fields or a.class_functions or a.class_netfields or a.sdd_scan or a.sdd_dump_table or a.sdd_discover or a.nested_structs or a.dump_struct or a.discover_classes or a.scan_struct_tarrays or a.dump_struct_tarray or a.scan_struct_csv or a.dump_struct_run:
             # InternalIndex уже подтверждён фазой 1; runtime reflection
             # подтвердил UObject::NetIndex = +0x24.
             off = 0x24
@@ -4432,20 +9519,127 @@ def main():
             )
 
     if a.probe_live_classnetcache:
+        try:
+            classnetcache_handles = tuple(
+                int(part.strip(), 0)
+                for part in a.classnetcache_handles.split(",")
+                if part.strip()
+            )
+        except ValueError as exc:
+            raise SystemExit(
+                "bad --classnetcache-handles; use decimal/0xHEX comma list"
+            ) from exc
+
+        if not classnetcache_handles:
+            raise SystemExit(
+                "--classnetcache-handles must contain at least one index"
+            )
+
+        classnetcache_filters = tuple(
+            part.strip()
+            for part in a.classnetcache_find.split(",")
+            if part.strip()
+        )
+
         probe_live_classnetcache(
             objs,
             mem,
             groups,
+            target_handles=classnetcache_handles,
+            target_class_path=a.classnetcache_class,
+            name_filters=classnetcache_filters,
         )
 
-    if a.probe_function_params:
-        probe_function_params(
+    if a.instances:
+        try:
+            instances_limit = int(a.class_instances_limit, 0)
+        except ValueError as exc:
+            raise SystemExit("bad --class-instances-limit") from exc
+        command_instances(
             objs,
             mem,
             groups,
-            a.probe_function_params,
+            a.instances,
             off,
+            include_subclasses=not a.instances_exact,
+            limit=max(1, instances_limit),
         )
+
+    if a.instance_fields:
+        if a.fields_own and a.fields_inherited:
+            raise SystemExit(
+                "use only one of --fields-own / --fields-inherited"
+            )
+        address = conv(a.instance_fields)
+        dump_instance_fields(
+            objs,
+            mem,
+            groups,
+            address,
+            off,
+            include_inherited=bool(a.fields_inherited),
+        )
+
+    if a.class_functions:
+        if a.functions_own and a.functions_inherited:
+            raise SystemExit(
+                "use only one of --functions-own / --functions-inherited"
+            )
+        list_class_functions(
+            objs,
+            mem,
+            groups,
+            a.class_functions,
+            off,
+            include_inherited=bool(a.functions_inherited),
+        )
+
+    if a.class_netfields:
+        dump_class_netfields_compact(
+            objs,
+            mem,
+            groups,
+            a.class_netfields,
+            off,
+            include_inherited=bool(a.netfields_inherited),
+        )
+
+    if a.probe_class_instances:
+        try:
+            class_instances_limit = int(
+                a.class_instances_limit,
+                0,
+            )
+        except ValueError as exc:
+            raise SystemExit(
+                "bad --class-instances-limit"
+            ) from exc
+
+        probe_class_instances(
+            objs,
+            mem,
+            groups,
+            a.probe_class_instances,
+            off,
+            include_subclasses=not a.class_instances_exact,
+            limit=max(1, class_instances_limit),
+        )
+
+    if a.probe_function_params:
+        function_names = [
+            part.strip()
+            for part in a.probe_function_params.split(",")
+            if part.strip()
+        ]
+
+        for function_name in function_names:
+            probe_function_params(
+                objs,
+                mem,
+                groups,
+                function_name,
+                off,
+            )
 
     if a.probe_playercontroller_netfields:
         probe_playercontroller_netfields(
@@ -4476,6 +9670,173 @@ def main():
             mem,
             groups,
             off,
+        )
+
+    if a.scan_struct_csv:
+        if not a.signature_csv:
+            raise SystemExit("--scan-struct-csv requires --signature-csv FILE")
+        try:
+            csv_anchor_rows = max(1, int(a.csv_anchor_rows, 0))
+            csv_min_row_match = float(a.csv_min_row_match)
+            csv_min_semantic = float(a.csv_min_semantic)
+            csv_validate_prefix = max(1, int(a.csv_validate_prefix, 0))
+            csv_max_hits = max(1, int(a.csv_max_hits, 0))
+            csv_max_results = max(1, int(a.csv_max_results, 0))
+        except ValueError as exc:
+            raise SystemExit("bad CSV signature scan numeric option") from exc
+
+        if not (0.0 <= csv_min_row_match <= 1.0):
+            raise SystemExit("--csv-min-row-match must be 0..1")
+        if not (0.0 <= csv_min_semantic <= 1.0):
+            raise SystemExit("--csv-min-semantic must be 0..1")
+
+        scan_struct_csv_signature(
+            objs,
+            mem,
+            groups,
+            a.scan_struct_csv,
+            a.signature_csv,
+            anchor_field=a.csv_anchor,
+            anchor_rows=csv_anchor_rows,
+            min_row_match=csv_min_row_match,
+            min_semantic=csv_min_semantic,
+            max_hits=csv_max_hits,
+            max_results=csv_max_results,
+            validate_prefix=csv_validate_prefix,
+        )
+
+    if a.dump_struct_run:
+        if not a.data_address or not a.row_count:
+            raise SystemExit(
+                "--dump-struct-run requires --data-address 0x... --row-count N"
+            )
+        try:
+            run_count = int(a.row_count, 0)
+            run_limit = (
+                None
+                if a.table_limit is None
+                else int(a.table_limit, 0)
+            )
+        except ValueError as exc:
+            raise SystemExit("bad --row-count/--table-limit") from exc
+
+        dump_struct_run(
+            objs,
+            mem,
+            groups,
+            a.dump_struct_run,
+            conv(a.data_address),
+            run_count,
+            limit=run_limit,
+            csv_path=a.table_csv,
+            json_path=a.table_json,
+        )
+
+    if a.scan_struct_tarrays:
+        if not a.struct_counts.strip():
+            raise SystemExit("--scan-struct-tarrays requires --struct-counts N[,N...]")
+        try:
+            storage_counts=[int(x.strip(),0) for x in a.struct_counts.split(',') if x.strip()]
+            storage_sample_rows=max(1,int(a.storage_sample_rows,0))
+            storage_max_results=max(1,int(a.storage_max_results,0))
+            storage_max_hits=max(1,int(a.storage_max_hits,0))
+        except ValueError as exc:
+            raise SystemExit("bad storage scan numeric option") from exc
+        scan_struct_tarrays(
+            objs,mem,groups,a.scan_struct_tarrays,storage_counts,
+            sample_rows=storage_sample_rows,max_results=storage_max_results,
+            max_hits_per_count=storage_max_hits,
+        )
+
+    if a.dump_struct_tarray:
+        if not a.tarray_address:
+            raise SystemExit("--dump-struct-tarray requires --tarray-address 0x...")
+        table_limit=None
+        if a.table_limit is not None:
+            try: table_limit=int(a.table_limit,0)
+            except ValueError as exc: raise SystemExit("bad --table-limit") from exc
+        dump_struct_tarray(
+            objs,mem,groups,a.dump_struct_tarray,conv(a.tarray_address),
+            limit=table_limit,csv_path=a.table_csv,json_path=a.table_json,
+        )
+
+    if a.discover_classes:
+        discover_sdd_classes(
+            objs,
+            groups,
+            keyword_text=a.discover_classes,
+        )
+
+    if a.nested_structs:
+        list_nested_structs(
+            objs,
+            mem,
+            groups,
+            a.nested_structs,
+            keyword_text=a.struct_find,
+            with_schema=bool(a.structs_with_schema),
+        )
+
+    if a.dump_struct:
+        dump_struct_schema(
+            objs,
+            mem,
+            groups,
+            a.dump_struct,
+            include_inherited=bool(a.struct_fields_inherited),
+        )
+
+    sdd_instance = conv(a.sdd_instance) if a.sdd_instance else None
+
+    if a.sdd_discover:
+        sdd_discover(
+            objs,
+            mem,
+            groups,
+            off,
+            class_query=a.sdd_class,
+            keyword_text=a.sdd_discover,
+        )
+
+    if a.sdd_scan:
+        sdd_scan(
+            objs,
+            mem,
+            groups,
+            class_query=a.sdd_scan,
+            explicit_instance=sdd_instance,
+        )
+
+    if a.sdd_dump_table:
+        sdd_limit = None
+        if a.sdd_limit:
+            try:
+                sdd_limit = int(a.sdd_limit, 0)
+            except ValueError as exc:
+                raise SystemExit("bad --sdd-limit") from exc
+            if sdd_limit < 0:
+                raise SystemExit("--sdd-limit must be >= 0")
+
+        sdd_dump_table(
+            objs,
+            mem,
+            groups,
+            a.sdd_dump_table,
+            class_query=a.sdd_class,
+            explicit_instance=sdd_instance,
+            csv_path=a.sdd_csv,
+            json_path=a.sdd_json,
+            limit=sdd_limit,
+        )
+
+    if a.dump_class:
+        dump_class_structured(
+            objs,
+            mem,
+            groups,
+            a.dump_class,
+            off,
+            json_path=a.dump_class_json,
         )
 
     # Diagnostics
