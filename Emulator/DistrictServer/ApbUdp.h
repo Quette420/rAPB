@@ -123,6 +123,24 @@ namespace ApbUdp
         std::array<std::uint8_t, 20> AuthKey{};
         std::string Error;
     };
+    
+    // Байтовый курсор по payload control-bunch. Payload извлекается с битовой
+    // границы bunch, но внутри RawData выровнен по байту, поэтому чтение
+    // байтовое.
+    struct ControlReader
+    {
+        const std::uint8_t* Data = nullptr;
+        std::size_t Size = 0;
+        std::size_t Pos = 0;
+
+        std::size_t Remaining() const { return Pos < Size ? Size - Pos : 0; }
+        bool ReadByte(std::uint8_t& value);
+        bool ReadInt32(std::int32_t& value);
+        bool ReadUInt64(std::uint64_t& value);
+        bool ReadFString(std::string& value);
+    };
+
+    bool OpenControlReader(const Bunch& bunch, ControlReader& reader);
 
     bool ParsePacket(
         const std::uint8_t* data,

@@ -1941,6 +1941,79 @@ namespace ApbUdp
         return writer.FinishWithTrailer();
     }
 
+     bool ControlReader::ReadByte(std::uint8_t& value)
+    {
+        if (Remaining() < 1) return false;
+        value = Data[Pos++];
+        return true;
+    }
+
+    bool ControlReader::ReadInt32(std::int32_t& value)
+    {
+        if (Remaining() < 4) return false;
+        value = static_cast<std::int32_t>(
+            static_cast<std::uint32_t>(Data[Pos]) |
+            (static_cast<std::uint32_t>(Data[Pos + 1]) << 8) |
+            (static_cast<std::uint32_t>(Data[Pos + 2]) << 16) |
+            (static_cast<std::uint32_t>(Data[Pos + 3]) << 24));
+        Pos += 4;
+        return true;
+    }
+
+    bool ControlReader::ReadUInt64(std::uint64_t& value)
+    {
+        if (Remaining() < 8) return false;
+        value = 0;
+        for (int i = 7; i >= 0; --i)
+            value = (value << 8) | Data[Pos + static_cast<std::size_t>(i)];
+        Pos += 8;
+        return true;
+    }
+
+    // UE3 FString: INT длина. Положительная -> ANSI, отрицательная -> UCS2.
+    // Длина включает терминатор.
+    bool ControlReader::ReadFString(std::string& value)
+    {
+        value.clear();
+
+        std::int32_t length = 0;
+        if (!ReadInt32(length)) return false;
+        if (length == 0) return true;
+
+        if (length > 0)
+        {
+            if (Remaining() < static_cast<std::size_t>(length)) return false;
+            value.assign(
+                reinterpret_cast<const char*>(Data + Pos),
+                static_cast<std::size_t>(length - 1));
+            Pos += static_cast<std::size_t>(length);
+            return true;
+        }
+
+        const std::size_t count = static_cast<std::size_t>(-length);
+        if (Remaining() < count * 2u) return false;
+        for (std::size_t i = 0; i + 1 < count; ++i)
+            value.push_back(static_cast<char>(Data[Pos + i * 2]));
+        Pos += count * 2u;
+        return true;
+    }
+
+    bool OpenControlReader(const Bunch& bunch, ControlReader& reader)
+    {
+        if (bunch.Kind != BunchKind::Data ||
+            bunch.ChannelType != 1 ||
+            bunch.RawData.empty())
+        {
+            return false;
+        }
+
+        reader.Data = bunch.RawData.data();
+        reader.Size = (std::min)(
+            bunch.RawData.size(),
+            static_cast<std::size_t>(bunch.DataBitCount) / 8u);
+        reader.Pos = 0;
+        return reader.Size > 0;
+    }
 
     // One replicated BoolProperty. UE3 serializes a network bool as a
     // single payload bit after its ClassNetCache field index.
