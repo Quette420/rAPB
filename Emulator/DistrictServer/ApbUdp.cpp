@@ -1912,6 +1912,19 @@ namespace ApbUdp
                 payload.WriteBoundedInt(
                     static_cast<std::uint32_t>(p.A), 0x3FFu);
             }
+			else if (p.Kind == "classp")
+            {
+                // RPC-параметр типа class<...>: presence-бит, затем ссылка
+                // через package map (флаг 0 + SerializeInt(NetIndex, 0x80000000)).
+                // A == 0 означает null: presence-бит 0 и ничего дальше.
+                const bool present = (p.A != 0);
+                payload.WriteBit(present);
+                if (present)
+                {
+                    payload.WriteObjectByNetIndex(
+                        static_cast<std::uint32_t>(p.A));
+                }
+            }
             else if (p.Kind == "enum")
             {
                 payload.WriteBoundedInt(

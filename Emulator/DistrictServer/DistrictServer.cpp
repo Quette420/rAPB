@@ -869,6 +869,8 @@ constexpr std::uint32_t kPlayerControllerLocalNetIndex = 12773u;
 // APBGame.Default__cAPBGameReplicationInfo, локальный NetIndex.
 // Live probe: NetIndex=13049 @0x06BD6130.
 constexpr std::uint32_t kGriLocalNetIndex = 13049u;
+// APBGame.cHUDBase (класс, не CDO) -- локальный NetIndex.
+constexpr std::uint32_t kHudClassLocalNetIndex = 21299u;   // ← подставить
 // Клиент локально открывает два канала до первого серверного пакета:
 //   0 -> ControlChannel (type 1)
 //   1 -> VoiceChannel   (type 4)
@@ -877,6 +879,15 @@ constexpr std::uint32_t kGriLocalNetIndex = 13049u;
 constexpr std::uint16_t kControllerChannel = 2u;
 constexpr std::uint16_t kGriChannel        = 3u;
 constexpr std::uint16_t kPawnChannel       = 4u;
+constexpr std::uint16_t kPriChannel = 5u;
+
+// APBGame.Default__cAPBPlayerReplicationInfo, локальный NetIndex.
+// Live probe: NetIndex=13199 @0x06BD5A80. Глобальный: 33506 + 13199 = 46705.
+constexpr std::uint32_t kPriLocalNetIndex = 13199u;
+
+// LIVE FClassNetCache, Engine.Controller.PlayerReplicationInfo,
+// ObjectProperty, ConditionIndex=21.
+constexpr std::uint32_t kFieldPlayerReplicationInfo = 21u;
 
 // LIVE FClassNetCache, APB 1.13.1:
 constexpr std::uint32_t kControllerFieldMax = 684u;   // cAPBPlayerController
@@ -1022,6 +1033,129 @@ bool SendPackageUses(
             stripped,
             static_cast<unsigned int>(body.size()),
             sent ? 1 : 0);
+
+        return sent;
+    }
+	    // Открывает actor-канал с PlayerReplicationInfo и привязывает его к
+    // контроллеру через реплицируемое свойство Controller.PlayerReplicationInfo.
+    //
+    // Property-update, в отличие от RPC-параметра, presence-бита не имеет:
+    // SerializeInt(FieldIndex, FieldMax), затем сразу значение.
+    // Ссылка на актор с открытым каналом идёт как флаг 1 + номер канала
+    // (граница 0x3FF) -- kind "object".
+    bool SendPlayerReplicationInfo(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account)
+    {
+        if (account == nullptr)
+            return false;
+
+        const std::uint32_t priArchetype =
+            GlobalNetIndex("APBGame", kPriLocalNetIndex);
+
+        if (priArchetype == kBadNetIndex)
+            return false;
+
+        // 1. Открыть канал PRI.
+        const std::uint16_t priSequence =
+            AllocateChannelSequence(account, kPriChannel);
+
+        std::vector<std::uint8_t> priOpen =
+            ApbUdp::BuildActorOpenPacket(
+                account->AllocateServerPacketId(),
+                kPriChannel,
+                priSequence,
+                priArchetype,
+                0.0f, 0.0f, 0.0f);
+
+        const bool openSent = SendProtectedPacket(
+            socket, endpoint, account, priOpen, "PRI-OPEN");
+
+        Logger(openSent ? lSUCCESS : lERROR, "District Net",
+            "PRI open sent=%d ch=%u seq=%u archetypeNetIndex=%u",
+            openSent ? 1 : 0,
+            static_cast<unsigned int>(kPriChannel),
+            static_cast<unsigned int>(priSequence),
+            static_cast<unsigned int>(priArchetype));
+
+        if (!openSent)
+            return false;
+
+        // 2. Controller.PlayerReplicationInfo = <актор на канале 5>.
+        std::vector<ApbUdp::DebugParam> params(1u);
+        params[0].Kind = "object";
+        params[0].A    = static_cast<std::int64_t>(kPriChannel);
+
+        const std::uint16_t linkSequence =
+            AllocateChannelSequence(account, kControllerChannel);
+
+        std::vector<std::uint8_t> link =
+            ApbUdp::BuildActorParamsFieldPacket(
+                account->AllocateServerPacketId(),
+                kControllerChannel,
+                linkSequence,
+                kFieldPlayerReplicationInfo,
+                kControllerFieldMax,
+                params);
+
+        const bool linkSent = SendProtectedPacket(
+            socket, endpoint, account, link, "PRI-LINK");
+
+        Logger(linkSent ? lSUCCESS : lERROR, "District Net",
+            "PlayerReplicationInfo link sent=%d ch=%u seq=%u field=%u "
+            "refChannel=%u",
+            linkSent ? 1 : 0,
+            static_cast<unsigned int>(kControllerChannel),
+            static_cast<unsigned int>(linkSequence),
+            static_cast<unsigned int>(kFieldPlayerReplicationInfo),
+            static_cast<unsigned int>(kPriChannel));
+
+        return linkSent;
+    }
+	    // Engine.PlayerController.ClientSetHUD(class<HUD>, class<Scoreboard>)
+    // LIVE FClassNetCache: field 42, fieldMax 684.
+    // Оба параметра -- ClassProperty, идут как ссылки через package map.
+    // Scoreboard передаём null: presence-бит 0.
+    bool SendClientSetHUD(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account,
+        std::uint32_t hudClassNetIndex)
+    {
+        if (account == nullptr || hudClassNetIndex == kBadNetIndex)
+            return false;
+
+        constexpr std::uint32_t kFieldClientSetHUD = 42u;
+
+        std::vector<ApbUdp::DebugParam> params(2u);
+        params[0].Kind = "classp";
+        params[0].A    = static_cast<std::int64_t>(hudClassNetIndex);
+        params[1].Kind = "classp";
+        params[1].A    = 0;                    // newScoringType = None
+
+        const std::uint16_t seq =
+            AllocateChannelSequence(account, kControllerChannel);
+
+        std::vector<std::uint8_t> packet =
+            ApbUdp::BuildActorParamsFieldPacket(
+                account->AllocateServerPacketId(),
+                kControllerChannel,
+                seq,
+                kFieldClientSetHUD,
+                kControllerFieldMax,
+                params);
+
+        const bool sent = SendProtectedPacket(
+            socket, endpoint, account, packet, "CLIENT-SET-HUD");
+
+        Logger(sent ? lSUCCESS : lERROR, "District Net",
+            "ClientSetHUD sent=%d ch=%u seq=%u field=%u hudClassNetIndex=%u",
+            sent ? 1 : 0,
+            static_cast<unsigned int>(kControllerChannel),
+            static_cast<unsigned int>(seq),
+            static_cast<unsigned int>(kFieldClientSetHUD),
+            static_cast<unsigned int>(hudClassNetIndex));
 
         return sent;
     }
@@ -1749,6 +1883,15 @@ bool SendPackageUses(
                 static_cast<unsigned int>(answerSequence),
                 static_cast<unsigned int>(kControllerFieldMax),
                 static_cast<unsigned int>(parameterBits));
+
+            if (sent)
+            {
+                SendClientSetHUD(
+                    socket, endpoint, account,
+                    GlobalNetIndex("APBGame", kHudClassLocalNetIndex));
+
+                SendPlayerReplicationInfo(socket, endpoint, account);
+            }
 
             return sent;
         }
