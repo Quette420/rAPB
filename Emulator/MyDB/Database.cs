@@ -188,6 +188,28 @@ namespace MyDB
             }
         }
 
+        public void Truncate<T>() where T : struct
+        {
+            if (!Connected)
+                Connect();
+
+            object[] attributes = typeof(T).GetCustomAttributes(typeof(DatabaseTable), false);
+            
+            if (attributes.Length < 1)
+                throw new Exception("Expected this to have a table attribute.");
+            
+            DatabaseTable table = (DatabaseTable)attributes[0];
+
+            using (var cmd = m_connection.CreateCommand())
+            {
+                cmd.CommandText = string.Format(
+                    "TRUNCATE TABLE `{0}`",
+                    table.Name
+                );
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         public void CreateStructure(Type t)
         {
             if (!Connected)

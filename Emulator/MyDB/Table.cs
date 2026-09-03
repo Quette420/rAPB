@@ -145,6 +145,20 @@ namespace MyDB
                 m_database.Remove(entry);
         }
 
+        public void Truncate()
+        {
+            lock (m_database)
+                m_database.Truncate<T>();
+
+            if (m_entries != null)
+            {
+                lock (m_entries)
+                    m_entries.Clear();
+            }
+            
+            m_maxIndex = 0;
+        }
+
         public void Update(T entry)
         {
             if (m_entries == null)

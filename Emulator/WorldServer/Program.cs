@@ -36,6 +36,8 @@ namespace WorldServer
             if (!EasyServer.Listen<TcpServer>(Port, "WorldInfo")) return;
             Databases.InitDB();
             Databases.Load(false);
+            //Временно, пока не реализована обработка входа с уже имеющимися персонажами на аккаунте
+            Databases.CharacterTable.Truncate();
             Password = EasyServer.GetConfValue<string>("World", "LobbyCommunication", "Password");
             WorldName = EasyServer.GetConfValue<string>("World", "WorldInfo", "Name");
             ID = EasyServer.GetConfValue<byte>("World", "WorldInfo", "Id");
