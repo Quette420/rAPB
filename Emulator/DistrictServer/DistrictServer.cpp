@@ -797,6 +797,82 @@ namespace
     {
         out.push_back(value);
     }
+
+        void AppendGuid(std::vector<std::uint8_t>& out, const std::uint32_t guid[4])
+    {
+        for (int i = 0; i < 4; ++i)
+            AppendInt32(out, static_cast<std::int32_t>(guid[i]));
+    }
+
+    struct UsesEntry
+    {
+        const char*   Name;
+        std::uint32_t Guid[4];
+        std::int32_t  Generation;
+    };
+
+bool SendPackageUses(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account)
+    {
+        if (account == nullptr)
+            return false;
+
+        // NMT_Uses(7), порядок подтверждён по FPackageInfo::SerializeWire:
+        //   FGuid(16) | FString PackageName | FString | FString
+        //   | INT PackageFlags | INT Generation | FString | BYTE
+        // Три FString становятся FName в структуре клиента.
+    static const UsesEntry kPackages[] =
+    {
+        {
+            "Core",
+            {
+                0x0FE825BC,
+                0x4970D0BC,
+                0xE10969A8,
+                0x4C498AF9
+            },
+            1
+        },
+    };
+
+        bool allSent = true;
+
+        for (const UsesEntry& e : kPackages)
+        {
+            std::vector<std::uint8_t> body;
+            AppendGuid(body, e.Guid);
+            AppendFString(body, e.Name);
+            AppendFString(body, "");
+            AppendFString(body, "");
+            AppendInt32(body, 0);            // PackageFlags: PKG_Need не ставим
+            AppendInt32(body, e.Generation);
+            AppendFString(body, "");
+            body.push_back(0);               // BYTE
+
+            std::vector<std::uint8_t> packet =
+                ApbUdp::BuildBinaryControlPacket(
+                    0,
+                    account->AllocateServerPacketId(),
+                    account->AllocateServerReliableSequence(),
+                    NMT_Uses,
+                    body.data(),
+                    body.size());
+
+            const bool sent = SendProtectedPacket(
+                socket, endpoint, account, packet, "NET-USES");
+
+            allSent = allSent && sent;
+
+            Logger(sent ? lSUCCESS : lERROR, "District Net",
+                "Sent NMT_Uses(7) package='%s' generation=%d bodyBytes=%u",
+                e.Name, e.Generation,
+                static_cast<unsigned int>(body.size()));
+        }
+
+        return allSent;
+    }
     
         bool SendNetWelcome(
         SOCKET socket,
@@ -938,6 +1014,7 @@ namespace
                         static_cast<unsigned long long>(uniqueId));
 
                     SendNetWelcome(socket, endpoint, account);
+                    SendPackageUses(socket, endpoint, account);   // <- должен быть активен
                     handledAny = true;
                     continue;
                 }
