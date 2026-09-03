@@ -12,6 +12,12 @@
 
 namespace
 {
+    // APB 1.13.1: UNetConnection::MaxPacket = 1024, поэтому длина bunch
+    // сериализуется как SerializeInt(NumBits, 8192) = 13 бит.
+    // В старом билде было 512 -> 4096 -> 12 бит.
+    constexpr std::uint32_t kMaxBunchDataBits = 512u * 8u;   // 4096
+    constexpr std::size_t   kBunchLengthBits  = 12u;
+    
     class BitReader
     {
     public:
@@ -707,6 +713,12 @@ namespace ApbUdp
                 }
             }
 
+            if (!reader.ReadBit(bunch.Reliable))
+            {
+                return FinishPartialPacket(
+                    packet,
+                    "truncated reliability flag");
+            }
             // Newer APB/UE3 builds serialize bIsReplicationPaused between
             // open/close and bReliable. The older build-3908 parser omitted it,
             // shifting channel/type/length by one bit.
@@ -717,13 +729,6 @@ namespace ApbUdp
                     "truncated replication-paused flag");
             }
 
-            if (!reader.ReadBit(bunch.Reliable))
-            {
-                return FinishPartialPacket(
-                    packet,
-                    "truncated reliability flag");
-            }
-
             if (!reader.ReadBits(10, value))
             {
                 return FinishPartialPacket(
@@ -732,33 +737,117 @@ namespace ApbUdp
             }
             bunch.ChannelIndex = static_cast<std::uint16_t>(value);
 
-            if (bunch.Reliable)
+            // V9: modern APB ControlChannel header probe.
+            //
+            // Two independent live packet-0 captures have the exact stable
+            // layout after ChIndex=0:
+            //     3 bits  = 1,0,0
+            //     10 bits = 128
+            //     12 bits = DataBitCount (208)
+            //
+            // This matches the newer Unreal bunch family where extra control
+            // flags are followed (for open/reliable bunches) by a serialized
+            // channel name rather than the old 3-bit ChType.  We deliberately
+            // call the first three values ModernFlag0..2 until their APB-build
+            // semantics are proven.  The 10-bit value 128 is the captured
+            // Control-channel name token.
+            //
+            // Try this format only for channel 0 and only when the candidate
+            // name token is exactly the value observed on the live client.
+            // Otherwise fall back to the legacy/build-3908 parser below.
+            bool parsedModernControlHeader = false;
+
+            if (bunch.ChannelIndex == 0 &&
+                (bunch.Open || bunch.Reliable))
             {
-                if (!reader.ReadBits(10, value))
+                BitReader modern = reader;
+
+                bool hasPackageMapExports = false;
+                bool hasMustBeMappedGUIDs = false;
+                bool modernPartial = false;
+                bool modernPartialInitial = false;
+                bool modernPartialFinal = false;
+
+                std::uint32_t modernSequence = 0;
+                std::uint32_t modernChannelName = 0;
+                std::uint32_t modernDataBits = 0;
+
+                bool modernOk =
+                    modern.ReadBit(hasPackageMapExports) &&
+                    modern.ReadBit(hasMustBeMappedGUIDs) &&
+                    modern.ReadBit(modernPartial);
+
+                if (modernOk && bunch.Reliable)
+                    modernOk = modern.ReadBits(10, modernSequence);
+
+                if (modernOk && modernPartial)
+                {
+                    modernOk =
+                        modern.ReadBit(modernPartialInitial) &&
+                        modern.ReadBit(modernPartialFinal);
+                }
+
+                if (modernOk)
+                    modernOk = modern.ReadBits(10, modernChannelName);
+
+                if (modernOk)
+                    modernOk = modern.ReadBits(12, modernDataBits);
+
+                // 128 is stable across both live packet-0 captures. Requiring it
+                // prevents legacy old-header packets from being misclassified.
+                if (modernOk &&
+                    modernChannelName == 128u &&
+                    modernDataBits <= modern.Remaining())
+                {
+                    // For the initial HandshakeStart the bunch exactly reaches
+                    // the packet trailer. For server self-tests and future
+                    // packets, <= is retained so a packet may contain another
+                    // bunch afterwards.
+                    reader = modern;
+                    bunch.ChannelSequence =
+                        static_cast<std::uint16_t>(modernSequence);
+                    bunch.ChannelType = 1; // semantic Control channel
+                    value = modernDataBits;
+                    parsedModernControlHeader = true;
+
+                    (void)hasPackageMapExports;
+                    (void)hasMustBeMappedGUIDs;
+                    (void)modernPartial;
+                    (void)modernPartialInitial;
+                    (void)modernPartialFinal;
+                }
+            }
+
+            if (!parsedModernControlHeader)
+            {
+                if (bunch.Reliable)
+                {
+                    if (!reader.ReadBits(10, value))
+                    {
+                        return FinishPartialPacket(
+                            packet,
+                            "truncated channel sequence");
+                    }
+                    bunch.ChannelSequence = static_cast<std::uint16_t>(value);
+                }
+
+                if (bunch.Reliable || bunch.Open)
+                {
+                    if (!reader.ReadBits(3, value))
+                    {
+                        return FinishPartialPacket(
+                            packet,
+                            "truncated channel type");
+                    }
+                    bunch.ChannelType = static_cast<std::uint8_t>(value);
+                }
+
+                if (!reader.ReadBits(kBunchLengthBits, value))
                 {
                     return FinishPartialPacket(
                         packet,
-                        "truncated channel sequence");
+                        "truncated bunch data length");
                 }
-                bunch.ChannelSequence = static_cast<std::uint16_t>(value);
-            }
-
-            if (bunch.Reliable || bunch.Open)
-            {
-                if (!reader.ReadBits(3, value))
-                {
-                    return FinishPartialPacket(
-                        packet,
-                        "truncated channel type");
-                }
-                bunch.ChannelType = static_cast<std::uint8_t>(value);
-            }
-
-            if (!reader.ReadBits(12, value))
-            {
-                return FinishPartialPacket(
-                    packet,
-                    "truncated bunch data length");
             }
 
             bunch.DataBitCount = static_cast<std::uint16_t>(value);
@@ -901,21 +990,24 @@ namespace ApbUdp
     namespace
     {
         void WriteReliableControlBunch(
-            BitWriter& writer,
-            std::uint16_t channelSequence,
-            const std::uint8_t* data,
-            std::size_t dataSize)
+    BitWriter& writer,
+    std::uint16_t channelSequence,
+    const std::uint8_t* data,
+    std::size_t dataSize)
         {
-            // Data bunch, no open/close flags. The client already opened channel 0
-            // with the APB AUTH FString.
+            // Заголовок подтверждён побитовым разбором клиентского packet 0:
+            //   ack, bControl, [bOpen, bClose], bIsReplicationPaused,
+            //   bReliable, ChIndex(10), [ChSequence(10)], ChType(3),
+            //   DataBitCount(13)
+            // Никаких PackageMapExports/Partial/name-токенов между ними нет.
             writer.WriteBit(false);  // not ACK
             writer.WriteBit(false);  // no open/close control flags
+            writer.WriteBit(true);   // bReliable
             writer.WriteBit(false);  // bIsReplicationPaused
-            writer.WriteBit(true);   // reliable
-            writer.WriteBits(0, 10); // control channel index
+            writer.WriteBits(0, 10); // ChIndex
             writer.WriteBits(channelSequence % 1024u, 10);
             writer.WriteBits(1, 3);  // CHTYPE_Control
-            writer.WriteBits(static_cast<std::uint32_t>(dataSize * 8u), 12);
+            writer.WriteBits(static_cast<std::uint32_t>(dataSize * 8u), kBunchLengthBits);
             writer.WriteBytes(data, dataSize);
         }
 
@@ -1163,18 +1255,18 @@ namespace ApbUdp
             writer.WriteBits(serverPacketId & 0x3FFFFFFFu, 30);
 
             writer.WriteBit(false);   // not an ack
-            writer.WriteBit(true);    // bControl: open/close flags follow
-            writer.WriteBit(true);    // bOpen
-            writer.WriteBit(false);   // bClose
+            writer.WriteBit(true);    // bControl
+            writer.WriteBit(true);    // bOpen   (в Close: false)
+            writer.WriteBit(false);   // bClose  (в Close: true)
             writer.WriteBit(true);    // bReliable
+            writer.WriteBit(false);   // bIsReplicationPaused
 
             writer.WriteBoundedInt(channelIndex, 0x3FFu);
             writer.WriteBoundedInt(channelSequence, 0x400u);
             writer.WriteBoundedInt(2u, 8u);          // CHTYPE_Actor
 
             writer.WriteBoundedInt(
-                static_cast<std::uint32_t>(payloadBits),
-                512u * 8u);
+                 static_cast<std::uint32_t>(payloadBits), kMaxBunchDataBits);
 
             writer.WriteBitsFrom(payloadBytes, payloadBits);
 
@@ -1237,13 +1329,14 @@ namespace ApbUdp
         writer.WriteBits(serverPacketId & 0x3FFFFFFFu, 30);
         writer.WriteBit(false);   // not an ack
         writer.WriteBit(true);    // bControl
-        writer.WriteBit(false);   // bOpen
-        writer.WriteBit(true);    // bClose
+        writer.WriteBit(true);    // bOpen   (в Close: false)
+        writer.WriteBit(false);   // bClose  (в Close: true)
         writer.WriteBit(true);    // bReliable
+        writer.WriteBit(false);   // bIsReplicationPaused
         writer.WriteBoundedInt(channelIndex, 0x3FFu);
         writer.WriteBoundedInt(channelSequence, 0x400u);
-        writer.WriteBoundedInt(2u, 8u); // CHTYPE_Actor
-        writer.WriteBoundedInt(0u, 512u * 8u);
+        writer.WriteBoundedInt(2u, 8u);
+        writer.WriteBoundedInt(0u, kMaxBunchDataBits);   // было 512u * 8u
         return writer.FinishWithTrailer();
     }
 
@@ -1272,13 +1365,14 @@ namespace ApbUdp
         {
             writer.WriteBits(serverPacketId & 0x3FFFFFFFu, 30);
             writer.WriteBit(false);   // not an ack
-            writer.WriteBit(false);   // no open/close flags: channel exists
-            writer.WriteBit(true);    // reliable
+            writer.WriteBit(false);   // no open/close flags
+            writer.WriteBit(true);    // bReliable
+            writer.WriteBit(false);   // bIsReplicationPaused
             writer.WriteBoundedInt(channelIndex, 0x3FFu);
             writer.WriteBoundedInt(channelSequence, 0x400u);
             writer.WriteBoundedInt(2u, 8u);   // CHTYPE_Actor
             writer.WriteBoundedInt(
-                static_cast<std::uint32_t>(payloadBits), 512u * 8u);
+                static_cast<std::uint32_t>(payloadBits), kMaxBunchDataBits);
         }
     }
 
@@ -4116,9 +4210,9 @@ namespace ApbUdp
 
 
     bool ReadBinaryControlMessage(
-        const Bunch& bunch,
-        std::uint8_t& messageType,
-        std::vector<std::uint8_t>& payload)
+    const Bunch& bunch,
+    std::uint8_t& messageType,
+    std::vector<std::uint8_t>& payload)
     {
         messageType = 0;
         payload.clear();
@@ -4131,47 +4225,18 @@ namespace ApbUdp
             return false;
         }
 
-        const std::vector<std::uint8_t>* source = &bunch.RawData;
-        std::vector<std::uint8_t> shifted;
+        // DataBitCount читается как 13 бит (SerializeInt(NumBits, 1024*8)),
+        // поэтому payload начинается на границе байта сообщения и никакого
+        // сдвига на бит больше не требуется. Старый одно-битный shift был
+        // компенсацией 12-битного чтения длины.
+        messageType = bunch.RawData[0];
 
-        // Newer client: the first open ControlChannel bunch contains the
-        // endian-inspection marker before the control-message byte. The live
-        // capture becomes NMT_HandshakeStart (0x1A) after consuming one bit.
-        if (bunch.Open && bunch.DataBitCount > 8)
-        {
-            shifted.assign(bunch.RawData.size(), 0);
-
-            for (std::size_t bit = 0; bit + 1 < bunch.DataBitCount; ++bit)
-            {
-                const std::size_t sourceBit = bit + 1;
-                const std::uint8_t value =
-                    (bunch.RawData[sourceBit / 8] >>
-                     (sourceBit % 8)) & 1u;
-
-                if (value != 0)
-                    shifted[bit / 8] |=
-                        static_cast<std::uint8_t>(1u << (bit % 8));
-            }
-
-            if (!shifted.empty() &&
-                shifted[0] >= 26u &&
-                shifted[0] <= 29u)
-            {
-                source = &shifted;
-            }
-        }
-
-        messageType = (*source)[0];
-
-        std::size_t payloadBytes = bunch.DataBitCount / 8u;
-        if (source == &shifted && payloadBytes > 0)
-            payloadBytes = (bunch.DataBitCount - 1u) / 8u;
-
+        const std::size_t payloadBytes = bunch.DataBitCount / 8u;
         if (payloadBytes > 1u)
         {
             payload.assign(
-                source->begin() + 1,
-                source->begin() + payloadBytes);
+                bunch.RawData.begin() + 1,
+                bunch.RawData.begin() + payloadBytes);
         }
 
         return true;

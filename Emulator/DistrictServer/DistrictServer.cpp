@@ -10,7 +10,9 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <cctype>
 #include <cstring>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <memory>
@@ -36,6 +38,11 @@ namespace
     // USES / JOIN actor bootstrap are deliberately not ported yet because
     // their package-map/net-index data is build-specific.
     constexpr bool kSendWelcomeAfterAuth = true;
+
+    // Packet-0 trace remains enabled for diagnostics. The response mode is
+    // selected at runtime with RAPB_HANDSHAKE_PROBE.
+    constexpr unsigned int kPacket0CandidateExtraBitsMax = 4;
+
     constexpr unsigned short kDistrictUdpPort = 6969;
 
     constexpr std::uint8_t NMT_HandshakeStart = 26;
@@ -43,6 +50,59 @@ namespace
     constexpr std::uint8_t NMT_HandshakeResponse = 28;
     constexpr std::uint8_t NMT_HandshakeComplete = 29;
     constexpr std::uint32_t kHandshakeChallengeValue = 0x12345678u;
+
+    enum class HandshakeProbeMode
+    {
+        Ack,
+        Challenge,
+        Complete,
+        Welcome
+    };
+
+    HandshakeProbeMode GetHandshakeProbeMode()
+    {
+        const char* raw = std::getenv("RAPB_HANDSHAKE_PROBE");
+
+        if (raw == nullptr || *raw == '\0')
+            return HandshakeProbeMode::Challenge;
+
+        std::string value(raw);
+        std::transform(
+            value.begin(),
+            value.end(),
+            value.begin(),
+            [](unsigned char c)
+            {
+                return static_cast<char>(std::tolower(c));
+            });
+
+        if (value == "ack" || value == "ack-only")
+            return HandshakeProbeMode::Ack;
+
+        if (value == "complete" || value == "29")
+            return HandshakeProbeMode::Complete;
+
+        if (value == "welcome")
+            return HandshakeProbeMode::Welcome;
+
+        return HandshakeProbeMode::Challenge;
+    }
+
+    const char* HandshakeProbeModeText(HandshakeProbeMode mode)
+    {
+        switch (mode)
+        {
+        case HandshakeProbeMode::Ack:
+            return "ack";
+        case HandshakeProbeMode::Complete:
+            return "complete";
+        case HandshakeProbeMode::Welcome:
+            return "welcome";
+        case HandshakeProbeMode::Challenge:
+        default:
+            return "challenge";
+        }
+    }
 
     std::string Hex(
         const std::uint8_t* data,
@@ -89,6 +149,242 @@ namespace
             << ":"
             << ntohs(endpoint.sin_port);
         return out.str();
+    }
+
+    bool TraceReadBits(
+        const std::uint8_t* data,
+        std::size_t endBit,
+        std::size_t& position,
+        std::size_t count,
+        std::uint32_t& value)
+    {
+        value = 0;
+
+        if (data == nullptr || count > 32 || position + count > endBit)
+            return false;
+
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const std::size_t absolute = position + index;
+            const std::uint8_t bit =
+                (data[absolute / 8] >> (absolute % 8)) & 1u;
+
+            value |= static_cast<std::uint32_t>(bit) << index;
+        }
+
+        position += count;
+        return true;
+    }
+
+    bool TraceFindPayloadBitCount(
+        const std::uint8_t* data,
+        std::size_t size,
+        std::size_t& payloadBitCount)
+    {
+        if (data == nullptr || size == 0)
+            return false;
+
+        // UE packet termination marker is the highest set bit in the final
+        // non-zero byte. The payload ends immediately before that marker.
+        for (std::size_t reverse = size; reverse > 0; --reverse)
+        {
+            const std::size_t byteIndex = reverse - 1;
+            const std::uint8_t value = data[byteIndex];
+
+            if (value == 0)
+                continue;
+
+            for (int bit = 7; bit >= 0; --bit)
+            {
+                if ((value & static_cast<std::uint8_t>(1u << bit)) != 0)
+                {
+                    payloadBitCount =
+                        byteIndex * 8u + static_cast<std::size_t>(bit);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    std::string TraceBitWindow(
+        const std::uint8_t* data,
+        std::size_t endBit,
+        std::size_t beginBit,
+        std::size_t count)
+    {
+        std::ostringstream out;
+        const std::size_t limit =
+            (std::min)(endBit, beginBit + count);
+
+        for (std::size_t bit = beginBit; bit < limit; ++bit)
+        {
+            if (bit != beginBit && ((bit - beginBit) % 8u) == 0)
+                out << ' ';
+
+            out << (((data[bit / 8] >> (bit % 8)) & 1u) ? '1' : '0');
+        }
+
+        return out.str();
+    }
+
+    void TracePacket0Candidate(
+        const std::uint8_t* data,
+        std::size_t payloadBits,
+        unsigned int extraBits)
+    {
+        // PacketId is 30 bits in the currently confirmed parser. Start the
+        // candidate bunch-header decode immediately after it.
+        std::size_t position = 30;
+        std::uint32_t value = 0;
+        bool isAck = false;
+        bool hasOpenClose = false;
+        bool open = false;
+        bool close = false;
+        bool reliable = false;
+        std::uint32_t extraValue = 0;
+        std::uint32_t channel = 0;
+        std::uint32_t sequence = 0;
+        std::uint32_t type = 0;
+        std::uint32_t dataBits = 0;
+
+        if (!TraceReadBits(data, payloadBits, position, 1, value))
+            return;
+
+        isAck = value != 0;
+
+        if (isAck)
+        {
+            Logger(
+                lINFO,
+                "District Packet0 Trace",
+                "candidate extra=%u begins with IsAck=1; not a data-bunch candidate.",
+                extraBits);
+            return;
+        }
+
+        if (!TraceReadBits(data, payloadBits, position, 1, value))
+            return;
+
+        hasOpenClose = value != 0;
+
+        if (hasOpenClose)
+        {
+            if (!TraceReadBits(data, payloadBits, position, 1, value))
+                return;
+            open = value != 0;
+
+            if (!TraceReadBits(data, payloadBits, position, 1, value))
+                return;
+            close = value != 0;
+        }
+
+        const std::size_t extraBegin = position;
+
+        for (unsigned int index = 0; index < extraBits; ++index)
+        {
+            if (!TraceReadBits(data, payloadBits, position, 1, value))
+                return;
+
+            if (value != 0 && index < 32)
+                extraValue |= (1u << index);
+        }
+
+        const std::size_t reliableBit = position;
+
+        if (!TraceReadBits(data, payloadBits, position, 1, value))
+            return;
+        reliable = value != 0;
+
+        if (!TraceReadBits(data, payloadBits, position, 10, channel))
+            return;
+
+        if (reliable &&
+            !TraceReadBits(data, payloadBits, position, 10, sequence))
+        {
+            return;
+        }
+
+        if ((reliable || open) &&
+            !TraceReadBits(data, payloadBits, position, 3, type))
+        {
+            return;
+        }
+
+        if (!TraceReadBits(data, payloadBits, position, 12, dataBits))
+            return;
+
+        const std::size_t dataBegin = position;
+        const std::size_t remaining =
+            dataBegin <= payloadBits ? payloadBits - dataBegin : 0;
+
+        std::uint32_t rawByte = 0;
+        std::uint32_t shiftedByte = 0;
+        std::size_t rawPosition = dataBegin;
+        std::size_t shiftedPosition = dataBegin + 1u;
+
+        const bool rawOk =
+            TraceReadBits(data, payloadBits, rawPosition, 8, rawByte);
+        const bool shiftedOk =
+            TraceReadBits(data, payloadBits, shiftedPosition, 8, shiftedByte);
+
+        Logger(
+            lINFO,
+            "District Packet0 Trace",
+            "candidate extra=%u extra@%u=0x%X rel@%u=%d "
+            "openClose=%d open=%d close=%d ch=%u seq=%u type=%u "
+            "dataBits=%u data@%u remaining=%u fits=%d raw0=%s0x%02X shift1=%s0x%02X",
+            extraBits,
+            static_cast<unsigned int>(extraBegin),
+            static_cast<unsigned int>(extraValue),
+            static_cast<unsigned int>(reliableBit),
+            reliable ? 1 : 0,
+            hasOpenClose ? 1 : 0,
+            open ? 1 : 0,
+            close ? 1 : 0,
+            static_cast<unsigned int>(channel),
+            static_cast<unsigned int>(sequence),
+            static_cast<unsigned int>(type),
+            static_cast<unsigned int>(dataBits),
+            static_cast<unsigned int>(dataBegin),
+            static_cast<unsigned int>(remaining),
+            dataBits <= remaining ? 1 : 0,
+            rawOk ? "" : "?",
+            static_cast<unsigned int>(rawByte),
+            shiftedOk ? "" : "?",
+            static_cast<unsigned int>(shiftedByte));
+    }
+
+    void TracePacket0Layouts(
+        const std::uint8_t* data,
+        std::size_t size)
+    {
+        std::size_t payloadBits = 0;
+
+        if (!TraceFindPayloadBitCount(data, size, payloadBits))
+        {
+            Logger(
+                lWARN,
+                "District Packet0 Trace",
+                "Could not find UE packet termination marker.");
+            return;
+        }
+
+        Logger(
+            lINFO,
+            "District Packet0 Trace",
+            "packet0 bytes=%u payloadBits=%u bits[30..]=%s",
+            static_cast<unsigned int>(size),
+            static_cast<unsigned int>(payloadBits),
+            TraceBitWindow(data, payloadBits, 30, 128).c_str());
+
+        for (unsigned int extra = 0;
+             extra <= kPacket0CandidateExtraBitsMax;
+             ++extra)
+        {
+            TracePacket0Candidate(data, payloadBits, extra);
+        }
     }
 
     Account* FindAccount(std::uint32_t id)
@@ -344,6 +640,32 @@ namespace
         std::vector<std::uint8_t> packet,
         const char* label)
     {
+        // Self-parse clear server packets before XXTEA. ACK is already proven
+        // on the wire, but this catches writer/header/sequence corruption in
+        // future ControlChannel experiments before encryption obscures it.
+        ApbUdp::Packet clearPacket;
+
+        if (ApbUdp::ParsePacket(packet.data(), packet.size(), clearPacket))
+        {
+            Logger(
+                lINFO,
+                "District TX Clear",
+                "%s | %s | %s",
+                label,
+                ApbUdp::DescribePacket(clearPacket).c_str(),
+                Hex(packet.data(), packet.size(), 96).c_str());
+        }
+        else
+        {
+            Logger(
+                lWARN,
+                "District TX Clear",
+                "%s self-parse failed: %s | %s",
+                label,
+                clearPacket.Error.c_str(),
+                Hex(packet.data(), packet.size(), 96).c_str());
+        }
+
         if (!ProtectOutgoingPacket(packet, account))
         {
             Logger(
@@ -620,6 +942,49 @@ namespace
 
             if (messageType == NMT_HandshakeStart)
             {
+                // V10 interpretation probe for the exact 25-byte body:
+                //
+                //   byte        platform/flags candidate
+                //   uint32 LE   account-id candidate
+                //   20 bytes    auth-token candidate
+                //
+                // This mirrors the old APB district AUTH shape
+                // (ACCID + 40 hex chars == 20 raw auth bytes), but we keep
+                // "candidate" wording until the handoff token is wired through
+                // WorldServer and compared byte-for-byte.
+                std::uint8_t handshakePlatform = 0;
+                std::uint32_t handshakeAccountId = 0;
+                const std::uint8_t* handshakeToken = nullptr;
+
+                if (payload.size() == 25u)
+                {
+                    handshakePlatform = payload[0];
+                    handshakeAccountId =
+                        static_cast<std::uint32_t>(payload[1]) |
+                        (static_cast<std::uint32_t>(payload[2]) << 8) |
+                        (static_cast<std::uint32_t>(payload[3]) << 16) |
+                        (static_cast<std::uint32_t>(payload[4]) << 24);
+                    handshakeToken = payload.data() + 5;
+
+                    Logger(
+                        lSUCCESS,
+                        "District HandshakeStart V10",
+                        "body=25 platformCandidate=%u accountCandidate=%u "
+                        "token20=%s",
+                        static_cast<unsigned int>(handshakePlatform),
+                        static_cast<unsigned int>(handshakeAccountId),
+                        Hex(handshakeToken, 20, 20).c_str());
+                }
+                else
+                {
+                    Logger(
+                        lWARN,
+                        "District HandshakeStart V10",
+                        "Unexpected HandshakeStart body size: %u "
+                        "(expected 25 after opcode).",
+                        static_cast<unsigned int>(payload.size()));
+                }
+
                 if (account == nullptr)
                 {
                     account = FindOnlyPendingAccount();
@@ -648,37 +1013,114 @@ namespace
                         static_cast<unsigned int>(account->GetId()));
                 }
 
+                if (payload.size() == 25u)
+                {
+                    Logger(
+                        handshakeAccountId == account->GetId()
+                            ? lSUCCESS
+                            : lWARN,
+                        "District HandshakeStart V10",
+                        "accountCandidate=%u handoffAccount=%u match=%d; "
+                        "platformCandidate=%u",
+                        static_cast<unsigned int>(handshakeAccountId),
+                        static_cast<unsigned int>(account->GetId()),
+                        handshakeAccountId == account->GetId() ? 1 : 0,
+                        static_cast<unsigned int>(handshakePlatform));
+                }
+
                 account->SetLastClientPacketId(packet.PacketId);
 
-                // V6 APB-specific WelcomeDirect probe.
-                //
-                // The old working retail-APB reference used WelcomeDirect:
-                // ACK the initial authentication/control packet and immediately
-                // send WELCOME, with no CHALLENGE round trip.  The newer client
-                // now enters through NMT_HandshakeStart(26) instead of the old
-                // text AUTH command, so apply the same lifecycle here.
-                const bool ackSent =
-                    SendAck(
-                        socket,
-                        endpoint,
-                        account,
-                        packet.PacketId);
-
-                const bool welcomeSent =
-                    SendWelcome(
-                        socket,
-                        endpoint,
-                        account);
+                const HandshakeProbeMode probeMode =
+                    GetHandshakeProbeMode();
 
                 Logger(
-                    (ackSent && welcomeSent) ? lSUCCESS : lERROR,
-                    "District Handshake",
-                    "WelcomeDirect probe after NMT_HandshakeStart(26) for "
-                    "account %u; ACK sent=%d WELCOME sent=%d. "
-                    "No NMT_HandshakeChallenge/Response/Complete used.",
-                    static_cast<unsigned int>(account->GetId()),
-                    ackSent ? 1 : 0,
-                    welcomeSent ? 1 : 0);
+                    lINFO,
+                    "District Handshake V10",
+                    "Probe mode=%s (set RAPB_HANDSHAKE_PROBE="
+                    "ack|challenge|complete|welcome before launch).",
+                    HandshakeProbeModeText(probeMode));
+
+                bool probeSent = false;
+
+                switch (probeMode)
+                {
+                case HandshakeProbeMode::Ack:
+                    probeSent =
+                        SendAck(
+                            socket,
+                            endpoint,
+                            account,
+                            packet.PacketId);
+
+                    Logger(
+                        probeSent ? lSUCCESS : lERROR,
+                        "District Handshake V10",
+                        "ACK-only modern-header probe; sent=%d.",
+                        probeSent ? 1 : 0);
+                    break;
+
+                case HandshakeProbeMode::Complete:
+                    probeSent =
+                        SendHandshakeComplete(
+                            socket,
+                            endpoint,
+                            account,
+                            packet.PacketId);
+
+                    Logger(
+                        probeSent ? lSUCCESS : lERROR,
+                        "District Handshake V10",
+                        "ACK + NMT_HandshakeComplete(29) modern-header "
+                        "probe; sent=%d.",
+                        probeSent ? 1 : 0);
+                    break;
+
+                case HandshakeProbeMode::Welcome:
+                {
+                    const bool ackSent =
+                        SendAck(
+                            socket,
+                            endpoint,
+                            account,
+                            packet.PacketId);
+
+                    const bool welcomeSent =
+                        SendWelcome(
+                            socket,
+                            endpoint,
+                            account);
+
+                    probeSent = ackSent && welcomeSent;
+
+                    Logger(
+                        probeSent ? lSUCCESS : lERROR,
+                        "District Handshake V10",
+                        "ACK + WELCOME modern-header probe; ACK=%d "
+                        "WELCOME=%d.",
+                        ackSent ? 1 : 0,
+                        welcomeSent ? 1 : 0);
+                    break;
+                }
+
+                case HandshakeProbeMode::Challenge:
+                default:
+                    probeSent =
+                        SendHandshakeChallenge(
+                            socket,
+                            endpoint,
+                            account,
+                            packet.PacketId);
+
+                    Logger(
+                        probeSent ? lSUCCESS : lERROR,
+                        "District Handshake V10",
+                        "ACK + NMT_HandshakeChallenge(27) modern-header "
+                        "probe; challenge=0x%08X sent=%d.",
+                        static_cast<unsigned int>(
+                            kHandshakeChallengeValue),
+                        probeSent ? 1 : 0);
+                    break;
+                }
 
                 return true;
             }
@@ -1123,6 +1565,21 @@ namespace
                 "%s%s",
                 wasEncrypted ? "DECRYPTED " : "PLAINTEXT ",
                 ApbUdp::DescribePacket(packet).c_str());
+
+            if (packet.PacketId == 0)
+            {
+                const std::uint8_t* traceData =
+                    wasEncrypted && !plaintext.empty()
+                        ? plaintext.data()
+                        : receiveBuffer.data();
+
+                const std::size_t traceSize =
+                    wasEncrypted && !plaintext.empty()
+                        ? plaintext.size()
+                        : static_cast<std::size_t>(received);
+
+                TracePacket0Layouts(traceData, traceSize);
+            }
 
             if (ProcessBinaryHandshakePacket(
                     socketHandle,
