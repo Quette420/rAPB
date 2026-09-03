@@ -1557,6 +1557,117 @@ bool SendPackageUses(
         return false;
     }
 
+
+    // APB 1.13.1 / UE3 build 3908, read directly from the live heap
+    // FClassNetCache for APBGame.cAPBPlayerController:
+    //   GetMaxIndex() = 684
+    //   138 = Receive_GC2DS_ASK_DISTRICT_ENTER
+    //   139 = Receive_DS2GC_ANS_DISTRICT_ENTER
+    //
+    // Live UFunction reflection confirms three int32 parameters:
+    //   nReturnCode @ +0x00
+    //   nDistrictUID @ +0x04
+    //   nInstanceNo @ +0x08
+    //
+    // The server opened channel 1 with reliable sequence 1, so the next
+    // server->client reliable bunch on that channel is sequence 2.
+    bool ProcessPlayerControllerActorPacket(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account,
+        const ApbUdp::Packet& packet)
+    {
+        if (account == nullptr)
+            return false;
+
+        constexpr std::uint16_t kControllerChannel = 1u;
+        constexpr std::uint16_t kDistrictEnterAnswerSequence = 2u;
+        constexpr std::uint32_t kControllerFieldMax = 684u;
+        constexpr std::uint32_t kAskDistrictEnterField = 138u;
+        constexpr std::uint32_t kAnswerDistrictEnterField = 139u;
+
+        for (const ApbUdp::Bunch& bunch : packet.Bunches)
+        {
+            if (bunch.Kind != ApbUdp::BunchKind::Data ||
+                bunch.ChannelIndex != kControllerChannel)
+            {
+                continue;
+            }
+
+            std::uint32_t fieldIndex = 0;
+            std::size_t parameterBits = 0;
+            std::string decodeError;
+
+            if (!ApbUdp::DecodeActorFieldIndex(
+                    bunch,
+                    kControllerFieldMax,
+                    fieldIndex,
+                    parameterBits,
+                    decodeError))
+            {
+                continue;
+            }
+
+            if (fieldIndex != kAskDistrictEnterField)
+                continue;
+
+            const std::int32_t districtUid =
+                static_cast<std::int32_t>(
+                    g_cfg != nullptr ? g_cfg->GetDistrictType() : 1);
+
+            // RPC parameters are not serialized like replicated IntProperty
+            // fields.  UActorChannel::ReceivedBunch reads a one-bit
+            // non-default/presence selector before every non-bool RPC
+            // parameter and calls NetSerializeItem only when that bit is set.
+            //
+            // BuildActorParamsFieldPacket(kind="int") writes exactly:
+            //   presence=1, raw int32
+            // for each parameter.
+            std::vector<ApbUdp::DebugParam> params(3u);
+            params[0].Kind = "int";
+            params[0].A = 0;           // nReturnCode: success
+            params[1].Kind = "int";
+            params[1].A = districtUid; // nDistrictUID
+            params[2].Kind = "int";
+            params[2].A = 1;           // nInstanceNo
+
+            std::vector<std::uint8_t> answer =
+                ApbUdp::BuildActorParamsFieldPacket(
+                    account->AllocateServerPacketId(),
+                    kControllerChannel,
+                    kDistrictEnterAnswerSequence,
+                    kAnswerDistrictEnterField,
+                    kControllerFieldMax,
+                    params);
+
+            const bool sent =
+                SendProtectedPacket(
+                    socket,
+                    endpoint,
+                    account,
+                    answer,
+                    "DISTRICT-ENTER-ANSWER");
+
+            Logger(
+                sent ? lSUCCESS : lERROR,
+                "District Handshake",
+                "GC2DS_ASK_DISTRICT_ENTER field=%u -> "
+                "DS2GC_ANS_DISTRICT_ENTER field=%u sent=%d "
+                "returnCode=0 districtUID=%d instanceNo=1 "
+                "ch=1 seq=2 fieldMax=%u requestParamBits=%u",
+                static_cast<unsigned int>(kAskDistrictEnterField),
+                static_cast<unsigned int>(kAnswerDistrictEnterField),
+                sent ? 1 : 0,
+                districtUid,
+                static_cast<unsigned int>(kControllerFieldMax),
+                static_cast<unsigned int>(parameterBits));
+
+            return sent;
+        }
+
+        return false;
+    }
+
     void UdpListenerThread()
     {
         SOCKET socketHandle =
@@ -1775,6 +1886,25 @@ bool SendPackageUses(
                 }
             }
             
+
+            // Packet ACK only retires transport reliability. Handle the APB
+            // application-level PlayerController RPC separately.
+            {
+                Account* actorAccount = endpointAccount;
+
+                if (actorAccount == nullptr)
+                    actorAccount = FindAccountByEndpoint(remoteAddress);
+
+                if (actorAccount != nullptr)
+                {
+                    ProcessPlayerControllerActorPacket(
+                        socketHandle,
+                        remoteAddress,
+                        actorAccount,
+                        packet);
+                }
+            }
+
             if (ProcessBinaryHandshakePacket(
                     socketHandle,
                     remoteAddress,
