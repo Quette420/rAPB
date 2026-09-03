@@ -44,6 +44,32 @@ namespace WorldServer.TCP.Packets
 
                 cclient.Reserved.tcp.Client.Send(new byte[] { 0x31, Convert.ToByte(cclient.Account.Index) });
                 cclient.Reserved.tcp.Client.Send(encryptionKey);
+
+// Character identity.
+                byte[] characterProfile = new byte[7];
+
+                byte[] characterUid =
+                    BitConverter.GetBytes(cclient.Character.Index);
+
+                Buffer.BlockCopy(
+                    characterUid,
+                    0,
+                    characterProfile,
+                    0,
+                    4);
+
+                characterProfile[4] = cclient.Character.Faction;
+                characterProfile[5] = cclient.Character.Gender;
+                characterProfile[6] = cclient.Character.Version;
+
+                cclient.Reserved.tcp.Client.Send(characterProfile);
+
+                Console.WriteLine(
+                    "District character handoff: UID={0} Faction={1} Gender={2} Version={3}",
+                    cclient.Character.Index,
+                    cclient.Character.Faction,
+                    cclient.Character.Gender,
+                    cclient.Character.Version);
             }
             else Out.WriteUInt32Reverse((uint)ResponseCodes.RC_DISTRICT_RESERVE_DISTRICT_OFFLINE);
             cclient.Send(Out);

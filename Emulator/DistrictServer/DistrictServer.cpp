@@ -896,6 +896,15 @@ constexpr std::uint32_t kFieldAskDistrictEnter = 138u;
 constexpr std::uint32_t kFieldAnsDistrictEnter = 139u;
 constexpr std::uint32_t kFieldServerUseAutoReady = 670u;
 constexpr std::uint32_t kFieldServerSyncState    = 80u;
+// APB 1.13.1 LIVE FClassNetCache:
+// cAPBPlayerController.ClientGoToSpawnZoneSelectScreen(byte eFaction)
+constexpr std::uint32_t kFieldClientGoToSpawnZoneSelectScreen = 390u;
+
+// cAPBPlayerController.ClientSetInitialState(
+//     int nCharacterUID,
+//     byte Faction,
+//     byte Gender)
+constexpr std::uint32_t kFieldClientSetInitialState = 573u;
 
 // UPackageMap::Compute() назначает основания как бегущую сумму по списку
 // в порядке отправки Uses. Порядок наш, поэтому индексы задаём мы.
@@ -1160,6 +1169,206 @@ bool SendPackageUses(
         return sent;
     }
     
+	    // ---------------------------------------------------------------------
+    // cAPBPlayerController.ClientSetInitialState(
+    //     int nCharacterUID,
+    //     byte Faction,
+    //     byte Gender)
+    //
+    // APB 1.13.1 LIVE FClassNetCache:
+    //   FieldIndex = 573
+    //   FieldMax   = 684
+    //
+    // В ApbUdp уже есть специальный builder, который правильно пишет
+    // presence/non-default bits для всех трёх RPC-параметров.
+    // ---------------------------------------------------------------------
+    bool SendClientSetInitialState(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account)
+    {
+        if (account == nullptr)
+            return false;
+
+        if (!account->HasCharacterProfile())
+        {
+            Logger(
+                lERROR,
+                "District Net",
+                "ClientSetInitialState not sent: character profile is missing.");
+            return false;
+        }
+
+        const std::uint32_t characterId =
+            account->GetCharacterId();
+
+        const std::uint8_t faction =
+            account->GetCharacterFaction();
+
+        const std::uint8_t gender =
+            account->GetCharacterGender();
+
+        // Reflection:
+        //   etFaction -> 5 enum entries
+        //   etGender  -> 5 enum entries
+        //
+        // 0..4 допустимы. Для обычного выбранного персонажа ожидаются
+        // реальные faction/gender, а не MAX.
+        if (faction >= 5u || gender >= 5u)
+        {
+            Logger(
+                lERROR,
+                "District Net",
+                "ClientSetInitialState not sent: invalid profile "
+                "characterUID=%u faction=%u gender=%u",
+                static_cast<unsigned int>(characterId),
+                static_cast<unsigned int>(faction),
+                static_cast<unsigned int>(gender));
+
+            return false;
+        }
+
+        const std::uint16_t seq =
+            AllocateChannelSequence(
+                account,
+                kControllerChannel);
+
+        std::vector<std::uint8_t> packet =
+            ApbUdp::BuildClientSetInitialStatePacket(
+                account->AllocateServerPacketId(),
+                kControllerChannel,
+                seq,
+                kFieldClientSetInitialState,
+                kControllerFieldMax,
+                static_cast<std::int32_t>(characterId),
+                faction,
+                gender);
+
+        if (packet.empty())
+        {
+            Logger(
+                lERROR,
+                "District Net",
+                "BuildClientSetInitialStatePacket returned empty packet.");
+            return false;
+        }
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "CLIENT-SET-INITIAL-STATE");
+
+        Logger(
+            sent ? lSUCCESS : lERROR,
+            "District Net",
+            "ClientSetInitialState sent=%d ch=%u seq=%u field=%u "
+            "characterUID=%u faction=%u gender=%u",
+            sent ? 1 : 0,
+            static_cast<unsigned int>(kControllerChannel),
+            static_cast<unsigned int>(seq),
+            static_cast<unsigned int>(kFieldClientSetInitialState),
+            static_cast<unsigned int>(characterId),
+            static_cast<unsigned int>(faction),
+            static_cast<unsigned int>(gender));
+
+        return sent;
+    }
+
+
+    // ---------------------------------------------------------------------
+    // cAPBPlayerController.ClientGoToSpawnZoneSelectScreen(
+    //     byte eFaction)
+    //
+    // APB 1.13.1 LIVE FClassNetCache:
+    //   FieldIndex = 390
+    //   FieldMax   = 684
+    //
+    // В ApbUdp уже есть специальный builder с правильным
+    // ByteProperty RPC presence-bit + SerializeInt(eFaction, 5).
+    // ---------------------------------------------------------------------
+    bool SendClientGoToSpawnZoneSelectScreen(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account)
+    {
+        if (account == nullptr)
+            return false;
+
+        if (!account->HasCharacterProfile())
+        {
+            Logger(
+                lERROR,
+                "District Net",
+                "ClientGoToSpawnZoneSelectScreen not sent: "
+                "character profile is missing.");
+            return false;
+        }
+
+        const std::uint8_t faction =
+            account->GetCharacterFaction();
+
+        if (faction >= 5u)
+        {
+            Logger(
+                lERROR,
+                "District Net",
+                "ClientGoToSpawnZoneSelectScreen not sent: "
+                "invalid faction=%u",
+                static_cast<unsigned int>(faction));
+
+            return false;
+        }
+
+        const std::uint16_t seq =
+            AllocateChannelSequence(
+                account,
+                kControllerChannel);
+
+        std::vector<std::uint8_t> packet =
+            ApbUdp::BuildClientGoToSpawnZoneSelectScreenPacket(
+                account->AllocateServerPacketId(),
+                kControllerChannel,
+                seq,
+                kFieldClientGoToSpawnZoneSelectScreen,
+                kControllerFieldMax,
+                faction);
+
+        if (packet.empty())
+        {
+            Logger(
+                lERROR,
+                "District Net",
+                "BuildClientGoToSpawnZoneSelectScreenPacket "
+                "returned empty packet.");
+            return false;
+        }
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "CLIENT-GOTO-SPAWN-ZONE-SELECT");
+
+        Logger(
+            sent ? lSUCCESS : lERROR,
+            "District Net",
+            "ClientGoToSpawnZoneSelectScreen sent=%d "
+            "ch=%u seq=%u field=%u faction=%u",
+            sent ? 1 : 0,
+            static_cast<unsigned int>(kControllerChannel),
+            static_cast<unsigned int>(seq),
+            static_cast<unsigned int>(
+                kFieldClientGoToSpawnZoneSelectScreen),
+            static_cast<unsigned int>(faction));
+
+        return sent;
+    }
+
         bool ProcessBinaryHandshakePacket(
         SOCKET socket,
         const sockaddr_in& endpoint,
@@ -1884,13 +2093,57 @@ bool SendPackageUses(
                 static_cast<unsigned int>(kControllerFieldMax),
                 static_cast<unsigned int>(parameterBits));
 
-            if (sent)
+                        if (sent)
             {
-                SendClientSetHUD(
-                    socket, endpoint, account,
-                    GlobalNetIndex("APBGame", kHudClassLocalNetIndex));
+                // ---------------------------------------------------------
+                // Stage 1: базовый local-player bootstrap.
+                // ---------------------------------------------------------
+                const bool hudSent =
+                    SendClientSetHUD(
+                        socket,
+                        endpoint,
+                        account,
+                        GlobalNetIndex(
+                            "APBGame",
+                            kHudClassLocalNetIndex));
 
-                SendPlayerReplicationInfo(socket, endpoint, account);
+                const bool priSent =
+                    hudSent &&
+                    SendPlayerReplicationInfo(
+                        socket,
+                        endpoint,
+                        account);
+
+                // ---------------------------------------------------------
+                // Stage 2: сообщить клиенту identity локального персонажа.
+                // ---------------------------------------------------------
+                const bool initialStateSent =
+                    priSent &&
+                    SendClientSetInitialState(
+                        socket,
+                        endpoint,
+                        account);
+
+                // ---------------------------------------------------------
+                // Stage 3: перевести контроллер в spawn-zone / MapSelect
+                // startup path.
+                // ---------------------------------------------------------
+                const bool spawnZoneScreenSent =
+                    initialStateSent &&
+                    SendClientGoToSpawnZoneSelectScreen(
+                        socket,
+                        endpoint,
+                        account);
+
+                Logger(
+                    spawnZoneScreenSent ? lSUCCESS : lERROR,
+                    "District Bootstrap",
+                    "post-enter bootstrap: HUD=%d PRI=%d "
+                    "InitialState=%d SpawnZoneScreen=%d",
+                    hudSent ? 1 : 0,
+                    priSent ? 1 : 0,
+                    initialStateSent ? 1 : 0,
+                    spawnZoneScreenSent ? 1 : 0);
             }
 
             return sent;
@@ -2270,21 +2523,74 @@ bool SendPackageUses(
                 encryptionKey,
                 keyPayload.get(),
                 sizeof(encryptionKey));
+			
+			// WorldServer immediately follows the 16-byte session key with:
+//
+//   int32 CharacterUID
+//   uint8 Faction
+//   uint8 Gender
+//   uint8 AppearanceVersion
+//
+// Total: 7 bytes.
+std::unique_ptr<char[]> profilePayload(
+    g_world->Receive(7));
 
-            Account* account =
-                AddOrUpdateAccount(
-                    accountId,
-                    encryptionKey);
+if (!profilePayload)
+{
+    Logger(
+        lERROR,
+        "WorldControl",
+        "Failed to receive 7-byte character profile "
+        "for account %u",
+        static_cast<unsigned int>(accountId));
 
-            Logger(
-                lSUCCESS,
-                "WorldControl",
-                "District enter handoff: account=%u; XXTEA key=%s",
-                static_cast<unsigned int>(account->GetId()),
-                Hex(
-                    encryptionKey,
-                    sizeof(encryptionKey),
-                    sizeof(encryptionKey)).c_str());
+    return false;
+}
+
+std::uint32_t characterId = 0;
+
+std::memcpy(
+    &characterId,
+    profilePayload.get(),
+    sizeof(characterId));
+
+const std::uint8_t faction =
+    static_cast<std::uint8_t>(
+        profilePayload[4]);
+
+const std::uint8_t gender =
+    static_cast<std::uint8_t>(
+        profilePayload[5]);
+
+const std::uint8_t appearanceVersion =
+    static_cast<std::uint8_t>(
+        profilePayload[6]);			
+
+           Account* account =
+    AddOrUpdateAccount(
+        accountId,
+        encryptionKey);
+
+account->SetCharacterProfile(
+    characterId,
+    faction,
+    gender,
+    appearanceVersion,
+    std::string(),
+    std::string(),
+    std::vector<std::uint8_t>());
+
+Logger(
+    lSUCCESS,
+    "WorldControl",
+    "Character profile handoff: "
+    "account=%u characterUID=%u faction=%u "
+    "gender=%u appearanceVersion=%u",
+    static_cast<unsigned int>(accountId),
+    static_cast<unsigned int>(characterId),
+    static_cast<unsigned int>(faction),
+    static_cast<unsigned int>(gender),
+    static_cast<unsigned int>(appearanceVersion));
 
             return true;
         }
