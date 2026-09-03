@@ -1705,7 +1705,7 @@ bool SendPackageUses(
                 static_cast<unsigned int>(parameterBits));
 
                         if (fieldIndex == kFieldServerSyncState ||
-                fieldIndex == kFieldServerUseAutoReady)
+                			fieldIndex == kFieldServerUseAutoReady)
             {
                 // Клиент сообщает, ответа не ждёт.
                 continue;
