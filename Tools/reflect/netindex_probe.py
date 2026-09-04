@@ -43,6 +43,7 @@ import struct
 import json
 import csv
 import math
+import re
 from pathlib import Path
 from collections import defaultdict
 
@@ -6668,6 +6669,1485 @@ def _csv_anchor_candidates(rows, shared_cols, mem, requested=None):
     return anchors
 
 
+
+def _resolve_signature_csv_path(csv_path):
+    """
+    Resolve a signature CSV in a predictable order:
+      1) the path exactly as supplied
+      2) cwd / basename
+      3) script directory / basename
+      4) parent of script directory / basename
+      5) parent of cwd / basename
+    Returns (resolved_path_or_None, tried_paths).
+    """
+    raw = Path(csv_path)
+    script_dir = Path(__file__).resolve().parent
+    cwd = Path.cwd()
+
+    candidates = []
+    def add(p):
+        try:
+            p = p.expanduser()
+        except Exception:
+            pass
+        if p not in candidates:
+            candidates.append(p)
+
+    add(raw)
+    if not raw.is_absolute():
+        add(cwd / raw)
+        add(script_dir / raw)
+        add(script_dir.parent / raw)
+        add(cwd.parent / raw)
+
+        # Also try just the basename in the common roots, in case the
+        # caller supplied an obsolete relative subdirectory.
+        name = raw.name
+        add(cwd / name)
+        add(script_dir / name)
+        add(script_dir.parent / name)
+        add(cwd.parent / name)
+
+    for p in candidates:
+        try:
+            if p.is_file():
+                return p.resolve(), [str(x) for x in candidates]
+        except OSError:
+            pass
+
+    return None, [str(x) for x in candidates]
+
+
+
+def _read_shared_runtime_row(objs, mem, known_objects, base, shared_cols):
+    values = {}
+    for name, col in shared_cols.items():
+        values[name] = _sdd_scalar_at(
+            objs, mem, known_objects, base,
+            col["prop"], col.get("element_index", 0),
+        )
+    return values
+
+
+def _match_runtime_values_to_csv(runtime_values, row, shared_cols):
+    compared = 0
+    matched = 0
+    mismatches = []
+    for name, col in shared_cols.items():
+        old = row.get(name)
+        if _csv_is_empty(old):
+            continue
+        ok = _csv_compare_value(runtime_values.get(name), old, col["class"])
+        if ok is None:
+            continue
+        compared += 1
+        if ok:
+            matched += 1
+        elif len(mismatches) < 8:
+            mismatches.append((name, old, runtime_values.get(name)))
+    ratio = (float(matched) / compared) if compared else 0.0
+    return {"compared": compared, "matched": matched, "ratio": ratio, "mismatches": mismatches}
+
+
+def _greedy_unique_row_assignment(pair_scores, min_ratio, min_compared):
+    eligible = []
+    for p in pair_scores:
+        m = p["match"]
+        if m["compared"] < min_compared or m["ratio"] < min_ratio:
+            continue
+        eligible.append(p)
+    eligible.sort(key=lambda p: (
+        -p["match"]["ratio"], -p["match"]["matched"], -p["match"]["compared"],
+        p["current_index"], p["old_index"],
+    ))
+    used_current, used_old, out = set(), set(), []
+    for p in eligible:
+        ci, oi = p["current_index"], p["old_index"]
+        if ci in used_current or oi in used_old:
+            continue
+        used_current.add(ci); used_old.add(oi); out.append(p)
+    return out
+
+
+def _validate_order_independent_run(
+    objs, mem, known, data_base, stride, row_count, schema, shared,
+    old_rows, min_row_match, min_semantic,
+):
+    current = []
+    semantic_good = 0
+    for ci in range(row_count):
+        addr = data_base + ci * stride
+        try:
+            mem.read(addr, min(stride, 16))
+        except Exception:
+            return None
+        sem = _strict_row_semantics(objs, mem, addr, schema)
+        if sem["ratio"] >= min_semantic:
+            semantic_good += 1
+        vals = _read_shared_runtime_row(objs, mem, known, addr, shared)
+        current.append({"index": ci, "address": addr, "semantic": sem, "values": vals})
+
+    min_compared = min(4, len(shared))
+    pair_scores, best_per_current = [], []
+    for cur in current:
+        best = None
+        for oi, old in enumerate(old_rows):
+            m = _match_runtime_values_to_csv(cur["values"], old, shared)
+            p = {"current_index": cur["index"], "old_index": oi, "match": m}
+            pair_scores.append(p)
+            if best is None or (m["ratio"], m["matched"], m["compared"]) > (
+                best["match"]["ratio"], best["match"]["matched"], best["match"]["compared"]
+            ):
+                best = p
+        best_per_current.append(best)
+
+    assignment = _greedy_unique_row_assignment(pair_scores, min_row_match, min_compared)
+    assigned_matched = sum(p["match"]["matched"] for p in assignment)
+    assigned_compared = sum(p["match"]["compared"] for p in assignment)
+    assigned_ratio = float(assigned_matched) / assigned_compared if assigned_compared else 0.0
+    best_all_matched = sum(p["match"]["matched"] for p in best_per_current if p)
+    best_all_compared = sum(p["match"]["compared"] for p in best_per_current if p)
+    best_all_ratio = float(best_all_matched) / best_all_compared if best_all_compared else 0.0
+    return {
+        "current": current, "semantic_good": semantic_good, "assignment": assignment,
+        "assigned_count": len(assignment), "assigned_matched": assigned_matched,
+        "assigned_compared": assigned_compared, "assigned_ratio": assigned_ratio,
+        "best_all_ratio": best_all_ratio, "best_per_current": best_per_current,
+    }
+
+
+
+def _scan_process_patterns(pid, patterns, max_hits_per_pattern=50000):
+    """
+    Scan readable committed process memory once for several exact byte
+    signatures.
+
+    Improvements over the previous implementation:
+      * duplicate byte signatures are scanned only once;
+      * one compiled regex alternation searches all unique signatures in a
+        chunk instead of calling bytes.find once per pattern;
+      * duplicate old-row identities receive the same hit addresses.
+
+    patterns:
+        {key: bytes, ...}
+
+    Returns:
+        {key: [absolute_hit_address, ...], ...}
+    """
+    cleaned = {
+        key: bytes(pattern)
+        for key, pattern in patterns.items()
+        if pattern
+    }
+    out = {key: [] for key in cleaned}
+    if not cleaned:
+        return out
+
+    pattern_to_keys = defaultdict(list)
+    for key, pattern in cleaned.items():
+        pattern_to_keys[pattern].append(key)
+
+    unique_patterns = list(pattern_to_keys)
+    unique_patterns.sort(key=lambda p: (-len(p), p))
+
+    regex = re.compile(
+        b"|".join(re.escape(p) for p in unique_patterns)
+    )
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    ReadProcessMemory = kernel32.ReadProcessMemory
+    ReadProcessMemory.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    ReadProcessMemory.restype = ctypes.c_int
+
+    chunk_size = 1024 * 1024
+    overlap_size = max(len(p) for p in unique_patterns) - 1
+
+    unique_done = set()
+
+    for handle, base, size in _win_readable_regions(pid):
+        offset = 0
+        overlap = b""
+        overlap_addr = base
+
+        while offset < size:
+            want = min(chunk_size, size - offset)
+            buf = ctypes.create_string_buffer(want)
+            got = ctypes.c_size_t(0)
+
+            ok = ReadProcessMemory(
+                handle,
+                ctypes.c_void_p(base + offset),
+                buf,
+                want,
+                ctypes.byref(got),
+            )
+
+            if not ok or got.value == 0:
+                overlap = b""
+                offset += want
+                continue
+
+            data = overlap + buf.raw[:got.value]
+            data_base = overlap_addr if overlap else base + offset
+
+            for match in regex.finditer(data):
+                pattern = match.group(0)
+                if pattern in unique_done:
+                    continue
+
+                addr = data_base + match.start()
+                all_full = True
+
+                for key in pattern_to_keys[pattern]:
+                    bucket = out[key]
+                    if len(bucket) < max_hits_per_pattern:
+                        bucket.append(addr)
+                    if len(bucket) < max_hits_per_pattern:
+                        all_full = False
+
+                if all_full:
+                    unique_done.add(pattern)
+
+            if len(unique_done) == len(unique_patterns):
+                return out
+
+            keep = min(overlap_size, len(data))
+            overlap = data[-keep:] if keep else b""
+            overlap_addr = base + offset + got.value - keep
+            offset += got.value
+
+    return out
+
+
+def _exact_pattern_information(pattern):
+    """
+    A weak exact signature (for example 26 zero bytes) is a terrible memory
+    search seed even though it can still be useful later when comparing a
+    known row.  Return simple byte-information diagnostics.
+    """
+    if not pattern:
+        return {
+            "nonzero": 0,
+            "distinct": 0,
+            "transitions": 0,
+            "strong": False,
+        }
+
+    nonzero = sum(1 for b in pattern if b != 0)
+    distinct = len(set(pattern))
+    transitions = sum(
+        1 for i in range(1, len(pattern))
+        if pattern[i] != pattern[i - 1]
+    )
+
+    # Deliberately conservative.  Normal APB gameplay rows with several ints
+    # easily pass this; all-zero/default rows do not.
+    strong = (
+        nonzero >= 4
+        and distinct >= 3
+        and transitions >= 3
+    )
+
+    return {
+        "nonzero": nonzero,
+        "distinct": distinct,
+        "transitions": transitions,
+        "strong": strong,
+    }
+
+
+
+def _scan_process_patterns_targeted(pid, patterns, max_hits_per_pattern=50000):
+    """
+    Fast targeted exact-byte scanner for a small number of signatures.
+
+    Uses bytes.find() (CPython C implementation) rather than a large regex
+    alternation. Intended for <= ~8 highly informative patterns.
+    """
+    cleaned = {
+        key: bytes(pattern)
+        for key, pattern in patterns.items()
+        if pattern
+    }
+    out = {key: [] for key in cleaned}
+    if not cleaned:
+        return out
+
+    # Deduplicate physical patterns while preserving all logical row ids.
+    pattern_to_keys = defaultdict(list)
+    for key, pattern in cleaned.items():
+        pattern_to_keys[pattern].append(key)
+
+    unique = list(pattern_to_keys.keys())
+    max_pat = max(len(p) for p in unique)
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    ReadProcessMemory = kernel32.ReadProcessMemory
+    ReadProcessMemory.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    ReadProcessMemory.restype = ctypes.c_int
+
+    chunk_size = 4 * 1024 * 1024
+    overlap_size = max_pat - 1
+    full_patterns = set()
+
+    for handle, base, size in _win_readable_regions(pid):
+        offset = 0
+        overlap = b""
+        overlap_addr = base
+
+        while offset < size:
+            want = min(chunk_size, size - offset)
+            buf = ctypes.create_string_buffer(want)
+            got = ctypes.c_size_t(0)
+
+            ok = ReadProcessMemory(
+                handle,
+                ctypes.c_void_p(base + offset),
+                buf,
+                want,
+                ctypes.byref(got),
+            )
+
+            if not ok or got.value == 0:
+                overlap = b""
+                offset += want
+                continue
+
+            data = overlap + buf.raw[:got.value]
+            data_base = overlap_addr if overlap else base + offset
+
+            for pattern in unique:
+                if pattern in full_patterns:
+                    continue
+
+                pos = 0
+                addresses = []
+                # All logical keys sharing this pattern share hit addresses.
+                first_key = pattern_to_keys[pattern][0]
+                current_count = len(out[first_key])
+
+                while current_count + len(addresses) < max_hits_per_pattern:
+                    found = data.find(pattern, pos)
+                    if found < 0:
+                        break
+                    addresses.append(data_base + found)
+                    pos = found + 1
+
+                if addresses:
+                    for key in pattern_to_keys[pattern]:
+                        out[key].extend(addresses)
+
+                if len(out[first_key]) >= max_hits_per_pattern:
+                    full_patterns.add(pattern)
+
+            if len(full_patterns) == len(unique):
+                return out
+
+            keep = min(overlap_size, len(data))
+            overlap = data[-keep:] if keep else b""
+            overlap_addr = base + offset + got.value - keep
+            offset += got.value
+
+    return out
+
+
+def _exact_pattern_rank(pattern):
+    info = _exact_pattern_information(pattern)
+    # Prefer patterns with more non-zero material, more distinct bytes and
+    # more transitions. Length is included but normally equal within a struct.
+    score = (
+        info["nonzero"] * 4
+        + info["distinct"] * 6
+        + info["transitions"] * 3
+        + len(pattern)
+    )
+    return score, info
+
+
+def _csv_exact_scalar_bytes(col, value):
+    """
+    Encode an old CSV value exactly as the current reflected scalar field.
+    BoolProperty is deliberately excluded because several UE3 bool properties
+    can share one backing DWORD.
+    """
+    if _csv_is_empty(value):
+        return None
+
+    cls = col["class"]
+    number = _csv_number(value)
+
+    try:
+        if cls == "ByteProperty":
+            if number is None:
+                return None
+            iv = int(number)
+            if not (0 <= iv <= 0xFF):
+                return None
+            return struct.pack("<B", iv)
+
+        if cls == "IntProperty":
+            if number is None:
+                return None
+            iv = int(number)
+            if not (-0x80000000 <= iv <= 0x7FFFFFFF):
+                return None
+            return struct.pack("<i", iv)
+
+        if cls == "UIntProperty":
+            if number is None:
+                return None
+            iv = int(number)
+            if not (0 <= iv <= 0xFFFFFFFF):
+                return None
+            return struct.pack("<I", iv)
+
+        if cls == "FloatProperty":
+            if number is None:
+                return None
+            return struct.pack("<f", float(number))
+
+        if cls == "DoubleProperty":
+            if number is None:
+                return None
+            return struct.pack("<d", float(number))
+    except Exception:
+        return None
+
+    return None
+
+
+def _best_csv_composite_segment(row, shared_cols, mem, min_bytes=8):
+    """
+    Build the longest contiguous exact-byte segment that can be constructed
+    from old CSV values at CURRENT reflected offsets.
+
+    New fields inserted between old fields simply split the segment; they do
+    not invalidate other runs.
+    """
+    pieces = []
+
+    for name, col in shared_cols.items():
+        blob = _csv_exact_scalar_bytes(col, row.get(name))
+        if blob is None:
+            continue
+        off = _schema_column_runtime_offset(mem, col)
+        if off is None:
+            continue
+        pieces.append({
+            "name": name,
+            "offset": int(off),
+            "size": len(blob),
+            "bytes": blob,
+        })
+
+    pieces.sort(key=lambda p: (p["offset"], p["name"]))
+    if not pieces:
+        return None
+
+    runs = []
+    current = []
+
+    for p in pieces:
+        if not current:
+            current = [p]
+            continue
+
+        prev = current[-1]
+        if p["offset"] == prev["offset"] + prev["size"]:
+            current.append(p)
+        else:
+            runs.append(current)
+            current = [p]
+
+    if current:
+        runs.append(current)
+
+    candidates = []
+    for run in runs:
+        blob = b"".join(p["bytes"] for p in run)
+        if len(blob) < int(min_bytes):
+            continue
+        candidates.append({
+            "start_offset": run[0]["offset"],
+            "end_offset": run[-1]["offset"] + run[-1]["size"],
+            "bytes": blob,
+            "fields": [p["name"] for p in run],
+        })
+
+    if not candidates:
+        return None
+
+    candidates.sort(
+        key=lambda r: (
+            -len(r["bytes"]),
+            -len(r["fields"]),
+            r["start_offset"],
+        )
+    )
+    return candidates[0]
+
+
+def _composite_delta_histogram(row_hits, max_delta=0x2000):
+    """
+    Return repeated positive address deltas between hits belonging to
+    different old-row identities.  Repeated deltas are useful for spotting
+    embedded/custom record strides even when PropertySize is not the storage
+    stride.
+    """
+    items = sorted(row_hits.values(), key=lambda r: r["row_base"])
+    counts = defaultdict(int)
+    examples = defaultdict(list)
+
+    for i in range(len(items)):
+        a = items[i]
+        a_old = set(a["old_matches"])
+        for j in range(i + 1, len(items)):
+            b = items[j]
+            diff = b["row_base"] - a["row_base"]
+            if diff > max_delta:
+                break
+            if diff <= 0 or (diff & 0x3):
+                continue
+
+            b_old = set(b["old_matches"])
+            if a_old and b_old and a_old == b_old:
+                continue
+
+            counts[diff] += 1
+            if len(examples[diff]) < 3:
+                examples[diff].append(
+                    (a["row_base"], b["row_base"])
+                )
+
+    ranked = sorted(
+        counts.items(),
+        key=lambda kv: (-kv[1], kv[0]),
+    )
+    return ranked, examples
+
+
+def scan_struct_csv_composite(
+    objs,
+    mem,
+    groups,
+    struct_query,
+    csv_path,
+    min_bytes=8,
+    min_row_match=0.70,
+    min_semantic=0.85,
+    max_hits=50000,
+    max_results=20,
+    seed_limit=6,
+):
+    """
+    Strong old-CSV -> current-memory matcher.
+
+    Unlike the broad integer-anchor scanner, this searches exact contiguous
+    multi-field byte signatures constructed at CURRENT reflected offsets.
+    Old CSV row order is never assumed.
+    """
+    st = _resolve_one_struct(objs, groups, struct_query)
+    if st is None:
+        return None
+
+    stride = mem.try_u32(st + 0x54, None)
+    if not isinstance(stride, int) or stride <= 0:
+        print("!! bad struct PropertySize/stride")
+        return None
+
+    path, tried_paths = _resolve_signature_csv_path(csv_path)
+    if path is None:
+        print("!! signature CSV not found: %s" % csv_path)
+        print("   cwd       : %s" % Path.cwd())
+        print("   script dir: %s" % Path(__file__).resolve().parent)
+        print("   tried:")
+        for candidate in tried_paths:
+            print("      %s" % candidate)
+        return None
+
+    with path.open("r", newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        old_rows = list(reader)
+        csv_fields = list(reader.fieldnames or [])
+
+    if not old_rows:
+        print("!! signature CSV has no rows")
+        return None
+
+    schema = _sdd_expand_row_schema(objs, mem, st)
+    supported = _csv_supported_schema(schema)
+    shared_names = [n for n in csv_fields if n in supported]
+    shared = {n: supported[n] for n in shared_names}
+
+    print("\n============================================================")
+    print("COMPOSITE CSV ROW SCAN: %s" % objs.path(st))
+    print("============================================================")
+    print("  signature CSV        : %s" % path)
+    print("  current stride       : 0x%X (%d)" % (stride, stride))
+    print("  old rows             : %d" % len(old_rows))
+    print("  shared columns       : %d" % len(shared_names))
+    print("  minimum exact bytes  : %d" % int(min_bytes))
+    print(
+        "  NOTE                  : exact byte patterns use current "
+        "reflection offsets; old row order is ignored."
+    )
+
+    patterns = {}
+    segments = {}
+
+    print("\n[COMPOSITE SIGNATURES]")
+    for ri, old in enumerate(old_rows):
+        seg = _best_csv_composite_segment(
+            old,
+            shared,
+            mem,
+            min_bytes=min_bytes,
+        )
+        if seg is None:
+            print("  oldRow=%-3d <no contiguous exact segment >= %d bytes>" % (
+                ri, int(min_bytes)
+            ))
+            continue
+
+        patterns[ri] = seg["bytes"]
+        segments[ri] = seg
+        print(
+            "  oldRow=%-3d currentOff=0x%-4X bytes=%-3d fields=%s"
+            % (
+                ri,
+                seg["start_offset"],
+                len(seg["bytes"]),
+                ", ".join(seg["fields"]),
+            )
+        )
+        print("           hex=%s" % seg["bytes"].hex(" "))
+
+    if not patterns:
+        print("!! no usable composite signatures")
+        return []
+
+    scan_patterns = {}
+    weak_rows = []
+    duplicate_groups = defaultdict(list)
+
+    for ri, pattern in patterns.items():
+        info = _exact_pattern_information(pattern)
+        duplicate_groups[pattern].append(ri)
+        if info["strong"]:
+            scan_patterns[ri] = pattern
+        else:
+            weak_rows.append((ri, info))
+
+    # Deduplicate first, then rank one representative oldRow per exact byte
+    # pattern.  We only need one or a few surviving old rows to recover the
+    # current contiguous table.
+    representative = {}
+    for ri, pattern in scan_patterns.items():
+        representative.setdefault(pattern, ri)
+
+    ranked_unique = []
+    for pattern, ri in representative.items():
+        score, info = _exact_pattern_rank(pattern)
+        ranked_unique.append((score, ri, pattern, info))
+
+    ranked_unique.sort(
+        key=lambda x: (-x[0], x[1])
+    )
+
+    limit = max(1, int(seed_limit))
+    selected_unique = ranked_unique[:limit]
+
+    targeted_patterns = {}
+    selected_physical = set()
+    for score, ri, pattern, info in selected_unique:
+        selected_physical.add(pattern)
+        # Include every logical oldRow sharing the selected physical pattern
+        # so full-row reporting still knows about duplicates.
+        for dup_ri in duplicate_groups[pattern]:
+            targeted_patterns[dup_ri] = pattern
+
+    print("\n[EXACT SCAN PLAN]")
+    print("  CSV rows with composite signatures : %d" % len(patterns))
+    print("  strong search seeds available      : %d" % len(scan_patterns))
+    print("  weak seeds skipped                 : %d" % len(weak_rows))
+    print(
+        "  unique strong byte patterns        : %d"
+        % len(representative)
+    )
+    print(
+        "  targeted unique patterns this run  : %d"
+        % len(selected_physical)
+    )
+
+    if weak_rows:
+        for ri, info in weak_rows:
+            print(
+                "    weak oldRow=%d nonzero=%d distinct=%d transitions=%d"
+                % (
+                    ri,
+                    info["nonzero"],
+                    info["distinct"],
+                    info["transitions"],
+                )
+            )
+
+    print("  selected targeted seeds:")
+    for score, ri, pattern, info in selected_unique:
+        dup_rows = duplicate_groups[pattern]
+        dup_text = (
+            " oldRows=" + ",".join(str(x) for x in dup_rows)
+            if len(dup_rows) > 1
+            else ""
+        )
+        print(
+            "    oldRow=%-3d score=%-4d nonzero=%-2d distinct=%-2d "
+            "transitions=%-2d%s"
+            % (
+                ri,
+                score,
+                info["nonzero"],
+                info["distinct"],
+                info["transitions"],
+                dup_text,
+            )
+        )
+
+    if not targeted_patterns:
+        print("!! no sufficiently informative exact signatures to scan")
+        return []
+
+    print(
+        "\n  scanning process memory with targeted bytes.find matcher..."
+    )
+
+    raw_hits = _scan_process_patterns_targeted(
+        mem.pid,
+        targeted_patterns,
+        max_hits_per_pattern=max_hits,
+    )
+
+    # Preserve all old row keys. Non-selected rows explicitly report zero raw
+    # hits in this targeted run; they were not searched.
+    for ri in patterns:
+        raw_hits.setdefault(ri, [])
+
+    known = _known_object_addresses(groups)
+    row_hits = {}
+
+    print("\n[RAW COMPOSITE HITS]")
+    for ri in sorted(patterns):
+        hits = raw_hits.get(ri, [])
+        print("  oldRow=%-3d -> %d exact byte hits" % (ri, len(hits)))
+
+        seg = segments[ri]
+        for hit in hits:
+            row_base = hit - seg["start_offset"]
+            if row_base < 0x10000 or (row_base & 0x3):
+                continue
+
+            try:
+                mem.read(row_base, min(stride, 16))
+            except Exception:
+                continue
+
+            sem = _strict_row_semantics(
+                objs,
+                mem,
+                row_base,
+                schema,
+            )
+            if sem["ratio"] < min_semantic:
+                continue
+
+            vals = _read_shared_runtime_row(
+                objs,
+                mem,
+                known,
+                row_base,
+                shared,
+            )
+
+            # Find every old row that this current row resembles strongly.
+            matches = []
+            for oi, old_row in enumerate(old_rows):
+                m = _match_runtime_values_to_csv(
+                    vals,
+                    old_row,
+                    shared,
+                )
+                if (
+                    m["compared"] >= min(4, len(shared))
+                    and m["ratio"] >= min_row_match
+                ):
+                    matches.append((oi, m))
+
+            if not matches:
+                continue
+
+            matches.sort(
+                key=lambda x: (
+                    -x[1]["ratio"],
+                    -x[1]["matched"],
+                    x[0],
+                )
+            )
+
+            rec = row_hits.get(row_base)
+            if rec is None:
+                rec = {
+                    "row_base": row_base,
+                    "semantic": sem,
+                    "source_signatures": set(),
+                    "old_matches": set(),
+                    "matches": {},
+                }
+                row_hits[row_base] = rec
+
+            rec["source_signatures"].add(ri)
+            for oi, m in matches:
+                rec["old_matches"].add(oi)
+                oldm = rec["matches"].get(oi)
+                if oldm is None or (
+                    m["ratio"], m["matched"]
+                ) > (
+                    oldm["ratio"], oldm["matched"]
+                ):
+                    rec["matches"][oi] = m
+
+    ranked_rows = sorted(
+        row_hits.values(),
+        key=lambda r: (
+            -len(r["source_signatures"]),
+            -max(
+                (m["ratio"] for m in r["matches"].values()),
+                default=0.0,
+            ),
+            -r["semantic"]["ratio"],
+            r["row_base"],
+        ),
+    )
+
+    print("\n[VERIFIED COMPOSITE ROW HITS] total=%d showing<=%d" % (
+        len(ranked_rows), max_results
+    ))
+
+    for i, rec in enumerate(ranked_rows[:max_results]):
+        best_oi, best_m = max(
+            rec["matches"].items(),
+            key=lambda kv: (
+                kv[1]["ratio"],
+                kv[1]["matched"],
+                -kv[0],
+            ),
+        )
+        print(
+            "  #%02d Row=0x%08X sourceOld=%s bestOld=%d "
+            "fields=%d/%d (%.1f%%) semantic=%.1f%%"
+            % (
+                i,
+                rec["row_base"],
+                ",".join(str(x) for x in sorted(rec["source_signatures"])),
+                best_oi,
+                best_m["matched"],
+                best_m["compared"],
+                best_m["ratio"] * 100.0,
+                rec["semantic"]["ratio"] * 100.0,
+            )
+        )
+        if best_m["mismatches"]:
+            mm = ", ".join(
+                "%s old=%r live=%r" % x
+                for x in best_m["mismatches"][:4]
+            )
+            print("       mismatch: %s" % mm)
+
+    if not row_hits:
+        print("\n  No composite row survived semantic/full-row validation.")
+        return []
+
+    # Look for repeated physical spacing.  This is intentionally independent
+    # of the reflected PropertySize and may reveal embedded/custom records.
+    deltas, delta_examples = _composite_delta_histogram(row_hits)
+
+    print("\n[REPEATED ADDRESS DELTAS] showing<=20")
+    if not deltas:
+        print("  <none>")
+    else:
+        for diff, count in deltas[:20]:
+            ratio = (
+                " = %.2f * currentStride"
+                % (float(diff) / stride)
+            )
+            print(
+                "  delta=0x%-5X (%-5d) count=%-4d%s"
+                % (diff, diff, count, ratio)
+            )
+            for a, b in delta_examples[diff]:
+                print("       0x%08X -> 0x%08X" % (a, b))
+
+    # Test the reflected PropertySize as a true contiguous row stride.
+    expected_rows = len(old_rows)
+    inferred = defaultdict(set)
+    for row_base in row_hits:
+        for slot in range(expected_rows):
+            base = row_base - slot * stride
+            if base >= 0x10000:
+                inferred[base].add(row_base)
+
+    candidates = sorted(
+        inferred.items(),
+        key=lambda kv: (-len(kv[1]), kv[0]),
+    )[:max(max_results * 10, 100)]
+
+    runs = []
+    for data_base, supporters in candidates:
+        if len(supporters) < 2:
+            continue
+
+        vr = _validate_order_independent_run(
+            objs,
+            mem,
+            known,
+            data_base,
+            stride,
+            expected_rows,
+            schema,
+            shared,
+            old_rows,
+            min_row_match,
+            min_semantic,
+        )
+        if vr is None:
+            continue
+
+        support_count = len(supporters)
+        coverage = float(vr["assigned_count"]) / expected_rows
+        sem_cov = float(vr["semantic_good"]) / expected_rows
+
+        if (
+            support_count >= max(3, (expected_rows + 2) // 3)
+            and coverage >= 0.60
+            and vr["assigned_ratio"] >= max(min_row_match, 0.70)
+            and sem_cov >= 0.75
+        ):
+            confidence = "HIGH"
+        elif (
+            support_count >= 2
+            and coverage >= 0.35
+            and sem_cov >= 0.60
+        ):
+            confidence = "MEDIUM"
+        else:
+            confidence = "LOW"
+
+        score = (
+            support_count * 20.0
+            + coverage * 100.0
+            + vr["assigned_ratio"] * 80.0
+            + sem_cov * 40.0
+            + vr["best_all_ratio"] * 20.0
+        )
+
+        runs.append({
+            "data": data_base,
+            "support_count": support_count,
+            "confidence": confidence,
+            "score": score,
+            **vr,
+        })
+
+    runs.sort(
+        key=lambda r: (
+            0 if r["confidence"] == "HIGH"
+            else 1 if r["confidence"] == "MEDIUM"
+            else 2,
+            -r["support_count"],
+            -r["assigned_count"],
+            -r["assigned_ratio"],
+            -r["semantic_good"],
+            -r["score"],
+            r["data"],
+        )
+    )
+
+    print("\n[CURRENT-STRIDE CONTIGUOUS RUNS] total=%d showing<=%d" % (
+        len(runs), max_results
+    ))
+    if not runs:
+        print("  <none>")
+    else:
+        for i, r in enumerate(runs[:max_results]):
+            print(
+                "  #%02d Data=0x%08X confidence=%s exactRows=%d/%d "
+                "assigned=%d/%d fields=%.1f%% semantic=%d/%d"
+                % (
+                    i,
+                    r["data"],
+                    r["confidence"],
+                    r["support_count"],
+                    expected_rows,
+                    r["assigned_count"],
+                    expected_rows,
+                    r["assigned_ratio"] * 100.0,
+                    r["semantic_good"],
+                    expected_rows,
+                )
+            )
+
+    if any(r["confidence"] == "HIGH" for r in runs):
+        print(
+            "\n  HIGH current-stride run found. Preview only that returned "
+            "Data address with --dump-struct-run."
+        )
+    else:
+        print(
+            "\n  No HIGH current-PropertySize run found. "
+            "Use the exact-row addresses and repeated delta histogram to "
+            "identify pointer arrays, embedded records, or a custom stride."
+        )
+
+    return {
+        "rows": ranked_rows,
+        "deltas": deltas,
+        "runs": runs,
+    }
+
+
+
+def _row_current_plausibility(objs, mem, base, schema):
+    """
+    Stricter current-only plausibility than _strict_row_semantics.
+
+    The normal semantic validator is intentionally broad.  This helper is used
+    for small neighbourhood inspection, where we can reject obviously
+    nonsensical enum-like integers and denormal/subnormal float patterns more
+    aggressively.
+    """
+    checks = 0
+    good = 0
+    reasons = []
+
+    for col in schema:
+        cls = col["class"]
+        name = col["column"]
+        off = _schema_column_runtime_offset(mem, col)
+        if off is None:
+            continue
+
+        if cls in ("IntProperty", "UIntProperty") and name.lower().startswith("m_e"):
+            checks += 1
+            try:
+                raw = mem.read(base + off, 4)
+                v = struct.unpack("<I" if cls == "UIntProperty" else "<i", raw)[0]
+                if -1 <= int(v) <= 100000:
+                    good += 1
+                else:
+                    reasons.append("%s=%r(enum-like outlier)" % (name, v))
+            except Exception:
+                reasons.append("%s=<unreadable>" % name)
+
+        elif cls == "ByteProperty":
+            checks += 1
+            try:
+                v = mem.read(base + off, 1)[0]
+                prop = col["prop"]
+                enum_obj = mem.try_u32(prop + UPROPERTY_TYPE_SLOT, None)
+                if enum_obj:
+                    info = _read_enum_names(objs, mem, enum_obj, limit=1)
+                    if info and info["num"] > 0:
+                        if v == 0xFF or v < info["num"]:
+                            good += 1
+                        else:
+                            reasons.append("%s=%d(enum range)" % (name, v))
+                    else:
+                        if v <= 0x7F:
+                            good += 1
+                else:
+                    if v <= 0x7F:
+                        good += 1
+            except Exception:
+                reasons.append("%s=<unreadable>" % name)
+
+        elif cls == "FloatProperty":
+            checks += 1
+            try:
+                v = struct.unpack("<f", mem.read(base + off, 4))[0]
+                # Reject NaN/inf, absurd magnitudes, and suspicious tiny
+                # non-zero denormals that commonly appear in arbitrary memory.
+                if math.isfinite(v) and abs(v) <= 1.0e8 and (
+                    v == 0.0 or abs(v) >= 1.0e-20
+                ):
+                    good += 1
+                else:
+                    reasons.append("%s=%r(float outlier)" % (name, v))
+            except Exception:
+                reasons.append("%s=<unreadable>" % name)
+
+        elif cls == "DoubleProperty":
+            checks += 1
+            try:
+                v = struct.unpack("<d", mem.read(base + off, 8))[0]
+                if math.isfinite(v) and abs(v) <= 1.0e12 and (
+                    v == 0.0 or abs(v) >= 1.0e-30
+                ):
+                    good += 1
+                else:
+                    reasons.append("%s=%r(double outlier)" % (name, v))
+            except Exception:
+                reasons.append("%s=<unreadable>" % name)
+
+    ratio = float(good) / checks if checks else 1.0
+    return {
+        "good": good,
+        "checked": checks,
+        "ratio": ratio,
+        "reasons": reasons[:8],
+    }
+
+
+def _compact_row_values(objs, mem, known, base, schema, max_fields=12):
+    preferred = []
+    fallback = []
+
+    for col in schema:
+        name = col["column"]
+        cls = col["class"]
+
+        if cls not in (
+            "IntProperty",
+            "UIntProperty",
+            "ByteProperty",
+            "FloatProperty",
+            "DoubleProperty",
+            "BoolProperty",
+        ):
+            continue
+
+        item = (name, col)
+        if (
+            name.lower().startswith("m_e")
+            or "weapon" in name.lower()
+            or "firing" in name.lower()
+            or "pin" in name.lower()
+            or "throw" in name.lower()
+            or cls == "BoolProperty"
+        ):
+            preferred.append(item)
+        else:
+            fallback.append(item)
+
+    ordered = preferred + fallback
+    out = []
+    for name, col in ordered[:max_fields]:
+        value = _sdd_scalar_at(
+            objs,
+            mem,
+            known,
+            base,
+            col["prop"],
+            col.get("element_index", 0),
+        )
+        out.append((name, value))
+    return out
+
+
+def probe_known_struct_row_window(
+    objs,
+    mem,
+    groups,
+    struct_query,
+    row_addr,
+    expected_count,
+    csv_path=None,
+    min_row_match=0.70,
+    min_semantic=0.85,
+):
+    """
+    Given one already-verified row address, try every possible slot that row
+    could occupy inside a contiguous array of expected_count rows.
+
+    This does not require a second exact signature hit.  It is designed for
+    the case where old values changed but one row still survived exactly.
+    """
+    st = _resolve_one_struct(objs, groups, struct_query)
+    if st is None:
+        return None
+
+    stride = mem.try_u32(st + 0x54, None)
+    if not isinstance(stride, int) or stride <= 0:
+        print("!! bad struct PropertySize/stride")
+        return None
+
+    count = int(expected_count)
+    if count <= 0 or count > 4096:
+        print("!! invalid expected count")
+        return None
+
+    schema = _sdd_expand_row_schema(objs, mem, st)
+    known = _known_object_addresses(groups)
+
+    old_rows = None
+    shared = None
+
+    if csv_path:
+        path, tried_paths = _resolve_signature_csv_path(csv_path)
+        if path is None:
+            print("!! signature CSV not found: %s" % csv_path)
+            for p in tried_paths:
+                print("      %s" % p)
+            return None
+
+        with path.open("r", newline="", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            old_rows = list(reader)
+            fields = list(reader.fieldnames or [])
+
+        supported = _csv_supported_schema(schema)
+        shared_names = [n for n in fields if n in supported]
+        shared = {n: supported[n] for n in shared_names}
+
+    print("\n============================================================")
+    print("KNOWN ROW WINDOW PROBE: %s" % objs.path(st))
+    print("============================================================")
+    print("  verified row : 0x%08X" % row_addr)
+    print("  stride       : 0x%X (%d)" % (stride, stride))
+    print("  expected rows: %d" % count)
+    if old_rows is not None:
+        print("  old CSV rows : %d" % len(old_rows))
+        print("  shared cols  : %d" % len(shared))
+
+    candidates = []
+
+    for slot in range(count):
+        data_base = row_addr - slot * stride
+        if data_base < 0x10000:
+            continue
+
+        semantic_good = 0
+        strict_good = 0
+        semantic_sum = 0.0
+        strict_sum = 0.0
+        readable = True
+        row_details = []
+
+        for i in range(count):
+            addr = data_base + i * stride
+            try:
+                mem.read(addr, min(stride, 16))
+            except Exception:
+                readable = False
+                break
+
+            sem = _strict_row_semantics(objs, mem, addr, schema)
+            strict = _row_current_plausibility(objs, mem, addr, schema)
+            semantic_sum += sem["ratio"]
+            strict_sum += strict["ratio"]
+
+            if sem["ratio"] >= min_semantic:
+                semantic_good += 1
+            if strict["ratio"] >= 0.80:
+                strict_good += 1
+
+            row_details.append({
+                "index": i,
+                "address": addr,
+                "semantic": sem,
+                "strict": strict,
+                "values": _compact_row_values(
+                    objs, mem, known, addr, schema
+                ),
+            })
+
+        if not readable:
+            continue
+
+        avg_sem = semantic_sum / count
+        avg_strict = strict_sum / count
+
+        assigned_count = 0
+        assigned_ratio = 0.0
+        best_all_ratio = 0.0
+        assignment = []
+
+        if old_rows is not None and shared:
+            vr = _validate_order_independent_run(
+                objs,
+                mem,
+                known,
+                data_base,
+                stride,
+                count,
+                schema,
+                shared,
+                old_rows,
+                min_row_match,
+                min_semantic,
+            )
+            if vr:
+                assigned_count = vr["assigned_count"]
+                assigned_ratio = vr["assigned_ratio"]
+                best_all_ratio = vr["best_all_ratio"]
+                assignment = vr["assignment"]
+
+        # Row diversity: real table rows should not all be identical.
+        fingerprints = set()
+        for rd in row_details:
+            fp = tuple(
+                (n, repr(v))
+                for n, v in rd["values"][:8]
+            )
+            fingerprints.add(fp)
+
+        unique_rows = len(fingerprints)
+
+        score = (
+            semantic_good * 8.0
+            + strict_good * 12.0
+            + avg_sem * 20.0
+            + avg_strict * 35.0
+            + unique_rows * 3.0
+            + assigned_count * 8.0
+            + assigned_ratio * 20.0
+            + best_all_ratio * 10.0
+        )
+
+        candidates.append({
+            "slot": slot,
+            "data": data_base,
+            "semantic_good": semantic_good,
+            "strict_good": strict_good,
+            "avg_sem": avg_sem,
+            "avg_strict": avg_strict,
+            "unique_rows": unique_rows,
+            "assigned_count": assigned_count,
+            "assigned_ratio": assigned_ratio,
+            "best_all_ratio": best_all_ratio,
+            "assignment": assignment,
+            "rows": row_details,
+            "score": score,
+        })
+
+    candidates.sort(
+        key=lambda c: (
+            -c["strict_good"],
+            -c["semantic_good"],
+            -c["unique_rows"],
+            -c["assigned_count"],
+            -c["assigned_ratio"],
+            -c["score"],
+            c["slot"],
+        )
+    )
+
+    print("\n[CANDIDATE ARRAY PLACEMENTS]")
+    for rank, c in enumerate(candidates):
+        print(
+            "  #%02d knownSlot=%d Data=0x%08X "
+            "semantic=%d/%d strict=%d/%d unique=%d/%d "
+            "oldAssign=%d/%d fields=%.1f%% bestAny=%.1f%% score=%.2f"
+            % (
+                rank,
+                c["slot"],
+                c["data"],
+                c["semantic_good"],
+                count,
+                c["strict_good"],
+                count,
+                c["unique_rows"],
+                count,
+                c["assigned_count"],
+                count,
+                c["assigned_ratio"] * 100.0,
+                c["best_all_ratio"] * 100.0,
+                c["score"],
+            )
+        )
+
+    if not candidates:
+        print("  <none>")
+        return []
+
+    best = candidates[0]
+    print("\n[BEST PLACEMENT DETAILS]")
+    print(
+        "  known row would be slot %d -> Data=0x%08X"
+        % (best["slot"], best["data"])
+    )
+
+    for rd in best["rows"]:
+        marker = " <== VERIFIED ROW" if rd["address"] == row_addr else ""
+        print(
+            "\n  [%d] @0x%08X semantic=%.1f%% strict=%.1f%%%s"
+            % (
+                rd["index"],
+                rd["address"],
+                rd["semantic"]["ratio"] * 100.0,
+                rd["strict"]["ratio"] * 100.0,
+                marker,
+            )
+        )
+        print(
+            "      "
+            + ", ".join(
+                "%s=%r" % (name, value)
+                for name, value in rd["values"]
+            )
+        )
+        if rd["strict"]["reasons"]:
+            print(
+                "      suspicious: "
+                + "; ".join(rd["strict"]["reasons"])
+            )
+
+    if best["assignment"]:
+        mapping = []
+        for p in sorted(
+            best["assignment"],
+            key=lambda x: x["current_index"],
+        ):
+            m = p["match"]
+            mapping.append(
+                "cur%d->old%d:%d/%d"
+                % (
+                    p["current_index"],
+                    p["old_index"],
+                    m["matched"],
+                    m["compared"],
+                )
+            )
+        print("\n  old-row mapping: %s" % ", ".join(mapping))
+
+    if (
+        best["strict_good"] >= max(1, (count * 3) // 4)
+        and best["semantic_good"] >= max(1, (count * 3) // 4)
+        and best["unique_rows"] >= max(2, count // 2)
+    ):
+        print(
+            "\n  RESULT: current-stride contiguous-array hypothesis remains "
+            "plausible for this placement. Inspect the rows above before export."
+        )
+    else:
+        print(
+            "\n  RESULT: neighbours do not form a convincing current-stride "
+            "array around the verified row. Treat the row as isolated/embedded "
+            "until a container/stride is identified."
+        )
+
+    return candidates
+
+
 def scan_struct_csv_signature(
     objs,
     mem,
@@ -6691,10 +8171,21 @@ def scan_struct_csv_signature(
         print("!! bad struct PropertySize/stride")
         return None
 
-    path = Path(csv_path)
-    if not path.exists():
+    path, tried_paths = _resolve_signature_csv_path(csv_path)
+    if path is None:
         print("!! signature CSV not found: %s" % csv_path)
+        print("   cwd       : %s" % Path.cwd())
+        print("   script dir: %s" % Path(__file__).resolve().parent)
+        print("   tried:")
+        for candidate in tried_paths:
+            print("      %s" % candidate)
+        print(
+            "   Use an absolute path, e.g. "
+            '--signature-csv "E:\\path\\to\\WeaponTypes.csv"'
+        )
         return None
+
+    print("signature CSV resolved: %s" % path)
 
     with path.open("r", newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
@@ -6761,201 +8252,135 @@ def scan_struct_csv_signature(
         )
 
     known = _known_object_addresses(groups)
-    base_votes = defaultdict(list)
+    row_hits = {}
     raw_row_candidates = 0
 
+    # Phase 1: strong individual rows. Old CSV ordinal is NOT used to infer
+    # current table position; it only selects the signature values.
     for freq, negmag, ri, name, value, off in chosen:
         hits = _scan_process_u32(mem.pid, value, max_hits=max_hits)
-        print(
-            "  scan %-32s=%d -> %d raw hits"
-            % (name, value, len(hits))
-        )
-
+        print("  scan %-32s=%d -> %d raw hits" % (name, value, len(hits)))
         for hit in hits:
             row_base = hit - off
             if row_base < 0x10000 or (row_base & 0x3):
                 continue
-
+            if row_base in row_hits:
+                row_hits[row_base]["anchor_votes"].append((ri, name, value))
+                continue
             try:
                 mem.read(row_base, min(stride, 16))
             except Exception:
                 continue
-
-            semantic = _strict_row_semantics(
-                objs,
-                mem,
-                row_base,
-                schema,
-            )
+            semantic = _strict_row_semantics(objs, mem, row_base, schema)
             if semantic["ratio"] < min_semantic:
                 continue
-
-            matched = _match_row_to_csv(
-                objs,
-                mem,
-                known,
-                row_base,
-                rows[ri],
-                shared,
-            )
-            if matched["compared"] < min(4, len(shared_names)):
+            matched = _match_row_to_csv(objs, mem, known, row_base, rows[ri], shared)
+            if matched["compared"] < min(4, len(shared_names)) or matched["ratio"] < min_row_match:
                 continue
-            if matched["ratio"] < min_row_match:
-                continue
-
             raw_row_candidates += 1
-            table_base = row_base - ri * stride
-            if table_base < 0x10000:
-                continue
-
-            base_votes[table_base].append(
-                {
-                    "row_index": ri,
-                    "row_base": row_base,
-                    "anchor": name,
-                    "anchor_value": value,
-                    "row_match": matched,
-                    "semantic": semantic,
-                }
-            )
-
-    print("\n  signature-compatible row hits: %d" % raw_row_candidates)
-    print("  candidate table bases        : %d" % len(base_votes))
-
-    results = []
-    prefix_n = min(len(rows), max(1, int(validate_prefix)))
-
-    for table_base, votes in base_votes.items():
-        total_compared = 0
-        total_matched = 0
-        good_rows = 0
-        semantic_good = 0
-        prefix_details = []
-
-        for ri in range(prefix_n):
-            row_base = table_base + ri * stride
-            try:
-                mem.read(row_base, min(stride, 16))
-            except Exception:
-                continue
-
-            semantic = _strict_row_semantics(
-                objs,
-                mem,
-                row_base,
-                schema,
-            )
-            if semantic["ratio"] >= min_semantic:
-                semantic_good += 1
-
-            m = _match_row_to_csv(
-                objs,
-                mem,
-                known,
-                row_base,
-                rows[ri],
-                shared,
-            )
-            total_compared += m["compared"]
-            total_matched += m["matched"]
-            if (
-                m["compared"] >= min(4, len(shared_names))
-                and m["ratio"] >= min_row_match
-                and semantic["ratio"] >= min_semantic
-            ):
-                good_rows += 1
-
-            if ri < 5:
-                prefix_details.append(
-                    (ri, m["matched"], m["compared"], m["ratio"], semantic["ratio"])
-                )
-
-        field_ratio = (
-            float(total_matched) / total_compared
-            if total_compared
-            else 0.0
-        )
-
-        # Multiple independently-found anchor rows voting for the exact same
-        # base are very strong evidence.
-        unique_vote_rows = len(set(v["row_index"] for v in votes))
-        score = (
-            field_ratio * 100.0
-            + good_rows * 4.0
-            + semantic_good * 1.5
-            + unique_vote_rows * 12.0
-        )
-
-        results.append(
-            {
-                "data": table_base,
-                "votes": votes,
-                "vote_rows": unique_vote_rows,
-                "prefix_rows": prefix_n,
-                "good_rows": good_rows,
-                "semantic_good": semantic_good,
-                "matched": total_matched,
-                "compared": total_compared,
-                "field_ratio": field_ratio,
-                "score": score,
-                "prefix_details": prefix_details,
+            row_hits[row_base] = {
+                "row_base": row_base, "semantic": semantic,
+                "anchor_votes": [(ri, name, value)], "first_old_row": ri,
+                "first_match": matched,
             }
-        )
 
-    results.sort(
-        key=lambda r: (
-            -r["vote_rows"],
-            -r["good_rows"],
-            -r["field_ratio"],
-            -r["score"],
-            r["data"],
-        )
-    )
-
-    print("\n[CANDIDATE DATA BASES] total=%d showing<=%d" % (
-        len(results), max_results
-    ))
-
-    if not results:
-        print("  <none>")
-        print(
-            "  No old-order signature matched strongly enough. "
-            "This can mean reordered rows, substantially changed values, "
-            "or a non-contiguous/container layout."
-        )
+    print("\n  signature-compatible unique rows: %d" % len(row_hits))
+    print("  raw accepted anchor hits         : %d" % raw_row_candidates)
+    if not row_hits:
+        print("\n[ORDER-INDEPENDENT CONTIGUOUS RUNS] <none>")
+        print("  No individual row matched strongly enough.")
         return []
 
+    strongest_rows = sorted(row_hits.values(), key=lambda r: (
+        -len(r["anchor_votes"]), -r["first_match"]["ratio"],
+        -r["semantic"]["ratio"], r["row_base"],
+    ))
+    print("\n[STRONG INDIVIDUAL ROW HITS] showing<=20")
+    for i, r in enumerate(strongest_rows[:20]):
+        m = r["first_match"]
+        print(
+            "  #%02d Row=0x%08X anchorVotes=%d firstOldRow=%d fields=%d/%d (%.1f%%) semantic=%.1f%%"
+            % (i, r["row_base"], len(r["anchor_votes"]), r["first_old_row"],
+               m["matched"], m["compared"], m["ratio"]*100.0, r["semantic"]["ratio"]*100.0)
+        )
+
+    # Phase 2: every strong live row may occupy ANY slot in a contiguous run.
+    expected_rows = len(rows)
+    inferred = defaultdict(set)
+    for row_base in row_hits:
+        for slot in range(expected_rows):
+            base = row_base - slot * stride
+            if base >= 0x10000:
+                inferred[base].add(row_base)
+
+    cheap = sorted(inferred.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    validate_cap = max(int(max_results) * 8, 80)
+    cheap = cheap[:validate_cap]
+    results = []
+
+    for data_base, supporting_rows in cheap:
+        try:
+            mem.read(data_base, min(stride, 16))
+            mem.read(data_base + (expected_rows - 1) * stride, min(stride, 16))
+        except Exception:
+            continue
+        vr = _validate_order_independent_run(
+            objs, mem, known, data_base, stride, expected_rows, schema, shared,
+            rows, min_row_match, min_semantic,
+        )
+        if vr is None:
+            continue
+        support_count = len(supporting_rows)
+        coverage = float(vr["assigned_count"]) / expected_rows
+        semantic_coverage = float(vr["semantic_good"]) / expected_rows
+        score = (support_count*15.0 + coverage*100.0 + vr["assigned_ratio"]*70.0
+                 + semantic_coverage*35.0 + vr["best_all_ratio"]*25.0)
+        if (support_count >= max(3, (expected_rows + 2)//3) and coverage >= 0.60
+                and vr["assigned_ratio"] >= max(min_row_match, 0.70)
+                and semantic_coverage >= 0.75):
+            confidence = "HIGH"
+        elif support_count >= 2 and coverage >= 0.35 and semantic_coverage >= 0.60:
+            confidence = "MEDIUM"
+        else:
+            confidence = "LOW"
+        results.append({
+            "data": data_base, "support_rows": support_count,
+            "supporting_rows": sorted(supporting_rows), "coverage": coverage,
+            "semantic_coverage": semantic_coverage, "score": score,
+            "confidence": confidence, **vr,
+        })
+
+    results.sort(key=lambda r: (
+        0 if r["confidence"]=="HIGH" else 1 if r["confidence"]=="MEDIUM" else 2,
+        -r["support_rows"], -r["assigned_count"], -r["assigned_ratio"],
+        -r["semantic_good"], -r["score"], r["data"],
+    ))
+    print("\n[ORDER-INDEPENDENT CONTIGUOUS RUNS] total=%d showing<=%d" % (len(results), max_results))
+    if not results:
+        print("  <none>")
+        print("  Strong rows exist, but they do not form a readable contiguous run at the current stride.")
+        return []
     for i, r in enumerate(results[:max_results]):
         print(
-            "  #%02d Data=0x%08X votes=%d goodPrefix=%d/%d "
-            "fieldMatch=%.1f%% semantic=%d/%d score=%.2f"
-            % (
-                i,
-                r["data"],
-                r["vote_rows"],
-                r["good_rows"],
-                r["prefix_rows"],
-                r["field_ratio"] * 100.0,
-                r["semantic_good"],
-                r["prefix_rows"],
-                r["score"],
-            )
+            "  #%02d Data=0x%08X confidence=%s rowHits=%d/%d assigned=%d/%d assignedFields=%.1f%% semantic=%d/%d bestAnyOrder=%.1f%% score=%.2f"
+            % (i, r["data"], r["confidence"], r["support_rows"], expected_rows,
+               r["assigned_count"], expected_rows, r["assigned_ratio"]*100.0,
+               r["semantic_good"], expected_rows, r["best_all_ratio"]*100.0, r["score"])
         )
-        for ri, ma, co, ratio, sem in r["prefix_details"]:
-            print(
-                "       oldRow=%-3d fields=%d/%d (%.1f%%) semantic=%.1f%%"
-                % (
-                    ri, ma, co, ratio * 100.0, sem * 100.0
-                )
+        mapping = sorted(r["assignment"], key=lambda p: p["current_index"])
+        if mapping:
+            map_text = ", ".join(
+                "cur%d->old%d:%d/%d" % (p["current_index"], p["old_index"],
+                    p["match"]["matched"], p["match"]["compared"])
+                for p in mapping[:16]
             )
-
-    print("\n  Inspect/export a DATA candidate (not a TArray header):")
-    print(
-        "    --dump-struct-run %s --data-address 0xADDRESS "
-        "--row-count N --table-limit 8"
-        % objs.path(st)
-    )
-
+            if len(mapping)>16: map_text += ", ..."
+            print("       mapping: %s" % map_text)
+    if any(r["confidence"]=="HIGH" for r in results):
+        print("\n  HIGH candidates are suitable for preview with:")
+        print("    --dump-struct-run %s --data-address 0xADDRESS --row-count %d --table-limit 8" % (objs.path(st), expected_rows))
+    else:
+        print("\n  No HIGH-confidence run found. Do NOT export yet.")
     return results
 
 
@@ -6969,6 +8394,8 @@ def dump_struct_run(
     limit=None,
     csv_path=None,
     json_path=None,
+    min_semantic=0.85,
+    force_unsafe=False,
 ):
     st = _resolve_one_struct(objs, groups, struct_query)
     if st is None:
@@ -6993,6 +8420,54 @@ def dump_struct_run(
 
     schema = _sdd_expand_row_schema(objs, mem, st)
     known = _known_object_addresses(groups)
+
+    semantic_sample_n = min(count, 8)
+    semantic_rows = []
+    for i in range(semantic_sample_n):
+        base = data_addr + i * stride
+        semantic_rows.append(
+            _strict_row_semantics(objs, mem, base, schema)
+        )
+
+    passing = sum(
+        1 for row in semantic_rows
+        if row["ratio"] >= float(min_semantic)
+    )
+    avg_ratio = (
+        sum(row["ratio"] for row in semantic_rows) / len(semantic_rows)
+        if semantic_rows else 0.0
+    )
+
+    print("\n[SEMANTIC PRECHECK]")
+    print(
+        "  rows passing : %d/%d at threshold %.1f%%"
+        % (passing, semantic_sample_n, float(min_semantic) * 100.0)
+    )
+    print("  average      : %.1f%%" % (avg_ratio * 100.0))
+
+    unsafe = (
+        semantic_sample_n > 0
+        and (
+            passing < max(1, (semantic_sample_n + 1) // 2)
+            or avg_ratio < float(min_semantic) * 0.80
+        )
+    )
+
+    if unsafe and not force_unsafe:
+        print("!! DATA run failed semantic validation.")
+        print(
+            "   This address does not look like a contiguous array of %s."
+            % objs.path(st)
+        )
+        print(
+            "   Refusing dump/export. Use --force-unsafe-run only for raw "
+            "diagnostic reads of an address you intentionally want to inspect."
+        )
+        return None
+
+    if unsafe and force_unsafe:
+        print("!! WARNING: forcing semantic-invalid DATA run.")
+
     take = count if limit is None else min(count, max(0, int(limit)))
 
     rows = []
@@ -8937,6 +10412,32 @@ def main():
     )
 
     ap.add_argument(
+        "--scan-struct-csv-exact",
+        metavar="STRUCT",
+        help=(
+            "сильный поиск native rows по multi-field exact byte signatures "
+            "из старого CSV; порядок old rows не предполагается"
+        ),
+    )
+    ap.add_argument(
+        "--csv-exact-min-bytes",
+        default="8",
+        metavar="N",
+        help=(
+            "минимальная длина contiguous exact-byte signature "
+            "для --scan-struct-csv-exact (default: 8)"
+        ),
+    )
+    ap.add_argument(
+        "--csv-exact-seed-limit",
+        default="6",
+        metavar="N",
+        help=(
+            "сколько наиболее информативных unique exact signatures искать "
+            "за один targeted scan (default: 6)"
+        ),
+    )
+    ap.add_argument(
         "--scan-struct-csv",
         metavar="STRUCT",
         help=(
@@ -8994,6 +10495,24 @@ def main():
         help="максимум DATA candidates в выводе (default: 20)",
     )
     ap.add_argument(
+        "--probe-known-struct-row",
+        metavar="STRUCT",
+        help=(
+            "проверить все положения уже подтверждённой row внутри "
+            "предполагаемого contiguous STRUCT[N]"
+        ),
+    )
+    ap.add_argument(
+        "--row-address",
+        metavar="ADDRESS",
+        help="адрес подтверждённой row для --probe-known-struct-row",
+    )
+    ap.add_argument(
+        "--expected-count",
+        metavar="N",
+        help="ожидаемое число строк для --probe-known-struct-row",
+    )
+    ap.add_argument(
         "--dump-struct-run",
         metavar="STRUCT",
         help="dump/export contiguous STRUCT rows по DATA address без TArray header",
@@ -9007,6 +10526,23 @@ def main():
         "--row-count",
         metavar="N",
         help="число contiguous rows для --dump-struct-run",
+    )
+    ap.add_argument(
+        "--run-min-semantic",
+        default="0.85",
+        metavar="RATIO",
+        help=(
+            "минимальная semantic sanity ratio для --dump-struct-run "
+            "(default: 0.85)"
+        ),
+    )
+    ap.add_argument(
+        "--force-unsafe-run",
+        action="store_true",
+        help=(
+            "разрешить dump/export даже если DATA address не проходит "
+            "semantic validation; только для raw diagnostics"
+        ),
     )
 
     ap.add_argument(
@@ -9459,7 +10995,7 @@ def main():
                 % (UO_INDEX, internal)
             )
 
-        if not expects and not a.probe_package_net and not a.probe_packagemap and not a.probe_package_guids and not a.probe_playercontroller_open and not a.probe_playercontroller_netfields and not a.probe_function_params and not a.probe_live_classnetcache and not a.probe_class_instances and not a.dump_class and not a.instances and not a.instance_fields and not a.class_functions and not a.class_netfields and not a.sdd_scan and not a.sdd_dump_table and not a.sdd_discover and not a.nested_structs and not a.dump_struct and not a.discover_classes and not a.scan_struct_tarrays and not a.dump_struct_tarray and not a.scan_struct_csv and not a.dump_struct_run:
+        if not expects and not a.probe_package_net and not a.probe_packagemap and not a.probe_package_guids and not a.probe_playercontroller_open and not a.probe_playercontroller_netfields and not a.probe_function_params and not a.probe_live_classnetcache and not a.probe_class_instances and not a.dump_class and not a.instances and not a.instance_fields and not a.class_functions and not a.class_netfields and not a.sdd_scan and not a.sdd_dump_table and not a.sdd_discover and not a.nested_structs and not a.dump_struct and not a.discover_classes and not a.scan_struct_tarrays and not a.dump_struct_tarray and not a.scan_struct_csv and not a.scan_struct_csv_exact and not a.probe_known_struct_row and not a.dump_struct_run:
             print(
                 "\n!! для фазы 2 нужен хотя бы "
                 "один --expect PKG=N"
@@ -9481,7 +11017,7 @@ def main():
 
             if off is None:
                 return 1
-        elif a.probe_package_net or a.probe_packagemap or a.probe_package_guids or a.probe_playercontroller_open or a.probe_playercontroller_netfields or a.probe_function_params or a.probe_live_classnetcache or a.probe_class_instances or a.dump_class or a.instances or a.instance_fields or a.class_functions or a.class_netfields or a.sdd_scan or a.sdd_dump_table or a.sdd_discover or a.nested_structs or a.dump_struct or a.discover_classes or a.scan_struct_tarrays or a.dump_struct_tarray or a.scan_struct_csv or a.dump_struct_run:
+        elif a.probe_package_net or a.probe_packagemap or a.probe_package_guids or a.probe_playercontroller_open or a.probe_playercontroller_netfields or a.probe_function_params or a.probe_live_classnetcache or a.probe_class_instances or a.dump_class or a.instances or a.instance_fields or a.class_functions or a.class_netfields or a.sdd_scan or a.sdd_dump_table or a.sdd_discover or a.nested_structs or a.dump_struct or a.discover_classes or a.scan_struct_tarrays or a.dump_struct_tarray or a.scan_struct_csv or a.scan_struct_csv_exact or a.probe_known_struct_row or a.dump_struct_run:
             # InternalIndex уже подтверждён фазой 1; runtime reflection
             # подтвердил UObject::NetIndex = +0x24.
             off = 0x24
@@ -9672,6 +11208,35 @@ def main():
             off,
         )
 
+    if a.scan_struct_csv_exact:
+        if not a.signature_csv:
+            raise SystemExit(
+                "--scan-struct-csv-exact requires --signature-csv FILE"
+            )
+        try:
+            exact_min_bytes = max(4, int(a.csv_exact_min_bytes, 0))
+            exact_seed_limit = max(1, int(a.csv_exact_seed_limit, 0))
+            csv_min_row_match = float(a.csv_min_row_match)
+            csv_min_semantic = float(a.csv_min_semantic)
+            csv_max_hits = max(1, int(a.csv_max_hits, 0))
+            csv_max_results = max(1, int(a.csv_max_results, 0))
+        except ValueError as exc:
+            raise SystemExit("bad exact CSV scan numeric option") from exc
+
+        scan_struct_csv_composite(
+            objs,
+            mem,
+            groups,
+            a.scan_struct_csv_exact,
+            a.signature_csv,
+            min_bytes=exact_min_bytes,
+            min_row_match=csv_min_row_match,
+            min_semantic=csv_min_semantic,
+            max_hits=csv_max_hits,
+            max_results=csv_max_results,
+            seed_limit=exact_seed_limit,
+        )
+
     if a.scan_struct_csv:
         if not a.signature_csv:
             raise SystemExit("--scan-struct-csv requires --signature-csv FILE")
@@ -9705,6 +11270,31 @@ def main():
             validate_prefix=csv_validate_prefix,
         )
 
+    if a.probe_known_struct_row:
+        if not a.row_address or not a.expected_count:
+            raise SystemExit(
+                "--probe-known-struct-row requires "
+                "--row-address 0x... --expected-count N"
+            )
+        try:
+            expected_count = int(a.expected_count, 0)
+            csv_min_row_match = float(a.csv_min_row_match)
+            csv_min_semantic = float(a.csv_min_semantic)
+        except ValueError as exc:
+            raise SystemExit("bad known-row probe numeric option") from exc
+
+        probe_known_struct_row_window(
+            objs,
+            mem,
+            groups,
+            a.probe_known_struct_row,
+            conv(a.row_address),
+            expected_count,
+            csv_path=a.signature_csv,
+            min_row_match=csv_min_row_match,
+            min_semantic=csv_min_semantic,
+        )
+
     if a.dump_struct_run:
         if not a.data_address or not a.row_count:
             raise SystemExit(
@@ -9717,8 +11307,14 @@ def main():
                 if a.table_limit is None
                 else int(a.table_limit, 0)
             )
+            run_min_semantic = float(a.run_min_semantic)
         except ValueError as exc:
-            raise SystemExit("bad --row-count/--table-limit") from exc
+            raise SystemExit(
+                "bad --row-count/--table-limit/--run-min-semantic"
+            ) from exc
+
+        if not (0.0 <= run_min_semantic <= 1.0):
+            raise SystemExit("--run-min-semantic must be 0..1")
 
         dump_struct_run(
             objs,
@@ -9730,6 +11326,8 @@ def main():
             limit=run_limit,
             csv_path=a.table_csv,
             json_path=a.table_json,
+            min_semantic=run_min_semantic,
+            force_unsafe=bool(a.force_unsafe_run),
         )
 
     if a.scan_struct_tarrays:
