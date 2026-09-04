@@ -1674,41 +1674,38 @@ bool SendSocialLevelStreaming(
                 "LEVEL-STREAM");
 
         Logger(
-            sent ? lSUCCESS : lERROR,
-            "District Streaming",
-            "ClientUpdateLevelStreamingStatus sent=%d "
-            "entry=%u/%u packetId=%u ch=%u seq=%u field=%u "
-            "package='%s' loaded=%d visible=%d block=%d",
-            sent ? 1 : 0,
-            static_cast<unsigned int>(index + 1),
-            static_cast<unsigned int>(planCount),
-            static_cast<unsigned int>(packetId),
-            static_cast<unsigned int>(kControllerChannel),
-            static_cast<unsigned int>(sequence),
-            static_cast<unsigned int>(
-                kFieldClientUpdateLevelStreamingStatus),
-            entry.PackageName,
-            entry.ShouldBeLoaded ? 1 : 0,
-            entry.ShouldBeVisible ? 1 : 0,
-            entry.ShouldBlockOnLoad ? 1 : 0);
+        sent ? lSUCCESS : lERROR,
+        "District Streaming",
+        "ClientUpdateLevelStreamingStatus sent=%d "
+        "entry=%u/%u packetId=%u ch=%u seq=%u "
+        "field=%u package='%s' loaded=%d visible=%d block=%d",
+        sent ? 1 : 0,
+        static_cast<unsigned int>(index + 1),
+        static_cast<unsigned int>(planCount),
+        static_cast<unsigned int>(packetId),
+        static_cast<unsigned int>(kControllerChannel),
+        static_cast<unsigned int>(sequence),
+        static_cast<unsigned int>(
+            kFieldClientUpdateLevelStreamingStatus),
+        entry.PackageName,
+        entry.ShouldBeLoaded ? 1 : 0,
+        entry.ShouldBeVisible ? 1 : 0,
+        entry.ShouldBlockOnLoad ? 1 : 0);
 
         if (!sent)
             return false;
-
-        Logger(
-            lINFO,
-            "District Streaming",
-            "DIAGNOSTIC: first corrected field-92 packet sent; "
-            "stopping before remaining entries and Flush.");
-
-        return true;
     }
 
+    // ВОТ СЮДА
+    Logger(
+        lINFO,
+        "District Streaming",
+        "DIAGNOSTIC: all 17 corrected field-92 entries sent; "
+        "stopping before ClientFlushLevelStreaming.");
 
-    // -------------------------------------------------------------
-    // Ниже временно недостижимый код.
-    // Вернём его после проверки всех field 92.
-    // -------------------------------------------------------------
+    return true;
+
+    // Ниже существующий Flush пока недостижим.
     const std::uint32_t flushPacketId =
         account->AllocateServerPacketId();
 
@@ -2501,7 +2498,29 @@ bool SendSocialLevelStreaming(
                 // Клиент сообщает, ответа не ждёт.
                 continue;
             }
+            if (fieldIndex == kFieldServerNotifyClientLoaded)
+            {
+                Logger(
+                    lSUCCESS,
+                    "District Bootstrap",
+                    "ServerNotifyClientLoaded received: account=%u",
+                    account->GetId());
 
+                const bool priSent =
+                    SendPlayerReplicationInfo(
+                        socket,
+                        endpoint,
+                        account);
+
+                Logger(
+                    priSent ? lSUCCESS : lERROR,
+                    "District Bootstrap",
+                    "Post-load PRI sent=%d",
+                    priSent ? 1 : 0);
+
+                continue;
+            }
+            
             if (fieldIndex != kFieldAskDistrictEnter)
                 continue;
 
