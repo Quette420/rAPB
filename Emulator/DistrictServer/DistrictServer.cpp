@@ -935,68 +935,68 @@ void ResetChannelSequences(Account* account)
         //   FGuid(16) | FString PackageName | FString | FString
         //   | INT PackageFlags | INT Generation | FString | BYTE
         // Три FString становятся FName в структуре клиента.
-const UsesEntry kPackages[] =
-{
-    { "Core",    { 0x0FE825BC, 0x4970D0BC, 0xE10969A8, 0x4C498AF9 }, 2,  1575 },
-    { "Engine",  { 0x8CC8C348, 0x4498F5A3, 0x05567188, 0x79EC40E0 }, 2, 31931 },
-    { "APBGame", { 0x726ED7C5, 0x49A968E8, 0x50E644AA, 0x50ED3A99 }, 2, 30964 },
-};
+    const UsesEntry kPackages[] =
+    {
+        { "Core",    { 0x0FE825BC, 0x4970D0BC, 0xE10969A8, 0x4C498AF9 }, 2,  1575 },
+        { "Engine",  { 0x8CC8C348, 0x4498F5A3, 0x05567188, 0x79EC40E0 }, 2, 31931 },
+        { "APBGame", { 0x726ED7C5, 0x49A968E8, 0x50E644AA, 0x50ED3A99 }, 2, 30964 },
+    };
 
-constexpr std::uint32_t kBadNetIndex = 0xFFFFFFFFu;
-// APBGame.Default__cAPBPlayerController, локальный NetIndex.
-// Подтверждено live probe: NetIndex=12773 @0x06BD2B40.
-// Не путать с классом cAPBPlayerController -- он на 12772.
-constexpr std::uint32_t kPlayerControllerLocalNetIndex = 12773u;
-// APBGame.Default__cAPBGameReplicationInfo, локальный NetIndex.
-// Live probe: NetIndex=13049 @0x06BD6130.
-constexpr std::uint32_t kGriLocalNetIndex = 13049u;
-// APBGame.cHUDBase (класс, не CDO) -- локальный NetIndex.
-constexpr std::uint32_t kHudClassLocalNetIndex = 21299u;   // ← подставить
-// Клиент локально открывает два канала до первого серверного пакета:
-//   0 -> ControlChannel (type 1)
-//   1 -> VoiceChannel   (type 4)
-// Actor-bunch на канале 1 достаётся голосовому каналу и молча
-// отбрасывается. Первый свободный слот -- 2.
-constexpr std::uint16_t kControllerChannel = 2u;
-constexpr std::uint16_t kGriChannel        = 3u;
-constexpr std::uint16_t kPawnChannel       = 4u;
-constexpr std::uint16_t kPriChannel = 5u;
+    constexpr std::uint32_t kBadNetIndex = 0xFFFFFFFFu;
+    // APBGame.Default__cAPBPlayerController, локальный NetIndex.
+    // Подтверждено live probe: NetIndex=12773 @0x06BD2B40.
+    // Не путать с классом cAPBPlayerController -- он на 12772.
+    constexpr std::uint32_t kPlayerControllerLocalNetIndex = 12773u;
+    // APBGame.Default__cAPBGameReplicationInfo, локальный NetIndex.
+    // Live probe: NetIndex=13049 @0x06BD6130.
+    constexpr std::uint32_t kGriLocalNetIndex = 13049u;
+    // APBGame.cHUDBase (класс, не CDO) -- локальный NetIndex.
+    constexpr std::uint32_t kHudClassLocalNetIndex = 21299u;   // ← подставить
+    // Клиент локально открывает два канала до первого серверного пакета:
+    //   0 -> ControlChannel (type 1)
+    //   1 -> VoiceChannel   (type 4)
+    // Actor-bunch на канале 1 достаётся голосовому каналу и молча
+    // отбрасывается. Первый свободный слот -- 2.
+    constexpr std::uint16_t kControllerChannel = 2u;
+    constexpr std::uint16_t kGriChannel        = 3u;
+    constexpr std::uint16_t kPawnChannel       = 4u;
+    constexpr std::uint16_t kPriChannel = 5u;
 
-// APBGame.Default__cAPBPlayerReplicationInfo, локальный NetIndex.
-// Live probe: NetIndex=13199 @0x06BD5A80. Глобальный: 33506 + 13199 = 46705.
-constexpr std::uint32_t kPriLocalNetIndex = 13199u;
+    // APBGame.Default__cAPBPlayerReplicationInfo, локальный NetIndex.
+    // Live probe: NetIndex=13199 @0x06BD5A80. Глобальный: 33506 + 13199 = 46705.
+    constexpr std::uint32_t kPriLocalNetIndex = 13199u;
 
-// APBGame.Default__cAPBPawn
-// Local NetIndex = 3764
-// Global NetIndex = 33506 + 3764 = 37270
-constexpr std::uint32_t kPawnLocalNetIndex = 3764u;
+    // APBGame.Default__cAPBPawn
+    // Local NetIndex = 3764
+    // Global NetIndex = 33506 + 3764 = 37270
+    constexpr std::uint32_t kPawnLocalNetIndex = 3764u;
 
-// LIVE FClassNetCache, APB 1.13.1:
-constexpr std::uint32_t kControllerFieldMax = 684u;   // cAPBPlayerController
-constexpr std::uint32_t kGriFieldMax        = 63u;    // cAPBGameReplicationInfo
-constexpr std::uint32_t kFieldAskDistrictEnter = 138u;
-// LIVE FClassNetCache:
-// Engine.GameReplicationInfo.bMatchHasBegun
-// в контексте APBGame.cAPBGameReplicationInfo, FieldMax=63.
-constexpr std::uint32_t kFieldGriMatchHasBegun = 45u;
-constexpr std::uint32_t kFieldAnsDistrictEnter = 139u;
-constexpr std::uint32_t kFieldServerUseAutoReady = 670u;
-constexpr std::uint32_t kFieldServerSyncState    = 80u;
-// APB 1.13.1 LIVE FClassNetCache:
-// cAPBPlayerController.ClientGoToSpawnZoneSelectScreen(byte eFaction)
-constexpr std::uint32_t kFieldClientGoToSpawnZoneSelectScreen = 390u;
+    // LIVE FClassNetCache, APB 1.13.1:
+    constexpr std::uint32_t kControllerFieldMax = 684u;   // cAPBPlayerController
+    constexpr std::uint32_t kGriFieldMax        = 63u;    // cAPBGameReplicationInfo
+    constexpr std::uint32_t kFieldAskDistrictEnter = 138u;
+    // LIVE FClassNetCache:
+    // Engine.GameReplicationInfo.bMatchHasBegun
+    // в контексте APBGame.cAPBGameReplicationInfo, FieldMax=63.
+    constexpr std::uint32_t kFieldGriMatchHasBegun = 45u;
+    constexpr std::uint32_t kFieldAnsDistrictEnter = 139u;
+    constexpr std::uint32_t kFieldServerUseAutoReady = 670u;
+    constexpr std::uint32_t kFieldServerSyncState    = 80u;
+    // APB 1.13.1 LIVE FClassNetCache:
+    // cAPBPlayerController.ClientGoToSpawnZoneSelectScreen(byte eFaction)
+    constexpr std::uint32_t kFieldClientGoToSpawnZoneSelectScreen = 390u;
 
-// cAPBPlayerController.ClientSetInitialState(
-//     int nCharacterUID,
-//     byte Faction,
-//     byte Gender)
-constexpr std::uint32_t kFieldClientSetInitialState = 573u;
-// APB 1.13.1 LIVE FClassNetCache.
-constexpr std::uint32_t kFieldClientUpdateLevelStreamingStatus = 92u;
-constexpr std::uint32_t kFieldServerUpdateLevelVisibilityIndex = 93u;
-constexpr std::uint32_t kFieldServerUpdateLevelVisibilityString = 94u;
-constexpr std::uint32_t kFieldClientFlushLevelStreaming         = 98u;
-constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
+    // cAPBPlayerController.ClientSetInitialState(
+    //     int nCharacterUID,
+    //     byte Faction,
+    //     byte Gender)
+    constexpr std::uint32_t kFieldClientSetInitialState = 573u;
+    // APB 1.13.1 LIVE FClassNetCache.
+    constexpr std::uint32_t kFieldClientUpdateLevelStreamingStatus = 92u;
+    constexpr std::uint32_t kFieldServerUpdateLevelVisibilityIndex = 93u;
+    constexpr std::uint32_t kFieldServerUpdateLevelVisibilityString = 94u;
+    constexpr std::uint32_t kFieldClientFlushLevelStreaming         = 98u;
+    constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     // ---------------------------------------------------------
     // APB 1.13.1 live-derived ClassNetCache
     // cAPBPlayerController: fieldMax = 684
@@ -1030,7 +1030,7 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     constexpr std::uint32_t kFieldPawnIsWinded               = 107u;
     constexpr std::uint16_t kHoldableItemManagerChannel = 20u;
     constexpr std::uint16_t kStorageInventoryChannel    = 21u;
-
+    constexpr std::uint32_t kFieldClientSetSpawnedBefore = 248u;
     // APBGame.Default__cHoldableItemManager
     constexpr std::uint32_t kHoldableItemManagerLocalNetIndex = 16468u;
 
@@ -1068,6 +1068,7 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     constexpr std::uint32_t kFieldCustomisationClientNotifyTransferComplete = 23u;
     constexpr std::uint32_t kFieldCustomisationServerNotifyOperationComplete = 24u;
     constexpr std::uint32_t kFieldClientPrecacheCustomisation = 299u;
+    constexpr std::uint32_t kFieldServerAcknowledgePossession = 41u;
     
     struct CustomisationTransferState
     {
@@ -1075,12 +1076,62 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
         bool Active = false;
         bool Opened = false;
         bool CompletionSent = false;
+        bool PossessionStarted = false;
+        bool PossessionAcknowledged = false;
+        bool ClientRestartSent = false;
+        std::uint32_t ClientRestartPacketId = 0;
+        bool ClientRestartAcked = false;
+        bool SpawnedBeforeSent = false;
     };
 
     std::mutex g_customisationMutex;
 
     std::map<std::uint32_t, CustomisationTransferState>
         g_customisationTransfers;
+    
+    
+    bool ConsumeClientRestartAck(
+ Account* account,
+ std::uint32_t acknowledgedPacketId)
+    {
+        if (account == nullptr)
+            return false;
+
+        std::lock_guard<std::mutex> guard(
+            g_customisationMutex);
+
+        auto it =
+            g_customisationTransfers.find(
+                account->GetId());
+
+        if (it == g_customisationTransfers.end())
+            return false;
+
+        CustomisationTransferState& state =
+            it->second;
+
+        if (!state.ClientRestartSent)
+            return false;
+
+        if (state.ClientRestartPacketId == 0)
+            return false;
+
+        if (state.ClientRestartPacketId != acknowledgedPacketId)
+            return false;
+
+        if (state.ClientRestartAcked)
+            return false;
+
+        state.ClientRestartAcked = true;
+
+        if (state.SpawnedBeforeSent)
+            return false;
+
+        state.SpawnedBeforeSent = true;
+        return true;
+    }
+    
+    
     void ResetCustomisationTransferState(Account* account)
     {
         if (account == nullptr)
@@ -1319,6 +1370,50 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     return true;
 }
 
+    bool SendClientSetSpawnedBefore(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+    {
+        if (account == nullptr)
+            return false;
+
+        const std::uint32_t packetId =
+            account->AllocateServerPacketId();
+
+        const std::vector<std::uint8_t> packet =
+            ApbUdp::BuildActorDefaultRpcPacket(
+                packetId,
+                kControllerChannel,
+                AllocateChannelSequence(
+                    account,
+                    kControllerChannel),
+                kFieldClientSetSpawnedBefore,
+                kPlayerControllerFieldMax,
+                0u); // zero parameters — runtime confirmed
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "CLIENT-SET-SPAWNED-BEFORE");
+
+        Logger(
+            sent ? lSUCCESS : lERROR,
+            "District Possession",
+            "ClientSetSpawnedBefore sent=%d "
+            "packetId=%u ch=%u field=%u",
+            sent ? 1 : 0,
+            packetId,
+            static_cast<unsigned int>(
+                kControllerChannel),
+            kFieldClientSetSpawnedBefore);
+
+        return sent;
+    }
+    
     bool SendCustomisationChunk(
     SOCKET socket,
     const sockaddr_in& endpoint,
@@ -1544,6 +1639,13 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
         state.Active = true;
         state.Opened = false;
         state.CompletionSent = false;
+
+        state.PossessionStarted = false;
+        state.PossessionAcknowledged = false;
+        state.ClientRestartSent = false;
+        state.ClientRestartPacketId = 0;
+        state.ClientRestartAcked = false;
+        state.SpawnedBeforeSent = false;
     }
 
     //
@@ -1682,6 +1784,57 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
             account,
             channel,
             0u);
+}
+    
+    bool SendPostCustomisationPossessionPhase1(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr)
+        return false;
+
+    // ---------------------------------------------------------
+    // 1. PlayerController.GivePawn(Pawn)
+    // APB 1.13.1 LIVE:
+    //   field 40
+    //   Pawn = dynamic actor on channel 4
+    // ---------------------------------------------------------
+
+    const std::uint32_t givePawnPacketId =
+        account->AllocateServerPacketId();
+
+    const std::vector<std::uint8_t> givePawn =
+        ApbUdp::BuildActorObjectRpcPacket(
+            givePawnPacketId,
+            kControllerChannel,
+            AllocateChannelSequence(
+                account,
+                kControllerChannel),
+            kFieldGivePawn,
+            kPlayerControllerFieldMax,
+            kPawnChannel,
+            0u);
+
+        const bool givePawnSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            givePawn,
+            "GIVE-PAWN");
+
+        Logger(
+            givePawnSent ? lSUCCESS : lERROR,
+            "District Possession",
+            "GivePawn sent=%d packetId=%u controllerCh=%u pawnCh=%u field=%u",
+            givePawnSent ? 1 : 0,
+            givePawnPacketId,
+            static_cast<unsigned int>(kControllerChannel),
+            static_cast<unsigned int>(kPawnChannel),
+            kFieldGivePawn);
+
+        return givePawnSent;
 }
     
     bool SendGriMatchHasBegun(
@@ -3591,6 +3744,44 @@ bool SendSocialLevelStreaming(
         const std::uint32_t ackedPacketId =
             bunch.AckPacketId;
 
+        if (ConsumeClientRestartAck(
+        account,
+        ackedPacketId))
+        {
+            Logger(
+                lSUCCESS,
+                "District Possession",
+                "ClientRestart ACK received: "
+                "account=%u ACK(%u); "
+                "sending ClientSetSpawnedBefore.",
+                account->GetId(),
+                ackedPacketId);
+
+            if (!SendClientSetSpawnedBefore(
+                    socket,
+                    endpoint,
+                    account))
+            {
+                Logger(
+                    lERROR,
+                    "District Possession",
+                    "Failed to send ClientSetSpawnedBefore.");
+
+                // ВОТ СЮДА
+                std::lock_guard<std::mutex> guard(
+                    g_customisationMutex);
+
+                auto it =
+                    g_customisationTransfers.find(
+                        account->GetId());
+
+                if (it != g_customisationTransfers.end())
+                {
+                    it->second.SpawnedBeforeSent = false;
+                }
+            }
+        }
+        
         if (!ConsumeGriOpenAck(
                 account,
                 ackedPacketId))
@@ -3960,7 +4151,7 @@ bool SendSocialLevelStreaming(
             // cCustomisationReplicator.ServerNotifyOperationComplete()
             // ---------------------------------------------------------
             if (fieldIndex ==
-                kFieldCustomisationServerNotifyOperationComplete)
+    kFieldCustomisationServerNotifyOperationComplete)
             {
                 {
                     std::lock_guard<std::mutex> guard(
@@ -3973,6 +4164,11 @@ bool SendSocialLevelStreaming(
                     if (it != g_customisationTransfers.end())
                     {
                         it->second.Active = false;
+
+                        // ВАЖНО:
+                        // после customisation НЕ начинаем possession.
+                        // Сначала клиент должен пройти spawn-zone selection.
+                        it->second.PossessionStarted = false;
                     }
                 }
 
@@ -3980,17 +4176,12 @@ bool SendSocialLevelStreaming(
                     lSUCCESS,
                     "District Customisation",
                     "ServerNotifyOperationComplete received "
-                    "account=%u ch=%u",
+                    "account=%u ch=%u; "
+                    "waiting for spawn-zone flow.",
                     account->GetId(),
-                    static_cast<unsigned int>(bunch.ChannelIndex));
+                    static_cast<unsigned int>(
+                        bunch.ChannelIndex));
 
-                Logger(
-                    lSUCCESS,
-                    "District Bootstrap",
-                    "Customisation transfer fully completed; "
-                    "possession may now continue.");
-
-                // Пока здесь НЕ шлём GivePawn.
                 continue;
             }
 
@@ -4038,41 +4229,163 @@ bool SendSocialLevelStreaming(
             std::size_t parameterBits = 0;
             std::string decodeError;
 
-                       const bool decoded = ApbUdp::DecodeActorFieldIndex(
-                    bunch,
-                    kControllerFieldMax,
-                    fieldIndex,
-                    parameterBits,
-                    decodeError);
+            const bool decoded =
+    ApbUdp::DecodeActorFieldIndex(
+        bunch,
+        kControllerFieldMax,
+        fieldIndex,
+        parameterBits,
+        decodeError);
 
             if (!decoded)
             {
-                Logger(lWARN, "District RX",
+                Logger(
+                    lWARN,
+                    "District RX",
                     "ch=%u rel=%d seq=%u bits=%u DECODE FAILED: %s",
                     static_cast<unsigned int>(bunch.ChannelIndex),
                     bunch.Reliable ? 1 : 0,
                     static_cast<unsigned int>(bunch.ChannelSequence),
                     static_cast<unsigned int>(bunch.DataBitCount),
                     decodeError.c_str());
+
                 continue;
             }
 
-            Logger(lINFO, "District RX",
-                "ch=%u rel=%d seq=%u bits=%u field=%u paramBits=%u",
-                static_cast<unsigned int>(bunch.ChannelIndex),
-                bunch.Reliable ? 1 : 0,
-                static_cast<unsigned int>(bunch.ChannelSequence),
-                static_cast<unsigned int>(bunch.DataBitCount),
-                static_cast<unsigned int>(fieldIndex),
-                static_cast<unsigned int>(parameterBits));
+            // Только ПОСЛЕ успешного DecodeActorFieldIndex()
+            const bool highRateRpc =
+                bunch.ChannelIndex == kControllerChannel &&
+                !bunch.Reliable &&
+                (
+                    fieldIndex == 54u  ||   // DualServerMove
+                    fieldIndex == 56u  ||   // ServerMove
+                    fieldIndex == 429u      // ServerCosmeticAimRotation
+                );
 
-                        if (fieldIndex == kFieldServerSyncState ||
-                			fieldIndex == kFieldServerUseAutoReady)
+            if (!highRateRpc)
+            {
+                Logger(
+                    lINFO,
+                    "District RX",
+                    "ch=%u rel=%d seq=%u bits=%u field=%u paramBits=%u",
+                    static_cast<unsigned int>(bunch.ChannelIndex),
+                    bunch.Reliable ? 1 : 0,
+                    static_cast<unsigned int>(bunch.ChannelSequence),
+                    static_cast<unsigned int>(bunch.DataBitCount),
+                    static_cast<unsigned int>(fieldIndex),
+                    static_cast<unsigned int>(parameterBits));
+            }
+
+            if (fieldIndex == kFieldServerSyncState || fieldIndex == kFieldServerUseAutoReady)
             {
                 // Клиент сообщает, ответа не ждёт.
                 continue;
             }
             
+            if (fieldIndex == kFieldServerAcknowledgePossession)
+            {
+                bool sendClientRestart = false;
+
+                {
+                    std::lock_guard<std::mutex> guard(
+                        g_customisationMutex);
+
+                    auto it =
+                        g_customisationTransfers.find(
+                            account->GetId());
+
+                    if (it != g_customisationTransfers.end())
+                    {
+                        CustomisationTransferState& state = it->second;
+
+                        if (state.PossessionStarted)
+                        {
+                            state.PossessionAcknowledged = true;
+
+                            if (!state.ClientRestartSent)
+                            {
+                                state.ClientRestartSent = true;
+                                sendClientRestart = true;
+                            }
+                        }
+                    }
+                }
+
+                Logger(
+                    lSUCCESS,
+                    "District Possession",
+                    "ServerAcknowledgePossession received "
+                    "account=%u ch=%u paramBits=%u",
+                    account->GetId(),
+                    static_cast<unsigned int>(bunch.ChannelIndex),
+                    static_cast<unsigned int>(parameterBits));
+
+                if (sendClientRestart)
+                {
+                    const std::uint32_t packetId =
+                        account->AllocateServerPacketId();
+
+                    const std::vector<std::uint8_t> restart =
+                        ApbUdp::BuildActorObjectRpcPacket(
+                            packetId,
+                            kControllerChannel,
+                            AllocateChannelSequence(
+                                account,
+                                kControllerChannel),
+                            kFieldClientRestart,
+                            kPlayerControllerFieldMax,
+                            kPawnChannel,
+                            0u);
+
+                    const bool sent =
+                        SendProtectedPacket(
+                            socket,
+                            endpoint,
+                            account,
+                            restart,
+                            "CLIENT-RESTART");
+                    
+                    if (sent)
+                    {
+                        std::lock_guard<std::mutex> guard(
+                            g_customisationMutex);
+
+                        auto it =
+                            g_customisationTransfers.find(
+                                account->GetId());
+
+                        if (it != g_customisationTransfers.end())
+                        {
+                            it->second.ClientRestartPacketId = packetId;
+                            it->second.ClientRestartAcked = false;
+                        }
+                    }
+                    
+                    Logger(
+                        sent ? lSUCCESS : lERROR,
+                        "District Possession",
+                        "ClientRestart after possession ACK "
+                        "sent=%d packetId=%u pawnCh=%u",
+                        sent ? 1 : 0,
+                        packetId,
+                        static_cast<unsigned int>(kPawnChannel));
+
+                    if (!sent)
+                    {
+                        std::lock_guard<std::mutex> guard(
+                            g_customisationMutex);
+
+                        auto it =
+                            g_customisationTransfers.find(
+                                account->GetId());
+
+                        if (it != g_customisationTransfers.end())
+                            it->second.ClientRestartSent = false;
+                    }
+                }
+
+                continue;
+            }
             if (fieldIndex == kFieldServerRequestCustomisation)
             {
                 Logger(
@@ -4409,7 +4722,7 @@ bool SendSocialLevelStreaming(
 
             if (received <= 0)
                 continue;
-
+/*
             Logger(
                 lINFO,
                 "District UDP",
@@ -4420,6 +4733,7 @@ bool SendSocialLevelStreaming(
                     receiveBuffer.data(),
                     static_cast<std::size_t>(received),
                     128).c_str());
+                    */
 
             ApbUdp::Packet packet;
             bool parsed = false;
