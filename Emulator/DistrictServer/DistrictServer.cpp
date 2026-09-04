@@ -1044,16 +1044,80 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     // cAPBPlayerController — текущая 1.13.1
     constexpr std::uint32_t kFieldControllerHoldableItemManager = 175u;
     constexpr std::uint32_t kFieldControllerInventory           = 176u;
+    constexpr std::uint16_t kCustomisationReplicatorChannel = 22u;
 
-struct StreamingPlanEntry
-{
-    const char* PackageName;
-    bool ShouldBeLoaded;
-    bool ShouldBeVisible;
-    bool ShouldBlockOnLoad;
-};
+    // APBGame.Default__cCustomisationReplicator
+    // LIVE APB 1.13.1 UObject::NetIndex = 15024
+    constexpr std::uint32_t kCustomisationReplicatorLocalNetIndex = 15024u;
 
-constexpr StreamingPlanEntry kSocialStreamingPlan[] =
+    // APBGame.cCustomisationReplicator LIVE ClassNetCache
+    constexpr std::uint32_t kCustomisationReplicatorFieldMax = 25u;
+
+    constexpr std::uint32_t kFieldActorOwner = 9u;
+
+    constexpr std::uint32_t kFieldServerRequestCustomisation = 297u;
+
+    constexpr std::uint32_t kFieldCustomisationServerSendData = 21u;
+    constexpr std::uint32_t kFieldCustomisationClientReceiveData = 22u;
+    constexpr std::uint32_t kFieldCustomisationClientNotifyTransferComplete = 23u;
+    constexpr std::uint32_t kFieldCustomisationServerNotifyOperationComplete = 24u;
+    
+    struct CustomisationTransferState
+    {
+        std::uint16_t Channel = kCustomisationReplicatorChannel;
+        bool Active = false;
+        bool Opened = false;
+        bool CompletionSent = false;
+    };
+
+    std::mutex g_customisationMutex;
+
+    std::map<std::uint32_t, CustomisationTransferState>
+        g_customisationTransfers;
+    void ResetCustomisationTransferState(Account* account)
+    {
+        if (account == nullptr)
+            return;
+
+        std::lock_guard<std::mutex> guard(
+            g_customisationMutex);
+
+        g_customisationTransfers.erase(
+            account->GetId());
+    }
+
+    struct StreamingPlanEntry
+    {
+        const char* PackageName;
+        bool ShouldBeLoaded;
+        bool ShouldBeVisible;
+        bool ShouldBlockOnLoad;
+    };
+    
+    // UPackageMap::Compute() назначает основания как бегущую сумму по списку
+    // в порядке отправки Uses. Порядок наш, поэтому индексы задаём мы.
+    std::uint32_t PackageFirstNetIndex(const char* name)
+    {
+
+        std::uint32_t base = 0;
+        for (const UsesEntry& e : kPackages)
+        {
+            if (std::strcmp(e.Name, name) == 0)
+                return base;
+            base += e.NetObjectCount;
+        }
+        Logger(lERROR, "District Net",
+            "Package '%s' is not in kPackages", name);
+        return kBadNetIndex;
+    }
+    
+    std::uint32_t GlobalNetIndex(const char* package, std::uint32_t localNetIndex)
+    {
+        const std::uint32_t base = PackageFirstNetIndex(package);
+        return base == kBadNetIndex ? kBadNetIndex : base + localNetIndex;
+    }
+
+    constexpr StreamingPlanEntry kSocialStreamingPlan[] =
 {
     {
         "rworldsocialdistrict_artprops_blockout",
@@ -1128,23 +1192,6 @@ constexpr StreamingPlanEntry kSocialStreamingPlan[] =
         true, true, false
     }
 };
-
-// UPackageMap::Compute() назначает основания как бегущую сумму по списку
-// в порядке отправки Uses. Порядок наш, поэтому индексы задаём мы.
-std::uint32_t PackageFirstNetIndex(const char* name)
-{
-
-    std::uint32_t base = 0;
-    for (const UsesEntry& e : kPackages)
-    {
-        if (std::strcmp(e.Name, name) == 0)
-            return base;
-        base += e.NetObjectCount;
-    }
-    Logger(lERROR, "District Net",
-        "Package '%s' is not in kPackages", name);
-    return kBadNetIndex;
-}
     
     bool BuildPawnCompactGolemDescriptor(
    Account* account,
@@ -1197,13 +1244,98 @@ std::uint32_t PackageFirstNetIndex(const char* name)
     return true;
 }
 
-bool SendGriMatchHasBegun(
+    bool SendCustomisationChunk(
     SOCKET socket,
     const sockaddr_in& endpoint,
-    Account* account)
+    Account* account,
+    std::uint16_t channel,
+    std::uint32_t baseIndex)
 {
     if (account == nullptr)
         return false;
+
+    const std::vector<std::uint8_t> appearance =
+        account->GetAppearance();
+
+    if (appearance.empty())
+    {
+        Logger(
+            lERROR,
+            "District Customisation",
+            "Appearance is empty for account=%u",
+            account->GetId());
+
+        return false;
+    }
+
+    //
+    // The client has consumed the whole descriptor.
+    //
+    if (baseIndex >= appearance.size())
+    {
+        const std::uint32_t packetId =
+            account->AllocateServerPacketId();
+
+        const std::vector<std::uint8_t> complete =
+            ApbUdp::BuildActorDefaultRpcPacket(
+                packetId,
+                channel,
+                AllocateChannelSequence(account, channel),
+                kFieldCustomisationClientNotifyTransferComplete,
+                kCustomisationReplicatorFieldMax,
+                0u);
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                complete,
+                "CUSTOMISATION-TRANSFER-COMPLETE");
+
+        Logger(
+            sent ? lSUCCESS : lERROR,
+            "District Customisation",
+            "ClientNotifyTransferComplete sent=%d "
+            "packetId=%u ch=%u requestedBase=%u appearanceBytes=%u",
+            sent ? 1 : 0,
+            packetId,
+            static_cast<unsigned int>(channel),
+            baseIndex,
+            static_cast<unsigned int>(appearance.size()));
+
+        if (sent)
+        {
+            std::lock_guard<std::mutex> guard(
+                g_customisationMutex);
+
+            auto it =
+                g_customisationTransfers.find(
+                    account->GetId());
+
+            if (it != g_customisationTransfers.end())
+                it->second.CompletionSent = true;
+        }
+
+        return sent;
+    }
+
+    std::array<std::uint8_t, 256> data = {};
+
+    const std::size_t remaining =
+        appearance.size() -
+        static_cast<std::size_t>(baseIndex);
+
+    const std::size_t count =
+        (std::min)(
+            remaining,
+            static_cast<std::size_t>(data.size()));
+
+    std::copy_n(
+        appearance.begin() +
+            static_cast<std::ptrdiff_t>(baseIndex),
+        count,
+        data.begin());
 
     const std::uint32_t packetId =
         account->AllocateServerPacketId();
@@ -1211,24 +1343,28 @@ bool SendGriMatchHasBegun(
     const std::uint16_t sequence =
         AllocateChannelSequence(
             account,
-            kGriChannel);
+            channel);
 
-    std::vector<std::uint8_t> packet =
-        ApbUdp::BuildActorBoolFieldPacket(
+    const std::vector<std::uint8_t> packet =
+        ApbUdp::BuildClientReceiveDataPacket(
             packetId,
-            kGriChannel,
+            channel,
             sequence,
-            kFieldGriMatchHasBegun,
-            kGriFieldMax,
-            true);
+            kFieldCustomisationClientReceiveData,
+            kCustomisationReplicatorFieldMax,
+            static_cast<std::int32_t>(count),
+            data,
+            ApbUdp::FixedByteArrayWireMode::SinglePresenceRaw);
 
     if (packet.empty())
     {
         Logger(
             lERROR,
-            "District GRI Startup",
-            "BuildActorBoolFieldPacket returned empty for "
-            "bMatchHasBegun.");
+            "District Customisation",
+            "ClientReceiveData builder returned empty "
+            "base=%u count=%u",
+            baseIndex,
+            static_cast<unsigned int>(count));
 
         return false;
     }
@@ -1239,30 +1375,274 @@ bool SendGriMatchHasBegun(
             endpoint,
             account,
             packet,
-            "GRI-MATCH-HAS-BEGUN");
+            "CUSTOMISATION-DATA");
 
     Logger(
         sent ? lSUCCESS : lERROR,
-        "District GRI Startup",
-        "bMatchHasBegun=true sent=%d "
-        "packetId=%u ch=%u seq=%u field=%u fieldMax=%u",
+        "District Customisation",
+        "ClientReceiveData sent=%d packetId=%u "
+        "ch=%u seq=%u base=%u count=%u appearanceBytes=%u",
         sent ? 1 : 0,
-        static_cast<unsigned int>(packetId),
-        static_cast<unsigned int>(kGriChannel),
+        packetId,
+        static_cast<unsigned int>(channel),
         static_cast<unsigned int>(sequence),
-        static_cast<unsigned int>(
-            kFieldGriMatchHasBegun),
-        static_cast<unsigned int>(
-            kGriFieldMax));
+        baseIndex,
+        static_cast<unsigned int>(count),
+        static_cast<unsigned int>(appearance.size()));
 
     return sent;
 }
-
-std::uint32_t GlobalNetIndex(const char* package, std::uint32_t localNetIndex)
+    
+    bool StartCustomisationTransfer(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
 {
-    const std::uint32_t base = PackageFirstNetIndex(package);
-    return base == kBadNetIndex ? kBadNetIndex : base + localNetIndex;
+    if (account == nullptr)
+        return false;
+
+    if (account->GetAppearanceSize() == 0)
+    {
+        Logger(
+            lERROR,
+            "District Customisation",
+            "Cannot start transfer: appearance empty account=%u",
+            account->GetId());
+
+        return false;
+    }
+
+    const std::uint32_t archetype =
+        GlobalNetIndex(
+            "APBGame",
+            kCustomisationReplicatorLocalNetIndex);
+
+    if (archetype == kBadNetIndex)
+    {
+        Logger(
+            lERROR,
+            "District Customisation",
+            "Could not resolve Default__cCustomisationReplicator");
+
+        return false;
+    }
+
+    const std::uint16_t channel =
+        kCustomisationReplicatorChannel;
+
+    {
+        std::lock_guard<std::mutex> guard(
+            g_customisationMutex);
+
+        CustomisationTransferState& state =
+            g_customisationTransfers[account->GetId()];
+
+        //
+        // Duplicate ServerRequestCustomisation while the same transfer
+        // is active: don't OPEN the same actor channel twice.
+        //
+        if (state.Active && state.Opened)
+        {
+            Logger(
+                lINFO,
+                "District Customisation",
+                "Duplicate customisation request account=%u; "
+                "restarting data from base=0 on existing ch=%u",
+                account->GetId(),
+                static_cast<unsigned int>(state.Channel));
+
+            return SendCustomisationChunk(
+                socket,
+                endpoint,
+                account,
+                state.Channel,
+                0u);
+        }
+
+        state.Channel = channel;
+        state.Active = true;
+        state.Opened = false;
+        state.CompletionSent = false;
+    }
+
+    //
+    // Use the already proven valid Social location.
+    // Avoid creating another actor at 0,0,0 while we're debugging.
+    //
+    constexpr float spawnX = 33063.848f;
+    constexpr float spawnY = 37346.258f;
+    constexpr float spawnZ = 1328.0f;
+
+    const std::uint32_t openPacketId =
+        account->AllocateServerPacketId();
+
+    const std::vector<std::uint8_t> open =
+        ApbUdp::BuildActorOpenPacket(
+            openPacketId,
+            channel,
+            AllocateChannelSequence(account, channel),
+            archetype,
+            spawnX,
+            spawnY,
+            spawnZ);
+
+        if (!SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            open,
+            "CUSTOMISATION-REPLICATOR-OPEN"))
+        {
+            return false;
+        }
+
+        Logger(
+            lINFO,
+            "District Customisation",
+            "Waiting 25 ms after replicator actor-open.");
+
+        Sleep(25);
+
+        //
+        // Important: make the replicator owned...
+        //
+
+    //
+    // Important: make the replicator owned by the local PlayerController.
+    // ServerSendData is a NetServer RPC, so the client-side actor should
+    // belong to this connection/controller.
+    //
+    const std::uint32_t ownerPacketId =
+        account->AllocateServerPacketId();
+
+    const std::vector<std::uint8_t> owner =
+        ApbUdp::BuildActorObjectFieldPacket(
+            ownerPacketId,
+            channel,
+            AllocateChannelSequence(account, channel),
+            kFieldActorOwner,
+            kCustomisationReplicatorFieldMax,
+            kControllerChannel);
+
+    if (!SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            owner,
+            "CUSTOMISATION-REPLICATOR-OWNER"))
+    {
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> guard(
+            g_customisationMutex);
+
+        CustomisationTransferState& state =
+            g_customisationTransfers[account->GetId()];
+
+        state.Opened = true;
+    }
+
+        Logger(
+        lSUCCESS,
+        "District Customisation",
+        "Replicator opened account=%u ch=%u "
+        "localNetIndex=%u globalNetIndex=%u "
+        "Owner=Controller(ch%u) appearanceBytes=%u",
+        account->GetId(),
+        static_cast<unsigned int>(channel),
+        kCustomisationReplicatorLocalNetIndex,
+        archetype,
+        static_cast<unsigned int>(kControllerChannel),
+        static_cast<unsigned int>(
+            account->GetAppearanceSize()));
+
+        // ---------------------------------------------------------
+        // Give the retail client time to instantiate the
+        // cCustomisationReplicator and apply Actor.Owner before
+        // executing ClientReceiveData on that actor.
+        //
+        // This is timing only, not a wire/index value.
+        // ---------------------------------------------------------
+
+        Logger(
+            lINFO,
+            "District Customisation",
+            "Waiting 50 ms for replicator setup before first "
+            "ClientReceiveData.");
+
+        Sleep(50);
+
+        // Native request-driven flow begins at offset 0.
+        return SendCustomisationChunk(
+            socket,
+            endpoint,
+            account,
+            channel,
+            0u);
 }
+    
+    bool SendGriMatchHasBegun(
+        SOCKET socket,
+        const sockaddr_in& endpoint,
+        Account* account)
+    {
+        if (account == nullptr)
+            return false;
+
+        const std::uint32_t packetId =
+            account->AllocateServerPacketId();
+
+        const std::uint16_t sequence =
+            AllocateChannelSequence(
+                account,
+                kGriChannel);
+
+        std::vector<std::uint8_t> packet =
+            ApbUdp::BuildActorBoolFieldPacket(
+                packetId,
+                kGriChannel,
+                sequence,
+                kFieldGriMatchHasBegun,
+                kGriFieldMax,
+                true);
+
+        if (packet.empty())
+        {
+            Logger(
+                lERROR,
+                "District GRI Startup",
+                "BuildActorBoolFieldPacket returned empty for "
+                "bMatchHasBegun.");
+
+            return false;
+        }
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "GRI-MATCH-HAS-BEGUN");
+
+        Logger(
+            sent ? lSUCCESS : lERROR,
+            "District GRI Startup",
+            "bMatchHasBegun=true sent=%d "
+            "packetId=%u ch=%u seq=%u field=%u fieldMax=%u",
+            sent ? 1 : 0,
+            static_cast<unsigned int>(packetId),
+            static_cast<unsigned int>(kGriChannel),
+            static_cast<unsigned int>(sequence),
+            static_cast<unsigned int>(
+                kFieldGriMatchHasBegun),
+            static_cast<unsigned int>(
+                kGriFieldMax));
+
+        return sent;
+    }
 
 bool SendPackageUses(
         SOCKET socket,
@@ -2946,10 +3326,11 @@ bool SendSocialLevelStreaming(
                     if (account == nullptr)
                         return true;
 
-                    account->SetHandshakeState(
-                        Account::HandshakeState::Complete);
+                    account->SetHandshakeState(Account::HandshakeState::Complete);
+
                     ResetChannelSequences(account);
-					ResetGriStartupState(account);
+                    ResetGriStartupState(account);
+                    ResetCustomisationTransferState(account);
 
                     Logger(lSUCCESS, "District Net",
                         "NMT_Join(9) from account %u",
@@ -3327,6 +3708,175 @@ bool SendSocialLevelStreaming(
         return false;
     }
 
+    
+    bool ProcessCustomisationReplicatorActorPacket(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account,
+    const ApbUdp::Packet& packet)
+    {
+        if (account == nullptr)
+            return false;
+
+        bool handledAny = false;
+
+        for (const ApbUdp::Bunch& bunch : packet.Bunches)
+        {
+            if (bunch.Kind != ApbUdp::BunchKind::Data ||
+                bunch.ChannelIndex != kCustomisationReplicatorChannel)
+            {
+                continue;
+            }
+
+            handledAny = true;
+
+            std::uint32_t fieldIndex = 0;
+            std::size_t parameterBits = 0;
+            std::string decodeError;
+
+            const bool decoded =
+                ApbUdp::DecodeActorFieldIndex(
+                    bunch,
+                    kCustomisationReplicatorFieldMax,
+                    fieldIndex,
+                    parameterBits,
+                    decodeError);
+
+            if (!decoded)
+            {
+                Logger(
+                    lWARN,
+                    "District Customisation RX",
+                    "ch=%u rel=%d seq=%u bits=%u DECODE FAILED: %s",
+                    static_cast<unsigned int>(bunch.ChannelIndex),
+                    bunch.Reliable ? 1 : 0,
+                    static_cast<unsigned int>(bunch.ChannelSequence),
+                    static_cast<unsigned int>(bunch.DataBitCount),
+                    decodeError.c_str());
+
+                continue;
+            }
+
+            Logger(
+                lINFO,
+                "District Customisation RX",
+                "ch=%u rel=%d seq=%u bits=%u field=%u paramBits=%u",
+                static_cast<unsigned int>(bunch.ChannelIndex),
+                bunch.Reliable ? 1 : 0,
+                static_cast<unsigned int>(bunch.ChannelSequence),
+                static_cast<unsigned int>(bunch.DataBitCount),
+                static_cast<unsigned int>(fieldIndex),
+                static_cast<unsigned int>(parameterBits));
+
+            // ---------------------------------------------------------
+            // cCustomisationReplicator.ServerSendData(int nBaseIndex)
+            // ---------------------------------------------------------
+            if (fieldIndex == kFieldCustomisationServerSendData)
+            {
+                std::int32_t baseIndex = 0;
+                std::size_t trailingBits = 0;
+                std::string error;
+
+                if (!ApbUdp::DecodeActorIntRpc(
+                        bunch,
+                        kCustomisationReplicatorFieldMax,
+                        kFieldCustomisationServerSendData,
+                        baseIndex,
+                        trailingBits,
+                        error))
+                {
+                    Logger(
+                        lERROR,
+                        "District Customisation",
+                        "ServerSendData decode failed: %s",
+                        error.c_str());
+
+                    continue;
+                }
+
+                if (baseIndex < 0)
+                {
+                    Logger(
+                        lERROR,
+                        "District Customisation",
+                        "ServerSendData invalid baseIndex=%d",
+                        baseIndex);
+
+                    continue;
+                }
+
+                Logger(
+                    lSUCCESS,
+                    "District Customisation",
+                    "ServerSendData baseIndex=%d trailingBits=%u",
+                    baseIndex,
+                    static_cast<unsigned int>(trailingBits));
+
+                const bool sent =
+                    SendCustomisationChunk(
+                        socket,
+                        endpoint,
+                        account,
+                        bunch.ChannelIndex,
+                        static_cast<std::uint32_t>(baseIndex));
+
+                Logger(
+                    sent ? lSUCCESS : lERROR,
+                    "District Customisation",
+                    "Response to ServerSendData baseIndex=%d sent=%d",
+                    baseIndex,
+                    sent ? 1 : 0);
+
+                continue;
+            }
+
+            // ---------------------------------------------------------
+            // cCustomisationReplicator.ServerNotifyOperationComplete()
+            // ---------------------------------------------------------
+            if (fieldIndex ==
+                kFieldCustomisationServerNotifyOperationComplete)
+            {
+                {
+                    std::lock_guard<std::mutex> guard(
+                        g_customisationMutex);
+
+                    auto it =
+                        g_customisationTransfers.find(
+                            account->GetId());
+
+                    if (it != g_customisationTransfers.end())
+                    {
+                        it->second.Active = false;
+                    }
+                }
+
+                Logger(
+                    lSUCCESS,
+                    "District Customisation",
+                    "ServerNotifyOperationComplete received "
+                    "account=%u ch=%u",
+                    account->GetId(),
+                    static_cast<unsigned int>(bunch.ChannelIndex));
+
+                Logger(
+                    lSUCCESS,
+                    "District Bootstrap",
+                    "Customisation transfer fully completed; "
+                    "possession may now continue.");
+
+                // Пока здесь НЕ шлём GivePawn.
+                continue;
+            }
+
+            Logger(
+                lWARN,
+                "District Customisation RX",
+                "Unhandled customisation field=%u",
+                static_cast<unsigned int>(fieldIndex));
+        }
+
+        return handledAny;
+    }
 
     // APB 1.13.1 / UE3 build 3908, read directly from the live heap
     // FClassNetCache for APBGame.cAPBPlayerController:
@@ -3396,6 +3946,35 @@ bool SendSocialLevelStreaming(
                 // Клиент сообщает, ответа не ждёт.
                 continue;
             }
+            
+            if (fieldIndex == kFieldServerRequestCustomisation)
+            {
+                Logger(
+                    lSUCCESS,
+                    "District Customisation",
+                    "ServerRequestCustomisation received "
+                    "account=%u paramBits=%u appearanceBytes=%u",
+                    account->GetId(),
+                    static_cast<unsigned int>(parameterBits),
+                    static_cast<unsigned int>(
+                        account->GetAppearanceSize()));
+
+                const bool started =
+                    StartCustomisationTransfer(
+                        socket,
+                        endpoint,
+                        account);
+
+                Logger(
+                    started ? lSUCCESS : lERROR,
+                    "District Customisation",
+                    "StartCustomisationTransfer sent=%d account=%u",
+                    started ? 1 : 0,
+                    account->GetId());
+
+                continue;
+            }
+            
             if (fieldIndex == kFieldServerNotifyClientLoaded)
             {
                 Logger(
@@ -3882,6 +4461,14 @@ bool SendSocialLevelStreaming(
 
                 if (actorAccount != nullptr)
                 {
+                    // ch22: cCustomisationReplicator
+                    ProcessCustomisationReplicatorActorPacket(
+                        socketHandle,
+                        remoteAddress,
+                        actorAccount,
+                        packet);
+
+                    // ch2: cAPBPlayerController
                     ProcessPlayerControllerActorPacket(
                         socketHandle,
                         remoteAddress,
