@@ -1025,6 +1025,8 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     constexpr std::uint32_t kFieldPawnCustomisationGuids     = 77u;
     constexpr std::uint32_t kFieldPawnGender                 = 96u;
     constexpr std::uint32_t kFieldPawnFaction                = 97u;
+    constexpr std::uint32_t kGenderEnumValueCount  = 5u;
+    constexpr std::uint32_t kFactionEnumValueCount = 5u;
     constexpr std::uint32_t kFieldPawnIsWinded               = 107u;
     constexpr std::uint16_t kHoldableItemManagerChannel = 20u;
     constexpr std::uint16_t kStorageInventoryChannel    = 21u;
@@ -1405,7 +1407,211 @@ bool SendPackageUses(
         return linkSent;
     }
     
-     bool SendInventoryActorBootstrap(
+    bool SendPawnGender(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr || !account->HasCharacterProfile())
+        return false;
+
+    const std::uint8_t gender =
+        account->GetCharacterGender();
+
+    if (gender >= kGenderEnumValueCount)
+    {
+        Logger(
+            lERROR,
+            "District Character Bootstrap",
+            "Invalid gender=%u enumCount=%u",
+            static_cast<unsigned int>(gender),
+            kGenderEnumValueCount);
+
+        return false;
+    }
+
+    const std::uint32_t packetId =
+        account->AllocateServerPacketId();
+
+    const std::uint16_t sequence =
+        AllocateChannelSequence(
+            account,
+            kPawnChannel);
+
+    const std::vector<std::uint8_t> packet =
+        ApbUdp::BuildActorEnumByteFieldPacket(
+            packetId,
+            kPawnChannel,
+            sequence,
+            kFieldPawnGender,
+            kPawnFieldMax,
+            gender,
+            kGenderEnumValueCount);
+
+    const bool sent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            packet,
+            "PAWN-GENDER");
+
+    Logger(
+        sent ? lSUCCESS : lERROR,
+        "District Character Bootstrap",
+        "Pawn.m_eGender sent=%d packetId=%u ch=%u seq=%u "
+        "field=%u value=%u enumCount=%u",
+        sent ? 1 : 0,
+        packetId,
+        static_cast<unsigned int>(kPawnChannel),
+        static_cast<unsigned int>(sequence),
+        kFieldPawnGender,
+        static_cast<unsigned int>(gender),
+        kGenderEnumValueCount);
+
+    return sent;
+}
+    
+    bool SendPawnFaction(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr || !account->HasCharacterProfile())
+        return false;
+
+    const std::uint8_t faction =
+        account->GetCharacterFaction();
+
+    if (faction >= kFactionEnumValueCount)
+    {
+        Logger(
+            lERROR,
+            "District Character Bootstrap",
+            "Invalid faction=%u enumCount=%u",
+            static_cast<unsigned int>(faction),
+            kFactionEnumValueCount);
+
+        return false;
+    }
+
+    const std::uint32_t packetId =
+        account->AllocateServerPacketId();
+
+    const std::uint16_t sequence =
+        AllocateChannelSequence(
+            account,
+            kPawnChannel);
+
+    const std::vector<std::uint8_t> packet =
+        ApbUdp::BuildActorEnumByteFieldPacket(
+            packetId,
+            kPawnChannel,
+            sequence,
+            kFieldPawnFaction,
+            kPawnFieldMax,
+            faction,
+            kFactionEnumValueCount);
+
+    const bool sent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            packet,
+            "PAWN-FACTION");
+
+    Logger(
+        sent ? lSUCCESS : lERROR,
+        "District Character Bootstrap",
+        "Pawn.m_eFaction sent=%d packetId=%u ch=%u seq=%u "
+        "field=%u value=%u enumCount=%u",
+        sent ? 1 : 0,
+        packetId,
+        static_cast<unsigned int>(kPawnChannel),
+        static_cast<unsigned int>(sequence),
+        kFieldPawnFaction,
+        static_cast<unsigned int>(faction),
+        kFactionEnumValueCount);
+
+    return sent;
+}
+    
+    bool SendPawnControllerCharacterUid(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+    {
+        if (account == nullptr)
+            return false;
+
+        if (!account->HasCharacterProfile())
+        {
+            Logger(
+                lERROR,
+                "District Character Bootstrap",
+                "Character profile missing for account=%u",
+                account->GetId());
+
+            return false;
+        }
+
+        const std::int32_t characterUid =
+            static_cast<std::int32_t>(
+                account->GetCharacterId());
+
+        const std::uint32_t packetId =
+            account->AllocateServerPacketId();
+
+        const std::uint16_t sequence =
+            AllocateChannelSequence(
+                account,
+                kPawnChannel);
+
+        const std::vector<std::uint8_t> packet =
+            ApbUdp::BuildActorIntFieldPacket(
+                packetId,
+                kPawnChannel,
+                sequence,
+                kFieldPawnControllerCharacterUid,
+                kPawnFieldMax,
+                &characterUid,
+                1u);
+
+        if (packet.empty())
+        {
+            Logger(
+                lERROR,
+                "District Character Bootstrap",
+                "BuildActorIntFieldPacket returned empty packet for UID.");
+
+            return false;
+        }
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "PAWN-CHARACTER-UID");
+
+        Logger(
+            sent ? lSUCCESS : lERROR,
+            "District Character Bootstrap",
+            "Pawn.m_nControllerCharacterUID sent=%d "
+            "packetId=%u ch=%u seq=%u field=%u value=%d",
+            sent ? 1 : 0,
+            packetId,
+            static_cast<unsigned int>(kPawnChannel),
+            static_cast<unsigned int>(sequence),
+            kFieldPawnControllerCharacterUid,
+            characterUid);
+
+        return sent;
+    }
+        
+    bool SendInventoryActorBootstrap(
     SOCKET socket,
     const sockaddr_in& endpoint,
     Account* account,
@@ -1833,13 +2039,13 @@ bool SendPackageUses(
     Sleep(50);
 
     const bool inventoryBootstrapSent =
-        SendInventoryActorBootstrap(
-            socket,
-            endpoint,
-            account,
-            spawnX,
-            spawnY,
-            spawnZ);
+    SendInventoryActorBootstrap(
+        socket,
+        endpoint,
+        account,
+        spawnX,
+        spawnY,
+        spawnZ);
 
     Logger(
         inventoryBootstrapSent ? lSUCCESS : lERROR,
@@ -1847,7 +2053,63 @@ bool SendPackageUses(
         "Inventory actor bootstrap sent=%d",
         inventoryBootstrapSent ? 1 : 0);
 
-    return inventoryBootstrapSent;
+    if (!inventoryBootstrapSent)
+        return false;
+
+    Sleep(100);
+
+    // ---------------------------------------------------------
+    // Character bootstrap stage 1:
+    // Pawn.m_nControllerCharacterUID
+    // ---------------------------------------------------------
+
+    const bool uidSent =
+    SendPawnControllerCharacterUid(
+        socket,
+        endpoint,
+        account);
+
+    Logger(
+        uidSent ? lSUCCESS : lERROR,
+        "District Bootstrap",
+        "Pawn character UID stage sent=%d",
+        uidSent ? 1 : 0);
+
+    if (!uidSent)
+        return false;
+
+    Sleep(100);
+
+    const bool genderSent =
+        SendPawnGender(
+            socket,
+            endpoint,
+            account);
+
+    Logger(
+        genderSent ? lSUCCESS : lERROR,
+        "District Bootstrap",
+        "Pawn gender stage sent=%d",
+        genderSent ? 1 : 0);
+
+    if (!genderSent)
+        return false;
+
+    Sleep(100);
+
+    const bool factionSent =
+        SendPawnFaction(
+            socket,
+            endpoint,
+            account);
+
+    Logger(
+        factionSent ? lSUCCESS : lERROR,
+        "District Bootstrap",
+        "Pawn faction stage sent=%d",
+        factionSent ? 1 : 0);
+
+    return factionSent;
 }
     
 	    // Engine.PlayerController.ClientSetHUD(class<HUD>, class<Scoreboard>)
