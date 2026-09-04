@@ -1052,13 +1052,15 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
 
     // APBGame.cCustomisationReplicator LIVE ClassNetCache
     constexpr std::uint32_t kCustomisationReplicatorFieldMax = 25u;
-
-    constexpr std::uint32_t kFieldActorOwner = 9u;
-    // ТРЕБУЕТСЯ ИЗМЕРЕНИЕ на 1.13.1:
-    // netindex_probe.py --class-netfields cCustomisationReplicator --netfields-inherited
-    // искать bNetOwner среди inherited Actor-полей
-    constexpr std::uint32_t kFieldActorNetOwner = 13u; // ← подставить измеренное
-
+    
+    // Engine.Actor inherited network fields.
+    // LIVE APB 1.13.1 FClassNetCache,
+    // measured in APBGame.cCustomisationReplicator:
+    //   Owner     = 9
+    //   bNetOwner = 13
+    //   FieldMax  = 25
+    constexpr std::uint32_t kFieldActorOwner    = 9u;
+    constexpr std::uint32_t kFieldActorNetOwner = 13u;
     constexpr std::uint32_t kFieldServerRequestCustomisation = 297u;
 
     constexpr std::uint32_t kFieldCustomisationServerSendData = 21u;
@@ -1865,7 +1867,8 @@ bool SendPackageUses(
     // Property-update, в отличие от RPC-параметра, presence-бита не имеет:
     // SerializeInt(FieldIndex, FieldMax), затем сразу значение.
     // Ссылка на актор с открытым каналом идёт как флаг 1 + номер канала
-    // (граница 0x3FF) -- kind "object".
+    // APB 1.13.1: dynamic Actor reference:
+    // selector=1 + SerializeInt(ChannelIndex, 0x800).
     bool SendPlayerReplicationInfo(
         SOCKET socket,
         const sockaddr_in& endpoint,
@@ -1906,21 +1909,17 @@ bool SendPackageUses(
             return false;
 
         // 2. Controller.PlayerReplicationInfo = <актор на канале 5>.
-        std::vector<ApbUdp::DebugParam> params(1u);
-        params[0].Kind = "object";
-        params[0].A    = static_cast<std::int64_t>(kPriChannel);
-
         const std::uint16_t linkSequence =
-            AllocateChannelSequence(account, kControllerChannel);
+    AllocateChannelSequence(account, kControllerChannel);
 
-        std::vector<std::uint8_t> link =
-            ApbUdp::BuildActorParamsFieldPacket(
+        const std::vector<std::uint8_t> link =
+            ApbUdp::BuildActorObjectFieldPacket(
                 account->AllocateServerPacketId(),
                 kControllerChannel,
                 linkSequence,
                 kFieldPlayerReplicationInfo,
                 kControllerFieldMax,
-                params);
+                kPriChannel);
 
         const bool linkSent = SendProtectedPacket(
             socket, endpoint, account, link, "PRI-LINK");
@@ -2554,62 +2553,43 @@ bool SendPackageUses(
 
     Sleep(25);
 
-    // ---------------------------------------------------------
-    // 3. Pawn.Controller = PlayerController channel 2
-    //
-    // cAPBPawn.Controller:
-    // FieldIndex = 41
-    // FieldMax   = 123
-    // ---------------------------------------------------------
-
-        // ВРЕМЕННО: перебор кодировки ObjectProperty.
-        // Режим берётся из переменной окружения RAPB_OBJREF_MODE.
-        //   object   bit(1) + SerializeInt(ch, 0x3FF)            текущий, не работает
-        //   objecto  SerializeInt(ch, 0x3FF)                     без флага
-        //   objectp  bit(1) + bit(1) + SerializeInt(ch, 0x3FF)
-        const char* objRefMode = std::getenv("RAPB_OBJREF_MODE");
-
-        ApbUdp::DebugParam objParam;
-        objParam.Kind = (objRefMode != nullptr) ? objRefMode : "objecto";
-        objParam.A    = static_cast<std::int64_t>(kControllerChannel);
-
-        Logger(
-            lINFO,
-            "District Pawn",
-            "OBJREF probe: mode=%s field=%u targetCh=%u",
-            objParam.Kind.c_str(),
-            kFieldPawnController,
-            static_cast<unsigned int>(kControllerChannel));
-
+        // ---------------------------------------------------------
+        // 3. Pawn.Controller = PlayerController channel 2
+        //
+        // APB 1.13.1 runtime-reversed:
+        // UObjectProperty -> UPackageMapLevel::SerializeObject.
+        // Dynamic Actor reference = selector 1 +
+        // SerializeInt(ChannelIndex, 0x800).
+        // ---------------------------------------------------------
         const std::vector<std::uint8_t> pawnController =
-            ApbUdp::BuildActorParamsFieldPacket(
+            ApbUdp::BuildActorObjectFieldPacket(
                 account->AllocateServerPacketId(),
                 kPawnChannel,
                 AllocateChannelSequence(account, kPawnChannel),
                 kFieldPawnController,
                 kPawnFieldMax,
-                { objParam });
+                kControllerChannel);
 
-    const bool pawnControllerSent =
-        SendProtectedPacket(
-            socket,
-            endpoint,
-            account,
-            pawnController,
-            "PAWN-CONTROLLER");
+        const bool pawnControllerSent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                pawnController,
+                "PAWN-CONTROLLER");
 
-    Logger(
-        pawnControllerSent ? lSUCCESS : lERROR,
-        "District Pawn",
-        "Pawn.Controller -> ch%u field=%u sent=%d",
-        static_cast<unsigned int>(kControllerChannel),
-        kFieldPawnController,
-        pawnControllerSent ? 1 : 0);
+        Logger(
+            pawnControllerSent ? lSUCCESS : lERROR,
+            "District Pawn",
+            "Pawn.Controller -> ch%u field=%u sent=%d",
+            static_cast<unsigned int>(kControllerChannel),
+            kFieldPawnController,
+            pawnControllerSent ? 1 : 0);
 
-    if (!pawnControllerSent)
-        return false;
+        if (!pawnControllerSent)
+            return false;
 
-    Sleep(25);
+        Sleep(25);
 
     // ---------------------------------------------------------
     // 4. PlayerController.Pawn = Pawn channel 4

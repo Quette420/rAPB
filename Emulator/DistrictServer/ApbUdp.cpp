@@ -17,6 +17,8 @@ namespace
     // В старом билде было 512 -> 4096 -> 12 бит.
     constexpr std::uint32_t kMaxBunchDataBits = 512u * 8u;   // 4096
     constexpr std::size_t   kBunchLengthBits  = 12u;
+	constexpr std::uint32_t kObjectNetIndexMax = 0x80000000u;
+	constexpr std::uint32_t kObjectChannelIndexMax = 0x800u;
     
     class BitReader
     {
@@ -340,22 +342,21 @@ namespace
                 WriteBits(number, 32);
         }
 
-        // UPackageMapLevel::SerializeObject. An object reference is one flag bit
-        // followed by a bounded int:
-        //   flag = 0 -> package map reference, SerializeInt(NetIndex, 0x80000000)
-        //   flag = 1 -> channel reference,     SerializeInt(ChIndex, 0x3FF)
-        // Classes and other loaded assets use the package-map form; actors that
-        // already have an open channel use the channel form.
+        // APB Reloaded 1.13.1 UPackageMapLevel::SerializeObject:
+//   flag = 0 -> package-map reference,
+//               SerializeInt(NetIndex, 0x80000000)
+//   flag = 1 -> dynamic ActorChannel reference,
+//               SerializeInt(ChIndex, 0x800)
         void WriteObjectByNetIndex(std::uint32_t netIndex)
         {
             WriteBit(false);
-            WriteBoundedInt(netIndex, 0x80000000u);
+            WriteBoundedInt(netIndex, kObjectNetIndexMax);
         }
 
         void WriteObjectByChannel(std::uint32_t channelIndex)
         {
             WriteBit(true);
-            WriteBoundedInt(channelIndex, 0x3FFu);
+            WriteBoundedInt(channelIndex, kObjectChannelIndexMax);
         }
 
         std::vector<std::uint8_t> FinishWithTrailer()
@@ -714,28 +715,26 @@ namespace ApbUdp
             }
 
             if (!reader.ReadBit(bunch.Reliable))
-            {
-                return FinishPartialPacket(
-                    packet,
-                    "truncated reliability flag");
-            }
-            // Newer APB/UE3 builds serialize bIsReplicationPaused between
-            // open/close and bReliable. The older build-3908 parser omitted it,
-            // shifting channel/type/length by one bit.
-            if (!reader.ReadBit(bunch.ReplicationPaused))
-            {
-                return FinishPartialPacket(
-                    packet,
-                    "truncated replication-paused flag");
-            }
+{
+    return FinishPartialPacket(
+        packet,
+        "truncated reliability flag");
+}
 
-            if (!reader.ReadBits(10, value))
-            {
-                return FinishPartialPacket(
-                    packet,
-                    "truncated channel index");
-            }
-            bunch.ChannelIndex = static_cast<std::uint16_t>(value);
+// APB Reloaded 1.13.1, runtime-reversed from
+// UNetConnection receive path:
+//   ChIndex = SerializeInt(..., 0x800)
+bunch.ReplicationPaused = false;
+
+if (!reader.ReadBoundedInt(0x800u, value))
+{
+    return FinishPartialPacket(
+        packet,
+        "truncated channel index");
+}
+
+bunch.ChannelIndex =
+    static_cast<std::uint16_t>(value);
 
             // V9: modern APB ControlChannel header probe.
             //
@@ -1001,13 +1000,16 @@ namespace ApbUdp
             //   DataBitCount(13)
             // Никаких PackageMapExports/Partial/name-токенов между ними нет.
             writer.WriteBit(false);  // not ACK
-            writer.WriteBit(false);  // no open/close control flags
-            writer.WriteBit(true);   // bReliable
-            writer.WriteBit(false);  // bIsReplicationPaused
-            writer.WriteBits(0, 10); // ChIndex
-            writer.WriteBits(channelSequence % 1024u, 10);
-            writer.WriteBits(1, 3);  // CHTYPE_Control
-            writer.WriteBits(static_cast<std::uint32_t>(dataSize * 8u), kBunchLengthBits);
+writer.WriteBit(false);  // no open/close control flags
+writer.WriteBit(true);   // bReliable
+writer.WriteBit(false);  // compatibility zero
+
+writer.WriteBits(0, 10); // ChIndex=0
+writer.WriteBits(channelSequence % 1024u, 10);
+writer.WriteBits(1, 3);  // CHTYPE_Control
+writer.WriteBits(
+    static_cast<std::uint32_t>(dataSize * 8u),
+    kBunchLengthBits);
             writer.WriteBytes(data, dataSize);
         }
 
@@ -1259,16 +1261,15 @@ namespace ApbUdp
             BitWriter writer;
             writer.WriteBits(serverPacketId & 0x3FFFFFFFu, 30);
 
-            writer.WriteBit(false);   // not an ack
-            writer.WriteBit(true);    // bControl
-            writer.WriteBit(true);    // bOpen   (в Close: false)
-            writer.WriteBit(false);   // bClose  (в Close: true)
-            writer.WriteBit(true);    // bReliable
-            writer.WriteBit(false);   // bIsReplicationPaused
+writer.WriteBit(false);   // not an ack
+writer.WriteBit(true);    // bControl
+writer.WriteBit(true);    // bOpen
+writer.WriteBit(false);   // bClose
+writer.WriteBit(true);    // bReliable
 
-            writer.WriteBoundedInt(channelIndex, 0x3FFu);
-            writer.WriteBoundedInt(channelSequence, 0x400u);
-            writer.WriteBoundedInt(2u, 8u);          // CHTYPE_Actor
+writer.WriteBoundedInt(channelIndex, 0x800u);
+writer.WriteBoundedInt(channelSequence, 0x400u);
+writer.WriteBoundedInt(2u, 8u);
 
             writer.WriteBoundedInt(
                  static_cast<std::uint32_t>(payloadBits), kMaxBunchDataBits);
@@ -1368,9 +1369,8 @@ namespace ApbUdp
         writer.WriteBit(true);    // bOpen   (в Close: false)
         writer.WriteBit(false);   // bClose  (в Close: true)
         writer.WriteBit(true);    // bReliable
-        writer.WriteBit(false);   // bIsReplicationPaused
-        writer.WriteBoundedInt(channelIndex, 0x3FFu);
-        writer.WriteBoundedInt(channelSequence, 0x400u);
+writer.WriteBoundedInt(channelIndex, 0x800u);
+writer.WriteBoundedInt(channelSequence, 0x400u);
         writer.WriteBoundedInt(2u, 8u);
         writer.WriteBoundedInt(0u, kMaxBunchDataBits);   // было 512u * 8u
         return writer.FinishWithTrailer();
@@ -1399,16 +1399,16 @@ namespace ApbUdp
             std::uint16_t channelSequence,
             std::size_t payloadBits)
         {
-            writer.WriteBits(serverPacketId & 0x3FFFFFFFu, 30);
-            writer.WriteBit(false);   // not an ack
-            writer.WriteBit(false);   // no open/close flags
-            writer.WriteBit(true);    // bReliable
-            writer.WriteBit(false);   // bIsReplicationPaused
-            writer.WriteBoundedInt(channelIndex, 0x3FFu);
-            writer.WriteBoundedInt(channelSequence, 0x400u);
-            writer.WriteBoundedInt(2u, 8u);   // CHTYPE_Actor
-            writer.WriteBoundedInt(
-                static_cast<std::uint32_t>(payloadBits), kMaxBunchDataBits);
+writer.WriteBits(serverPacketId & 0x3FFFFFFFu, 30);
+writer.WriteBit(false);   // not an ack
+writer.WriteBit(false);   // no open/close flags
+writer.WriteBit(true);    // bReliable
+writer.WriteBoundedInt(channelIndex, 0x800u);
+writer.WriteBoundedInt(channelSequence, 0x400u);
+writer.WriteBoundedInt(2u, 8u);
+
+writer.WriteBoundedInt(
+    static_cast<std::uint32_t>(payloadBits), kMaxBunchDataBits);
         }
     }
 
@@ -1469,10 +1469,7 @@ namespace ApbUdp
     return writer.FinishWithTrailer();
     }
 
-    // One replicated ObjectProperty carrying a single object reference,
-    // e.g. Controller.Pawn or Pawn.Controller. RPC parameters use the separate
-    // builder below because they have a top-level presence bit.
-    std::vector<std::uint8_t> BuildActorObjectFieldPacket(
+      std::vector<std::uint8_t> BuildActorObjectFieldPacket(
         std::uint32_t serverPacketId,
         std::uint16_t channelIndex,
         std::uint16_t channelSequence,
@@ -1604,10 +1601,10 @@ namespace ApbUdp
         // ChannelIndex, DataBits, Payload.
         BitWriter writer;
         writer.WriteBits(serverPacketId & 0x3FFFFFFFu, 30);
-        writer.WriteBit(false);
-        writer.WriteBit(false);
-        writer.WriteBit(false);
-        writer.WriteBoundedInt(channelIndex, 0x3FFu);
+        writer.WriteBit(false); // IsAck
+writer.WriteBit(false); // no open/close
+writer.WriteBit(false); // Reliable=false
+writer.WriteBoundedInt(channelIndex, 0x800u);
         writer.WriteBoundedInt(
             static_cast<std::uint32_t>(payload.BitCount()),
             512u * 8u);
@@ -1907,33 +1904,8 @@ namespace ApbUdp
                 payload.WriteObjectByChannel(
                     static_cast<std::uint16_t>(p.A));
             }
-            else if (p.Kind == "objecto")
-            {
-                payload.WriteBoundedInt(
-                    static_cast<std::uint32_t>(p.A), 0x3FFu);
-            }
-			            else if (p.Kind == "object0")
-            {
-                payload.WriteBit(false);
-                payload.WriteBoundedInt(
-                    static_cast<std::uint32_t>(p.A), 0x3FFu);
-            }
-            else if (p.Kind == "object400")
-            {
-                payload.WriteBit(true);
-                payload.WriteBoundedInt(
-                    static_cast<std::uint32_t>(p.A), 0x400u);
-            }
-            else if (p.Kind == "objecto400")
-            {
-                payload.WriteBoundedInt(
-                    static_cast<std::uint32_t>(p.A), 0x400u);
-            }
 			else if (p.Kind == "classp")
             {
-                // RPC-параметр типа class<...>: presence-бит, затем ссылка
-                // через package map (флаг 0 + SerializeInt(NetIndex, 0x80000000)).
-                // A == 0 означает null: presence-бит 0 и ничего дальше.
                 const bool present = (p.A != 0);
                 payload.WriteBit(present);
                 if (present)
@@ -3192,10 +3164,12 @@ namespace ApbUdp
             }
 
             if (rpc.TargetPresent &&
-                (!reader.ReadBit(rpc.TargetByChannel) ||
-                 !reader.ReadBoundedInt(
-                     rpc.TargetByChannel ? 0x3FFu : 0x80000000u,
-                     rpc.TargetReference)))
+    (!reader.ReadBit(rpc.TargetByChannel) ||
+     !reader.ReadBoundedInt(
+         rpc.TargetByChannel
+             ? kObjectChannelIndexMax
+             : kObjectNetIndexMax,
+         rpc.TargetReference)))
             {
                 error = "truncated CSA key-pressed target reference";
                 return false;
@@ -4162,8 +4136,10 @@ namespace ApbUdp
                     }
 
                     if (!reader.ReadBoundedInt(
-                            byChannel ? 0x3FFu : 0x80000000u,
-                            reference))
+        byChannel
+            ? kObjectChannelIndexMax
+            : kObjectNetIndexMax,
+        reference))
                     {
                         error =
                             "truncated SpawnZone object reference for "
