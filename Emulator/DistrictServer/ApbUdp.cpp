@@ -1912,6 +1912,23 @@ namespace ApbUdp
                 payload.WriteBoundedInt(
                     static_cast<std::uint32_t>(p.A), 0x3FFu);
             }
+			            else if (p.Kind == "object0")
+            {
+                payload.WriteBit(false);
+                payload.WriteBoundedInt(
+                    static_cast<std::uint32_t>(p.A), 0x3FFu);
+            }
+            else if (p.Kind == "object400")
+            {
+                payload.WriteBit(true);
+                payload.WriteBoundedInt(
+                    static_cast<std::uint32_t>(p.A), 0x400u);
+            }
+            else if (p.Kind == "objecto400")
+            {
+                payload.WriteBoundedInt(
+                    static_cast<std::uint32_t>(p.A), 0x400u);
+            }
 			else if (p.Kind == "classp")
             {
                 // RPC-параметр типа class<...>: presence-бит, затем ссылка
@@ -2741,7 +2758,7 @@ namespace ApbUdp
         payload.WriteBit(customisationType != 0u);
         if (customisationType != 0u)
         {
-            constexpr std::uint32_t kCustomisationEnumCount = 4;
+            constexpr std::uint32_t kCustomisationEnumCount = 5;   // ← 1.13.1, ваш замер Num=5
             payload.WriteBoundedInt(
                 static_cast<std::uint32_t>(customisationType),
                 kCustomisationEnumCount);

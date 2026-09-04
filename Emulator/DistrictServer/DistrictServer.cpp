@@ -1054,6 +1054,10 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     constexpr std::uint32_t kCustomisationReplicatorFieldMax = 25u;
 
     constexpr std::uint32_t kFieldActorOwner = 9u;
+    // ТРЕБУЕТСЯ ИЗМЕРЕНИЕ на 1.13.1:
+    // netindex_probe.py --class-netfields cCustomisationReplicator --netfields-inherited
+    // искать bNetOwner среди inherited Actor-полей
+    constexpr std::uint32_t kFieldActorNetOwner = 13u; // ← подставить измеренное
 
     constexpr std::uint32_t kFieldServerRequestCustomisation = 297u;
 
@@ -1061,6 +1065,7 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     constexpr std::uint32_t kFieldCustomisationClientReceiveData = 22u;
     constexpr std::uint32_t kFieldCustomisationClientNotifyTransferComplete = 23u;
     constexpr std::uint32_t kFieldCustomisationServerNotifyOperationComplete = 24u;
+    constexpr std::uint32_t kFieldClientPrecacheCustomisation = 299u;
     
     struct CustomisationTransferState
     {
@@ -1193,6 +1198,74 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     }
 };
     
+    std::uint32_t ReadLittleEndianUInt32(const std::uint8_t* p)
+    {
+        return
+            static_cast<std::uint32_t>(p[0])        |
+            (static_cast<std::uint32_t>(p[1]) << 8) |
+            (static_cast<std::uint32_t>(p[2]) << 16)|
+            (static_cast<std::uint32_t>(p[3]) << 24);
+    }
+    
+    // GUID читается как ЧЕТЫРЕ СЫРЫХ DWORD LE, не как RFC-4122.
+    // cCompressedAssetCustomisation десериализует FGuid прямо в A/B/C/D,
+    // и тот же порядок используется как ключ callback'а в дескрипторе.
+    bool ExtractCharacterCustomisationGuid(
+        const std::vector<std::uint8_t>& appearance,
+        std::array<std::uint32_t, 4>& guid)
+    {
+        guid.fill(0u);
+        if (appearance.size() < 32u)
+            return false;
+
+        const std::uint8_t* v = appearance.data() + 16u;  // raw +0x10
+        guid[0] = ReadLittleEndianUInt32(v + 0u);
+        guid[1] = ReadLittleEndianUInt32(v + 4u);
+        guid[2] = ReadLittleEndianUInt32(v + 8u);
+        guid[3] = ReadLittleEndianUInt32(v + 12u);
+
+        return guid[0] || guid[1] || guid[2] || guid[3];
+    }
+
+    constexpr std::uint32_t
+        kCompressedAssetCustomisationMinimumVersion = 0xAB900010u;
+
+    // DB/lobby blob хранит внешний 4-байтовый префикс.
+    // FMemoryReader внутри cCompressedAssetCustomisation обязан начинаться
+    // с version DWORD, иначе клиент читает мусорный заголовок.
+    //   raw +0x00 = 0x0000000F  внешний префикс
+    //   raw +0x04 = 0xAB9000xx  version
+    bool BuildCharacterCustomisationTransferPayload(
+        const std::vector<std::uint8_t>& appearance,
+        std::vector<std::uint8_t>& transferPayload,
+        std::size_t& strippedPrefixBytes)
+    {
+        transferPayload.clear();
+        strippedPrefixBytes = 0u;
+
+        if (appearance.empty())
+            return false;
+
+        if (appearance.size() >= 8u)
+        {
+            const std::uint32_t first   = ReadLittleEndianUInt32(appearance.data());
+            const std::uint32_t shifted = ReadLittleEndianUInt32(appearance.data() + 4u);
+
+            if (first   <  kCompressedAssetCustomisationMinimumVersion &&
+                shifted >= kCompressedAssetCustomisationMinimumVersion)
+            {
+                strippedPrefixBytes = 4u;
+            }
+        }
+
+        transferPayload.assign(
+            appearance.begin() +
+                static_cast<std::ptrdiff_t>(strippedPrefixBytes),
+            appearance.end());
+
+        return !transferPayload.empty();
+    }
+    
     bool BuildPawnCompactGolemDescriptor(
    Account* account,
    std::array<std::uint8_t, 48>& descriptor)
@@ -1254,8 +1327,14 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     if (account == nullptr)
         return false;
 
-    const std::vector<std::uint8_t> appearance =
-        account->GetAppearance();
+        const std::vector<std::uint8_t> rawAppearance =
+            account->GetAppearance();
+
+        std::vector<std::uint8_t> appearance;
+        std::size_t strippedPrefixBytes = 0u;
+
+        BuildCharacterCustomisationTransferPayload(
+            rawAppearance, appearance, strippedPrefixBytes);
 
     if (appearance.empty())
     {
@@ -1277,13 +1356,13 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
             account->AllocateServerPacketId();
 
         const std::vector<std::uint8_t> complete =
-            ApbUdp::BuildActorDefaultRpcPacket(
+            ApbUdp::BuildActorObjectRpcPacket(      // было BuildActorDefaultRpcPacket
                 packetId,
                 channel,
                 AllocateChannelSequence(account, channel),
                 kFieldCustomisationClientNotifyTransferComplete,
                 kCustomisationReplicatorFieldMax,
-                0u);
+                kControllerChannel);                // было 0u
 
         const bool sent =
             SendProtectedPacket(
@@ -1533,6 +1612,26 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     {
         return false;
     }
+        
+        Sleep(50);
+
+        const std::vector<std::uint8_t> netOwner =
+            ApbUdp::BuildActorBoolFieldPacket(
+                account->AllocateServerPacketId(),
+                channel,
+                AllocateChannelSequence(account, channel),
+                kFieldActorNetOwner,
+                kCustomisationReplicatorFieldMax,
+                true);
+
+        if (!SendProtectedPacket(
+                socket, endpoint, account, netOwner,
+                "CUSTOMISATION-REPLICATOR-NET-OWNER"))
+        {
+            return false;
+        }
+
+        Sleep(50);
 
     {
         std::lock_guard<std::mutex> guard(
@@ -2463,16 +2562,33 @@ bool SendPackageUses(
     // FieldMax   = 123
     // ---------------------------------------------------------
 
-    const std::vector<std::uint8_t> pawnController =
-        ApbUdp::BuildActorObjectFieldPacket(
-            account->AllocateServerPacketId(),
-            kPawnChannel,
-            AllocateChannelSequence(
-                account,
-                kPawnChannel),
+        // ВРЕМЕННО: перебор кодировки ObjectProperty.
+        // Режим берётся из переменной окружения RAPB_OBJREF_MODE.
+        //   object   bit(1) + SerializeInt(ch, 0x3FF)            текущий, не работает
+        //   objecto  SerializeInt(ch, 0x3FF)                     без флага
+        //   objectp  bit(1) + bit(1) + SerializeInt(ch, 0x3FF)
+        const char* objRefMode = std::getenv("RAPB_OBJREF_MODE");
+
+        ApbUdp::DebugParam objParam;
+        objParam.Kind = (objRefMode != nullptr) ? objRefMode : "objecto";
+        objParam.A    = static_cast<std::int64_t>(kControllerChannel);
+
+        Logger(
+            lINFO,
+            "District Pawn",
+            "OBJREF probe: mode=%s field=%u targetCh=%u",
+            objParam.Kind.c_str(),
             kFieldPawnController,
-            kPawnFieldMax,
-            kControllerChannel);
+            static_cast<unsigned int>(kControllerChannel));
+
+        const std::vector<std::uint8_t> pawnController =
+            ApbUdp::BuildActorParamsFieldPacket(
+                account->AllocateServerPacketId(),
+                kPawnChannel,
+                AllocateChannelSequence(account, kPawnChannel),
+                kFieldPawnController,
+                kPawnFieldMax,
+                { objParam });
 
     const bool pawnControllerSent =
         SendProtectedPacket(
@@ -2632,6 +2748,36 @@ bool SendPackageUses(
         "District Bootstrap",
         "Pawn customisation GUID stage sent=%d",
         customisationSent ? 1 : 0);
+        
+        if (!customisationSent)
+            return false;
+
+        Sleep(100);
+
+        std::array<std::uint32_t, 4> characterGuid{};
+
+        if (ExtractCharacterCustomisationGuid(
+                account->GetAppearance(), characterGuid))
+        {
+            const std::vector<std::uint8_t> precache =
+                ApbUdp::BuildClientPrecacheCustomisationPacket(
+                    account->AllocateServerPacketId(),
+                    kControllerChannel,
+                    AllocateChannelSequence(account, kControllerChannel),
+                    kFieldClientPrecacheCustomisation,
+                    kPlayerControllerFieldMax,
+                    characterGuid,
+                    0u,     // etPlayerCustomisation: character
+                    true);  // bLocalPlayer
+
+            SendProtectedPacket(
+                socket, endpoint, account, precache,
+                "CLIENT-PRECACHE-CHARACTER-CUSTOMISATION");
+
+            Sleep(100);
+        }
+
+        return true;
 
     return customisationSent;
 }
