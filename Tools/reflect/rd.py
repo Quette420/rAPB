@@ -1,13 +1,12 @@
-﻿# freeze.py   —  python freeze.py suspend
-# freeze.py   —  python freeze.py resume
+﻿# rd.py   —   python rd.py 0x4316BA00 0x364
 import ctypes, sys
 from ctypes import wintypes
 
-PROCESS_SUSPEND_RESUME = 0x0800
-ntdll, k32 = ctypes.WinDLL('ntdll'), ctypes.WinDLL('kernel32')
+PROCESS_VM_READ = 0x0010
+PROCESS_QUERY_INFORMATION = 0x0400
+k32 = ctypes.WinDLL('kernel32')
 
 def pid_of(name):
-    TH32CS_SNAPPROCESS = 2
     class PE32(ctypes.Structure):
         _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
                     ("th32ProcessID", wintypes.DWORD),
@@ -15,7 +14,7 @@ def pid_of(name):
                     ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
                     ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long),
                     ("dwFlags", wintypes.DWORD), ("szExeFile", ctypes.c_char * 260)]
-    snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    snap = k32.CreateToolhelp32Snapshot(2, 0)
     e = PE32(); e.dwSize = ctypes.sizeof(PE32)
     ok = k32.Process32First(snap, ctypes.byref(e))
     while ok:
@@ -24,10 +23,10 @@ def pid_of(name):
         ok = k32.Process32Next(snap, ctypes.byref(e))
     return None
 
-pid = pid_of("APB.exe")
-h = k32.OpenProcess(PROCESS_SUSPEND_RESUME, False, pid)
-if sys.argv[1] == "suspend":
-    ntdll.NtSuspendProcess(h)
-else:
-    ntdll.NtResumeProcess(h)
-print(sys.argv[1], "pid", pid)
+base = int(sys.argv[1], 0)
+off  = int(sys.argv[2], 0)
+h = k32.OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, False, pid_of("APB.exe"))
+buf = ctypes.c_uint32(); n = ctypes.c_size_t()
+ok = k32.ReadProcessMemory(h, ctypes.c_void_p(base + off),
+                           ctypes.byref(buf), 4, ctypes.byref(n))
+print(f"ok={bool(ok)} [{hex(base)}+{hex(off)}] = {buf.value}  (0x{buf.value:08X})")
