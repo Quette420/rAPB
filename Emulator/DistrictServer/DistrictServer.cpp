@@ -1145,6 +1145,57 @@ std::uint32_t PackageFirstNetIndex(const char* name)
         "Package '%s' is not in kPackages", name);
     return kBadNetIndex;
 }
+    
+    bool BuildPawnCompactGolemDescriptor(
+   Account* account,
+   std::array<std::uint8_t, 48>& descriptor)
+{
+    descriptor.fill(0);
+
+    if (account == nullptr ||
+        !account->HasCharacterProfile())
+    {
+        return false;
+    }
+
+    const std::vector<std::uint8_t> appearance =
+        account->GetAppearance();
+
+    // Это НЕ FieldIndex/NetIndex.
+    // Это layout appearance blob из рабочего lifecycle.
+    constexpr std::size_t kDescriptorOffset = 16u;
+    constexpr std::size_t kDescriptorSize   = 48u;
+
+    if (appearance.size() <
+        kDescriptorOffset + kDescriptorSize)
+    {
+        Logger(
+            lERROR,
+            "District Character Bootstrap",
+            "Appearance blob too short: bytes=%u required=%u",
+            static_cast<unsigned int>(appearance.size()),
+            static_cast<unsigned int>(
+                kDescriptorOffset + kDescriptorSize));
+
+        return false;
+    }
+
+    std::copy_n(
+        appearance.begin() + kDescriptorOffset,
+        kDescriptorSize,
+        descriptor.begin());
+
+    Logger(
+        lINFO,
+        "District Character Bootstrap",
+        "CompactGolemDescriptor built: appearanceBytes=%u descriptor=%s",
+        static_cast<unsigned int>(appearance.size()),
+        Hex(
+            descriptor.data(),
+            descriptor.size()).c_str());
+
+    return true;
+}
 
 bool SendGriMatchHasBegun(
     SOCKET socket,
@@ -1406,6 +1457,72 @@ bool SendPackageUses(
 
         return linkSent;
     }
+    
+    bool SendPawnCustomisationGuids(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr)
+        return false;
+
+    std::array<std::uint8_t, 48> descriptor{};
+
+    if (!BuildPawnCompactGolemDescriptor(
+            account,
+            descriptor))
+    {
+        return false;
+    }
+
+    const std::uint32_t packetId =
+        account->AllocateServerPacketId();
+
+    const std::uint16_t sequence =
+        AllocateChannelSequence(
+            account,
+            kPawnChannel);
+
+    const std::vector<std::uint8_t> packet =
+        ApbUdp::BuildActorCompactGolemDescriptorFieldPacket(
+            packetId,
+            kPawnChannel,
+            sequence,
+            kFieldPawnCustomisationGuids,
+            kPawnFieldMax,
+            descriptor);
+
+    if (packet.empty())
+    {
+        Logger(
+            lERROR,
+            "District Character Bootstrap",
+            "Customisation GUID packet builder returned empty.");
+        return false;
+    }
+
+    const bool sent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            packet,
+            "PAWN-CUSTOMISATION-GUIDS");
+
+    Logger(
+        sent ? lSUCCESS : lERROR,
+        "District Character Bootstrap",
+        "Pawn.m_CustomisationGuids sent=%d "
+        "packetId=%u ch=%u seq=%u field=%u bytes=%u",
+        sent ? 1 : 0,
+        packetId,
+        static_cast<unsigned int>(kPawnChannel),
+        static_cast<unsigned int>(sequence),
+        kFieldPawnCustomisationGuids,
+        static_cast<unsigned int>(descriptor.size()));
+
+    return sent;
+}
     
     bool SendPawnGender(
     SOCKET socket,
@@ -2097,6 +2214,11 @@ bool SendPackageUses(
 
     Sleep(100);
 
+    // ---------------------------------------------------------
+    // Character bootstrap stage 3:
+    // Pawn.m_eFaction
+    // ---------------------------------------------------------
+
     const bool factionSent =
         SendPawnFaction(
             socket,
@@ -2109,7 +2231,29 @@ bool SendPackageUses(
         "Pawn faction stage sent=%d",
         factionSent ? 1 : 0);
 
-    return factionSent;
+    if (!factionSent)
+        return false;
+
+    Sleep(100);
+
+    // ---------------------------------------------------------
+    // Character bootstrap stage 4:
+    // Pawn.m_CustomisationGuids
+    // ---------------------------------------------------------
+
+    const bool customisationSent =
+        SendPawnCustomisationGuids(
+            socket,
+            endpoint,
+            account);
+
+    Logger(
+        customisationSent ? lSUCCESS : lERROR,
+        "District Bootstrap",
+        "Pawn customisation GUID stage sent=%d",
+        customisationSent ? 1 : 0);
+
+    return customisationSent;
 }
     
 	    // Engine.PlayerController.ClientSetHUD(class<HUD>, class<Scoreboard>)
@@ -3881,75 +4025,135 @@ bool SendSocialLevelStreaming(
                 keyPayload.get(),
                 sizeof(encryptionKey));
 			
-			// WorldServer immediately follows the 16-byte session key with:
+// ---------------------------------------------------------
+// World -> District character profile handoff v2:
 //
-//   int32 CharacterUID
-//   uint8 Faction
-//   uint8 Gender
-//   uint8 AppearanceVersion
+// uint32 CharacterUID
+// uint8  Faction
+// uint8  Gender
+// uint8  AppearanceVersion
+// uint32 AppearanceLength
+// byte[] Appearance
 //
-// Total: 7 bytes.
+// Header = 11 bytes.
+// ---------------------------------------------------------
+
+constexpr int kCharacterProfileHeaderBytes = 11;
+
 std::unique_ptr<char[]> profilePayload(
-    g_world->Receive(7));
+    g_world->Receive(
+        kCharacterProfileHeaderBytes));
 
 if (!profilePayload)
 {
     Logger(
         lERROR,
         "WorldControl",
-        "Failed to receive 7-byte character profile "
-        "for account %u",
-        static_cast<unsigned int>(accountId));
+        "Failed to receive %d-byte character profile header.",
+        kCharacterProfileHeaderBytes);
 
     return false;
 }
 
-std::uint32_t characterId = 0;
+    std::uint32_t characterId = 0;
 
-std::memcpy(
-    &characterId,
-    profilePayload.get(),
-    sizeof(characterId));
+    std::memcpy(
+        &characterId,
+        profilePayload.get(),
+        sizeof(characterId));
 
-const std::uint8_t faction =
-    static_cast<std::uint8_t>(
-        profilePayload[4]);
+    const std::uint8_t faction =
+        static_cast<std::uint8_t>(
+            profilePayload[4]);
 
-const std::uint8_t gender =
-    static_cast<std::uint8_t>(
-        profilePayload[5]);
+    const std::uint8_t gender =
+        static_cast<std::uint8_t>(
+            profilePayload[5]);
 
-const std::uint8_t appearanceVersion =
-    static_cast<std::uint8_t>(
-        profilePayload[6]);			
+    const std::uint8_t appearanceVersion =
+        static_cast<std::uint8_t>(
+            profilePayload[6]);
 
-           Account* account =
-    AddOrUpdateAccount(
-        accountId,
-        encryptionKey);
+    std::uint32_t appearanceLength = 0;
 
-account->SetCharacterProfile(
-    characterId,
-    faction,
-    gender,
-    appearanceVersion,
-    std::string(),
-    std::string(),
-    std::vector<std::uint8_t>());
+    std::memcpy(
+        &appearanceLength,
+        profilePayload.get() + 7,
+        sizeof(appearanceLength));
 
-Logger(
-    lSUCCESS,
-    "WorldControl",
-    "Character profile handoff: "
-    "account=%u characterUID=%u faction=%u "
-    "gender=%u appearanceVersion=%u",
-    static_cast<unsigned int>(accountId),
-    static_cast<unsigned int>(characterId),
-    static_cast<unsigned int>(faction),
-    static_cast<unsigned int>(gender),
-    static_cast<unsigned int>(appearanceVersion));
+    // Guard against corrupt/misaligned control traffic.
+    constexpr std::uint32_t kMaxAppearanceBytes =
+        1024u * 1024u;
 
-            return true;
+    if (appearanceLength > kMaxAppearanceBytes)
+    {
+        Logger(
+            lERROR,
+            "WorldControl",
+            "Character appearance length is invalid: %u",
+            static_cast<unsigned int>(
+                appearanceLength));
+
+        return false;
+    }
+
+    std::vector<std::uint8_t> appearance(
+        appearanceLength);
+
+    if (appearanceLength != 0u)
+    {
+        std::unique_ptr<char[]> appearancePayload(
+            g_world->Receive(
+                static_cast<int>(
+                    appearanceLength)));
+
+        if (!appearancePayload)
+        {
+            Logger(
+                lERROR,
+                "WorldControl",
+                "Failed to receive character appearance: bytes=%u",
+                static_cast<unsigned int>(
+                    appearanceLength));
+
+            return false;
+        }
+
+        std::memcpy(
+            appearance.data(),
+            appearancePayload.get(),
+            appearanceLength);
+    }
+
+    Account* account =
+        AddOrUpdateAccount(
+            accountId,
+            encryptionKey);
+
+    account->SetCharacterProfile(
+        characterId,
+        faction,
+        gender,
+        appearanceVersion,
+        std::string(),
+        std::string(),
+        appearance);
+
+    Logger(
+        lSUCCESS,
+        "WorldControl",
+        "Character profile handoff: "
+        "account=%u characterUID=%u faction=%u "
+        "gender=%u appearanceVersion=%u appearanceBytes=%u",
+        static_cast<unsigned int>(accountId),
+        static_cast<unsigned int>(characterId),
+        static_cast<unsigned int>(faction),
+        static_cast<unsigned int>(gender),
+        static_cast<unsigned int>(appearanceVersion),
+        static_cast<unsigned int>(
+            appearance.size()));
+
+    return true;
         }
 
         return false;
