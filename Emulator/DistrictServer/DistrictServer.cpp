@@ -1026,6 +1026,22 @@ constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
     constexpr std::uint32_t kFieldPawnGender                 = 96u;
     constexpr std::uint32_t kFieldPawnFaction                = 97u;
     constexpr std::uint32_t kFieldPawnIsWinded               = 107u;
+    constexpr std::uint16_t kHoldableItemManagerChannel = 20u;
+    constexpr std::uint16_t kStorageInventoryChannel    = 21u;
+
+    // APBGame.Default__cHoldableItemManager
+    constexpr std::uint32_t kHoldableItemManagerLocalNetIndex = 16468u;
+
+    // APBGame.Default__cStorageInventory
+    constexpr std::uint32_t kStorageInventoryLocalNetIndex = 25610u;
+
+    // cHoldableItemManager
+    constexpr std::uint32_t kHoldableItemManagerFieldMax = 40u;
+    constexpr std::uint32_t kFieldHoldableOwningPawn     = 21u;
+
+    // cAPBPlayerController — текущая 1.13.1
+    constexpr std::uint32_t kFieldControllerHoldableItemManager = 175u;
+    constexpr std::uint32_t kFieldControllerInventory           = 176u;
 
 struct StreamingPlanEntry
 {
@@ -1389,6 +1405,238 @@ bool SendPackageUses(
         return linkSent;
     }
     
+     bool SendInventoryActorBootstrap(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account,
+    float spawnX,
+    float spawnY,
+    float spawnZ)
+{
+    if (account == nullptr)
+        return false;
+
+    const std::uint32_t holdableArchetype =
+        GlobalNetIndex(
+            "APBGame",
+            kHoldableItemManagerLocalNetIndex);
+
+    const std::uint32_t inventoryArchetype =
+        GlobalNetIndex(
+            "APBGame",
+            kStorageInventoryLocalNetIndex);
+
+    if (holdableArchetype == kBadNetIndex ||
+        inventoryArchetype == kBadNetIndex)
+    {
+        Logger(
+            lERROR,
+            "District Inventory",
+            "Could not resolve inventory archetypes: holdable=%u inventory=%u",
+            holdableArchetype,
+            inventoryArchetype);
+
+        return false;
+    }
+
+    // ---------------------------------------------------------
+    // 1. Open cHoldableItemManager on ch20.
+    // ---------------------------------------------------------
+
+    const std::uint32_t holdableOpenPacketId =
+        account->AllocateServerPacketId();
+
+    const std::vector<std::uint8_t> holdableOpen =
+        ApbUdp::BuildActorOpenPacket(
+            holdableOpenPacketId,
+            kHoldableItemManagerChannel,
+            AllocateChannelSequence(
+                account,
+                kHoldableItemManagerChannel),
+            holdableArchetype,
+            spawnX,
+            spawnY,
+            spawnZ);
+
+    const bool holdableOpened =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            holdableOpen,
+            "HOLDABLE-OPEN");
+
+    Logger(
+        holdableOpened ? lSUCCESS : lERROR,
+        "District Inventory",
+        "HoldableItemManager open sent=%d packetId=%u ch=%u "
+        "archetype=%u",
+        holdableOpened ? 1 : 0,
+        holdableOpenPacketId,
+        static_cast<unsigned int>(kHoldableItemManagerChannel),
+        holdableArchetype);
+
+    if (!holdableOpened)
+        return false;
+
+    Sleep(25);
+
+    // ---------------------------------------------------------
+    // 2. Open cStorageInventory on ch21.
+    // ---------------------------------------------------------
+
+    const std::uint32_t inventoryOpenPacketId =
+        account->AllocateServerPacketId();
+
+    const std::vector<std::uint8_t> inventoryOpen =
+        ApbUdp::BuildActorOpenPacket(
+            inventoryOpenPacketId,
+            kStorageInventoryChannel,
+            AllocateChannelSequence(
+                account,
+                kStorageInventoryChannel),
+            inventoryArchetype,
+            spawnX,
+            spawnY,
+            spawnZ);
+
+    const bool inventoryOpened =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            inventoryOpen,
+            "INVENTORY-OPEN");
+
+    Logger(
+        inventoryOpened ? lSUCCESS : lERROR,
+        "District Inventory",
+        "StorageInventory open sent=%d packetId=%u ch=%u "
+        "archetype=%u",
+        inventoryOpened ? 1 : 0,
+        inventoryOpenPacketId,
+        static_cast<unsigned int>(kStorageInventoryChannel),
+        inventoryArchetype);
+
+    if (!inventoryOpened)
+        return false;
+
+    Sleep(25);
+
+    // ---------------------------------------------------------
+    // 3. Controller.m_HoldableItemManager = ch20.
+    //
+    // field = 175
+    // ---------------------------------------------------------
+
+    const std::vector<std::uint8_t> controllerHoldable =
+        ApbUdp::BuildActorObjectFieldPacket(
+            account->AllocateServerPacketId(),
+            kControllerChannel,
+            AllocateChannelSequence(
+                account,
+                kControllerChannel),
+            kFieldControllerHoldableItemManager,
+            kPlayerControllerFieldMax,
+            kHoldableItemManagerChannel);
+
+    const bool controllerHoldableSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            controllerHoldable,
+            "CONTROLLER-HOLDABLE");
+
+    Logger(
+        controllerHoldableSent ? lSUCCESS : lERROR,
+        "District Inventory",
+        "Controller.m_HoldableItemManager -> ch%u field=%u sent=%d",
+        static_cast<unsigned int>(kHoldableItemManagerChannel),
+        kFieldControllerHoldableItemManager,
+        controllerHoldableSent ? 1 : 0);
+
+    if (!controllerHoldableSent)
+        return false;
+
+    Sleep(25);
+
+    // ---------------------------------------------------------
+    // 4. Controller.m_Inventory = ch21.
+    //
+    // field = 176
+    // ---------------------------------------------------------
+
+    const std::vector<std::uint8_t> controllerInventory =
+        ApbUdp::BuildActorObjectFieldPacket(
+            account->AllocateServerPacketId(),
+            kControllerChannel,
+            AllocateChannelSequence(
+                account,
+                kControllerChannel),
+            kFieldControllerInventory,
+            kPlayerControllerFieldMax,
+            kStorageInventoryChannel);
+
+    const bool controllerInventorySent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            controllerInventory,
+            "CONTROLLER-INVENTORY");
+
+    Logger(
+        controllerInventorySent ? lSUCCESS : lERROR,
+        "District Inventory",
+        "Controller.m_Inventory -> ch%u field=%u sent=%d",
+        static_cast<unsigned int>(kStorageInventoryChannel),
+        kFieldControllerInventory,
+        controllerInventorySent ? 1 : 0);
+
+    if (!controllerInventorySent)
+        return false;
+
+    Sleep(25);
+
+    // ---------------------------------------------------------
+    // 5. HoldableItemManager.m_OwningPawn = ch4.
+    //
+    // Current cHoldableItemManager:
+    // field = 21
+    // fieldMax = 40
+    // ---------------------------------------------------------
+
+    const std::vector<std::uint8_t> holdablePawn =
+        ApbUdp::BuildActorObjectFieldPacket(
+            account->AllocateServerPacketId(),
+            kHoldableItemManagerChannel,
+            AllocateChannelSequence(
+                account,
+                kHoldableItemManagerChannel),
+            kFieldHoldableOwningPawn,
+            kHoldableItemManagerFieldMax,
+            kPawnChannel);
+
+    const bool holdablePawnSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            holdablePawn,
+            "HOLDABLE-OWNING-PAWN");
+
+    Logger(
+        holdablePawnSent ? lSUCCESS : lERROR,
+        "District Inventory",
+        "HoldableItemManager.m_OwningPawn -> ch%u field=%u sent=%d",
+        static_cast<unsigned int>(kPawnChannel),
+        kFieldHoldableOwningPawn,
+        holdablePawnSent ? 1 : 0);
+
+    return holdablePawnSent;
+}
+    
     bool SendPlayerPawn(
     SOCKET socket,
     const sockaddr_in& endpoint,
@@ -1572,14 +1820,34 @@ bool SendPackageUses(
             "CONTROLLER-PAWN");
 
     Logger(
-        controllerPawnSent ? lSUCCESS : lERROR,
-        "District Pawn",
-        "Controller.Pawn -> ch%u field=%u sent=%d",
-        static_cast<unsigned int>(kPawnChannel),
-        kFieldControllerPawn,
-        controllerPawnSent ? 1 : 0);
+    controllerPawnSent ? lSUCCESS : lERROR,
+    "District Pawn",
+    "Controller.Pawn -> ch%u field=%u sent=%d",
+    static_cast<unsigned int>(kPawnChannel),
+    kFieldControllerPawn,
+    controllerPawnSent ? 1 : 0);
 
-    return controllerPawnSent;
+    if (!controllerPawnSent)
+        return false;
+
+    Sleep(50);
+
+    const bool inventoryBootstrapSent =
+        SendInventoryActorBootstrap(
+            socket,
+            endpoint,
+            account,
+            spawnX,
+            spawnY,
+            spawnZ);
+
+    Logger(
+        inventoryBootstrapSent ? lSUCCESS : lERROR,
+        "District Bootstrap",
+        "Inventory actor bootstrap sent=%d",
+        inventoryBootstrapSent ? 1 : 0);
+
+    return inventoryBootstrapSent;
 }
     
 	    // Engine.PlayerController.ClientSetHUD(class<HUD>, class<Scoreboard>)
