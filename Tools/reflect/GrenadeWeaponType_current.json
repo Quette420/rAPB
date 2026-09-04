@@ -1,0 +1,104 @@
+{
+  "struct": "APBGame.cSDDWeapon.GrenadeWeaponType",
+  "data": "0x0401E440",
+  "row_count": 8,
+  "stride": 32,
+  "rows": [
+    {
+      "__index": 0,
+      "__address": "0x0401E440",
+      "m_eRecoil": 0,
+      "m_eWeaponProjectile": 2,
+      "m_eWeaponType": 0,
+      "m_fFiringSpeed": 2350.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.0,
+      "m_fThrowTime": 0.0,
+      "m_bAffectedByGravity": 1
+    },
+    {
+      "__index": 1,
+      "__address": "0x0401E460",
+      "m_eRecoil": 8,
+      "m_eWeaponProjectile": 7,
+      "m_eWeaponType": 11,
+      "m_fFiringSpeed": 2350.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.0,
+      "m_fThrowTime": 0.0,
+      "m_bAffectedByGravity": 1
+    },
+    {
+      "__index": 2,
+      "__address": "0x0401E480",
+      "m_eRecoil": 0,
+      "m_eWeaponProjectile": 4,
+      "m_eWeaponType": 13,
+      "m_fFiringSpeed": 4750.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.0,
+      "m_fThrowTime": 0.0,
+      "m_bAffectedByGravity": 1
+    },
+    {
+      "__index": 3,
+      "__address": "0x0401E4A0",
+      "m_eRecoil": 0,
+      "m_eWeaponProjectile": 8,
+      "m_eWeaponType": 14,
+      "m_fFiringSpeed": 1550.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.20000000298023224,
+      "m_fThrowTime": 0.10000000149011612,
+      "m_bAffectedByGravity": 1
+    },
+    {
+      "__index": 4,
+      "__address": "0x0401E4C0",
+      "m_eRecoil": 0,
+      "m_eWeaponProjectile": 1,
+      "m_eWeaponType": 15,
+      "m_fFiringSpeed": 1550.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.20000000298023224,
+      "m_fThrowTime": 0.10000000149011612,
+      "m_bAffectedByGravity": 1
+    },
+    {
+      "__index": 5,
+      "__address": "0x0401E4E0",
+      "m_eRecoil": 0,
+      "m_eWeaponProjectile": 3,
+      "m_eWeaponType": 16,
+      "m_fFiringSpeed": 1550.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.20000000298023224,
+      "m_fThrowTime": 0.10000000149011612,
+      "m_bAffectedByGravity": 1
+    },
+    {
+      "__index": 6,
+      "__address": "0x0401E500",
+      "m_eRecoil": 0,
+      "m_eWeaponProjectile": 9,
+      "m_eWeaponType": 17,
+      "m_fFiringSpeed": 2000.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.15000000596046448,
+      "m_fThrowTime": 0.10000000149011612,
+      "m_bAffectedByGravity": 1
+    },
+    {
+      "__index": 7,
+      "__address": "0x0401E520",
+      "m_eRecoil": 0,
+      "m_eWeaponProjectile": 5,
+      "m_eWeaponType": 18,
+      "m_fFiringSpeed": 1550.0,
+      "m_fMaxAngleAdded": 8.0,
+      "m_fPinPullTime": 0.20000000298023224,
+      "m_fThrowTime": 0.20000000298023224,
+      "m_bAffectedByGravity": 1
+    }
+  ]
+}

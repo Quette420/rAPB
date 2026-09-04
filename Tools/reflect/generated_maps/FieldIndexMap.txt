@@ -1,0 +1,1660 @@
+﻿# Runtime FieldIndex map
+# generated 2026-09-03T22:23:19+03:00
+#
+# Source: live UClass::NetFields(+0xF4) + live UPackage::NetObjects
+# Mapping confidence: DERIVED_RUNTIME unless separately validated by a direct heap FClassNetCache probe.
+#
+# rule: index = FieldsBase(class) + position in supported own NetFields
+#       fieldMax = FieldsBase(class) + count(supported own NetFields)
+# order: exact live UClass::NetFields array order; no export-ordinal reconstruction
+#
+# ---- network package bases ----
+#   Core     ObjectBase=0      ObjectCount=1575   NetObjects.Num=1575   mismatches=0
+#   Engine   ObjectBase=1575   ObjectCount=31931  NetObjects.Num=31931  mismatches=0
+#   APBGame  ObjectBase=33506  ObjectCount=30964  NetObjects.Num=30964  mismatches=0
+#
+# ---- calibration against direct live-captured FieldIndex ----
+#   Engine.PlayerController.ServerAcknowledgePossession: expected 41, computed 41  OK
+#   APBGame.cHostingPlayerController.Receive_GC2DS_ASK_DISTRICT_ENTER: expected 138, computed 138  OK
+#   APBGame.cHostingPlayerController.Receive_DS2GC_ANS_DISTRICT_ENTER: expected 139, computed 139  OK
+#   APBGame.cAPBPlayerController.OperateOnItemServer: expected 260, computed 260  OK
+#   APBGame.cAPBPlayerController.ClientGoToSpawnZoneSelectScreen: expected 390, computed 390  OK
+#   APBGame.cAPBPlayerController.ServerSelectSpawnZone: expected 392, computed 392  OK
+#
+# calibration status: PASS
+#
+# ================================================
+# RESOLVED (98 network classes with own slots)
+# ================================================
+
+class Actor extends Object
+  base=0 ownSlots=21 fieldMax=21 (derived from Object) [Engine] source=runtime-netfields
+    0  APBCollision  [property] 0x1:Editable;0x2:Const;0x20:Net;
+    1  DrawScale  [property] 0x1:Editable;0x2:Const;0x20:Net;0x200000000:Interp;
+    2  RelativeRotation  [property] 0x2:Const;0x20:Net;
+    3  RelativeLocation  [property] 0x2:Const;0x20:Net;
+    4  Velocity  [property] 0x20:Net;
+    5  Rotation  [property] 0x1:Editable;0x2:Const;0x20:Net;
+    6  Location  [property] 0x1:Editable;0x2:Const;0x20:Net;
+    7  Instigator  [property] 0x20:Net;
+    8  Base  [property] 0x1:Editable;0x2:Const;0x20:Net;
+    9  Owner  [property] 0x2:Const;0x20:Net;
+    10  Role  [property] 0x20:Net;
+    11  RemoteRole  [property] 0x20:Net;
+    12  Physics  [property] 0x1:Editable;0x2:Const;0x20:Net;
+    13  bNetOwner  [property] 0x2:Const;0x20:Net;
+    14  bProjTarget  [property] 0x20:Net;
+    15  bBlockActors  [property] 0x20:Net;
+    16  bCollideWorld  [property] 0x20:Net;
+    17  bCollideActors  [property] 0x2:Const;0x20:Net;
+    18  bHardAttach  [property] 0x1:Editable;0x2:Const;0x20:Net;
+    19  bTearOff  [property] 0x20:Net;
+    20  bHidden  [property] 0x1:Editable;0x2:Const;0x20:Net;
+
+class Admin extends PlayerController
+  base=127 ownSlots=5 fieldMax=132 (derived from PlayerController) [Engine] source=runtime-netfields
+    127  ServerAdmin  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    128  ServerKickBan  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    129  ServerKick  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    130  ServerRestartMap  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    131  ServerSwitch  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+
+class AmbientSoundSimpleToggleable extends AmbientSoundSimple
+  base=21 ownSlots=1 fieldMax=22 (derived from AmbientSoundSimple) [Engine] source=runtime-netfields
+    21  bCurrentlyPlaying  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cActorProxiesManager extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  stParams_replicated  [property] 0x20:Net;0x100000000:RepNotify;
+
+class CameraActor extends Actor
+  base=21 ownSlots=2 fieldMax=23 (derived from Actor) [Engine] source=runtime-netfields
+    21  FOVAngle  [property] 0x1:Editable;0x20:Net;0x200000000:Interp;
+    22  AspectRatio  [property] 0x1:Editable;0x20:Net;0x200000000:Interp;
+
+class cAPBCheatManager extends CheatManager
+  base=0 ownSlots=1 fieldMax=1 (derived from CheatManager) [APBGame] source=runtime-netfields
+    0  serverSpraryAllGraffiti  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+
+class cAPBClientServerDebugManager extends Actor
+  base=21 ownSlots=4 fieldMax=25 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_ServerTickTimes_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    22  m_aNPCPositions  [property] 0x20:Net;
+    23  m_nPedestrianIDToDrawRouteFor_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    24  m_bDisplayNPCIDs  [property] 0x20:Net;
+
+class cAPBDummyPawn extends cAPBPawn
+  base=123 ownSlots=4 fieldMax=127 (derived from cAPBPawn) [APBGame] source=runtime-netfields
+    123  m_bSimulateControllerTraffic  [property] 0x20:Net;
+    124  FakeServerMove  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    125  FakeServerUpdateViewRotation  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    126  FakeMoveAck  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+
+class cAPBGameReplicationInfo extends GameReplicationInfo
+  base=48 ownSlots=15 fieldMax=63 (derived from GameReplicationInfo) [APBGame] source=runtime-netfields
+    48  m_ChaosScoreboardData  [property] 0x20:Net;0x100000000:RepNotify;
+    49  m_ChaosScoreboardPlayers  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    50  m_nServerSteamID  [property] 0x20:Net;0x100000000:RepNotify;
+    51  m_nDistrictInstanceType  [property] 0x20:Net;0x100000000:RepNotify;
+    52  m_sSessionGuid  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    53  m_nDistrictEnforcerCount  [property] 0x20:Net;0x100000000:RepNotify;
+    54  m_nDistrictCriminalCount  [property] 0x20:Net;0x100000000:RepNotify;
+    55  m_bActiveSteering  [property] 0x20:Net;0x4000:Config;
+    56  m_bAllPvEDamageEnabled  [property] 0x20:Net;0x4000:Config;
+    57  m_bAllPvPDamageEnabled  [property] 0x20:Net;0x4000:Config;
+    58  m_bMissionsEnabled  [property] 0x20:Net;0x4000:Config;
+    59  m_pAPBClientServerDebugManager  [property] 0x20:Net;
+    60  m_nNumAllocatedChaosSlots  [property] 0x20:Net;
+    61  m_aJunctionStatus  [property] 0x20:Net;0x100000000:RepNotify;
+    62  m_ToDManager  [property] 0x20:Net;
+
+class cAPBPawn extends cAPBPawnAnimation
+  base=43 ownSlots=80 fieldMax=123 (derived from cAPBPawnAnimation) [APBGame] source=runtime-netfields
+    43  DoPayForHeatServerNative  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    44  OnPayForHeat  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    45  ClientNotifyBeginInventoryAccess  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    46  ClientNotifyEndInventoryAccess  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    47  ServerNotifyPlayerClosedInventory  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    48  ServerSetStrafeFiring  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    49  ClientRemoveStrafeFiring  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    50  ClientPlaySound  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    51  OpenPlayerInteractionMenu  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    52  ReplicateVFX  [function] 0x40:Net;0x800:Event;0x20000:Public;0x200000:NetServer;
+    53  ServerRespawn  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    54  ServerNotifyLeftVCP  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    55  ServerForceEndPerformCSA  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    56  ClientNotifyEmoteAnimationEnd  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    57  m_fCarSurfingMinSpeed  [property] 0x20:Net;
+    58  m_bOnOpposedMission  [property] 0x20:Net;
+    59  m_nWitnessingCashAmount  [property] 0x20:Net;
+    60  m_nMaxStaminaDebug  [property] 0x20:Net;
+    61  m_nStaminaDebug  [property] 0x20:Net;
+    62  m_nMaxHealthDebug  [property] 0x20:Net;
+    63  m_nHealthDebug  [property] 0x20:Net;
+    64  m_PvPFlags  [property] 0x20:Net;
+    65  m_fHeatAmount  [property] 0x20:Net;
+    66  m_MissionSideInfo  [property] 0x20:Net;
+    67  m_sClanName  [property] 0x20:Net;0x400000:CtorLink;
+    68  m_nControllerCharacterUID  [property] 0x20:Net;0x100000000:RepNotify;
+    69  m_nRating  [property] 0x20:Net;0x100000000:RepNotify;
+    70  m_nThreat  [property] 0x20:Net;0x100000000:RepNotify;
+    71  m_RemoteClientJumpAnimCount  [property] 0x20:Net;0x100000000:RepNotify;
+    72  m_fWalkSpeed  [property] 0x20:Net;
+    73  m_fDespawnDelayMax  [property] 0x20:Net;
+    74  m_fDespawnDelay  [property] 0x20:Net;
+    75  m_fWindedSpeed  [property] 0x1:Editable;0x20:Net;
+    76  m_WeaponAimDirn  [property] 0x20:Net;
+    77  m_CustomisationGuids  [property] 0x20:Net;0x100000000:RepNotify;
+    78  m_fRunningPct  [property] 0x20:Net;
+    79  m_ItemAttachmentData  [property] 0x20:Net;0x100000000:RepNotify;
+    80  m_StrafeFiring  [property] 0x20:Net;
+    81  m_fWitnessableCrimeServerTimestamp  [property] 0x20:Net;
+    82  m_fArrestTimeRemaining  [property] 0x20:Net;0x100000000:RepNotify;
+    83  m_fAmmoResupplyProgress  [property] 0x20:Net;
+    84  m_Stamina  [property] 0x1:Editable;0x20:Net;
+    85  m_MaxHealth  [property] 0x20:Net;
+    86  m_VehicleUseData  [property] 0x20:Net;0x100000000:RepNotify;
+    87  m_VehicleUseReplicated  [property] 0x20:Net;0x100000000:RepNotify;
+    88  m_AimRotation  [property] 0x2:Const;0x20:Net;
+    89  m_CurrentCSAData  [property] 0x20:Net;0x100000000:RepNotify;
+    90  m_nCSAVFXSuccess  [property] 0x20:Net;0x100000000:RepNotify;
+    91  m_eMaterialImpactType  [property] 0x20:Net;0x100000000:RepNotify;
+    92  m_nHeatLevel  [property] 0x20:Net;
+    93  m_LocomotionOnPhysFalling  [property] 0x20:Net;
+    94  m_pendingVFX  [property] 0x20:Net;0x100000000:RepNotify;
+    95  m_eChatState  [property] 0x20:Net;
+    96  m_eGender  [property] 0x20:Net;
+    97  m_eFaction  [property] 0x20:Net;
+    98  m_eWantsToLean  [property] 0x20:Net;
+    99  m_nStaminaRechargePercent  [property] 0x20:Net;
+    100  m_GrenadeWeaponState  [property] 0x20:Net;0x100000000:RepNotify;
+    101  m_bIsWindingUp  [property] 0x20:Net;0x100000000:RepNotify;
+    102  m_bTutorialComplete  [property] 0x20:Net;
+    103  m_bStaminaExhausted  [property] 0x20:Net;
+    104  m_bCanDoResupplyOperations  [property] 0x20:Net;
+    105  m_bApplyAntiCarSurfingSideForce  [property] 0x20:Net;
+    106  m_bIsCustomising  [property] 0x20:Net;
+    107  m_bIsWinded  [property] 0x20:Net;
+    108  m_bMarksManShipMode  [property] 0x20:Net;0x100000000:RepNotify;
+    109  m_bIsStaticCrouchSize  [property] 0x20:Net;
+    110  m_bIsRunning  [property] 0x20:Net;
+    111  m_bIsVIP  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    112  m_bArrested  [property] 0x20:Net;0x100000000:RepNotify;
+    113  m_bUnconscious  [property] 0x20:Net;0x100000000:RepNotify;
+    114  m_bIsAmmoCarrierModifierActive  [property] 0x20:Net;
+    115  m_bIsAmmoCarrierDepotDeployed  [property] 0x20:Net;0x100000000:RepNotify;
+    116  m_bShowAmmoResupplyProgressBar  [property] 0x20:Net;
+    117  m_bIsResupplyingAmmo  [property] 0x20:Net;
+    118  m_bImmuneToDamage  [property] 0x20:Net;
+    119  m_bStunned  [property] 0x20:Net;0x100000000:RepNotify;
+    120  m_bEjectLaterNetInitial  [property] 0x20:Net;
+    121  m_HitReactionInfo  [property] 0x20:Net;0x100000000:RepNotify;
+    122  m_DyingData  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cAPBPawnAnimation extends Pawn
+  base=42 ownSlots=1 fieldMax=43 (derived from Pawn) [APBGame] source=runtime-netfields
+    42  m_AnimationRequest  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cAPBPlayerController extends cAPBPlayerControllerAnimation
+  base=158 ownSlots=526 fieldMax=684 (derived from cAPBPlayerControllerAnimation) [APBGame] source=runtime-netfields
+    158  m_nActiveDailyActivityValue  [property] 0x20:Net;0x100000000:RepNotify;
+    159  m_nNumAvailableDailyActivities  [property] 0x20:Net;
+    160  m_nChaosStatsCurrentTimeMinutes  [property] 0x20:Net;0x100000000:RepNotify;
+    161  m_nChaosStatsCurrentScore  [property] 0x20:Net;0x100000000:RepNotify;
+    162  m_nChaosStatsBestTimeMinutes  [property] 0x20:Net;0x100000000:RepNotify;
+    163  m_nChaosStatsBestScore  [property] 0x20:Net;0x100000000:RepNotify;
+    164  m_nChallengeActivitySkipCooldownTime  [property] 0x20:Net;0x100000000:RepNotify;
+    165  m_nCurrentChallengeScore  [property] 0x20:Net;0x100000000:RepNotify;
+    166  m_APBPawnLastConnectedReplicated  [property] 0x20:Net;0x100000000:RepNotify;
+    167  m_PvPFlags  [property] 0x20:Net;
+    168  m_fMaxUpDownCamSpeed  [property] 0x20:Net;
+    169  m_fMaxFlyCamSpeed  [property] 0x20:Net;
+    170  m_sCharacterName  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    171  m_Mission  [property] 0x20:Net;0x100000000:RepNotify;
+    172  m_nEffectivePledgedContactSddRowID  [property] 0x20:Net;
+    173  m_nPledgedContactSddRowID  [property] 0x20:Net;
+    174  m_VendorContactInterface  [property] 0x20:Net;
+    175  m_HoldableItemManager  [property] 0x20:Net;
+    176  m_Inventory  [property] 0x20:Net;
+    177  m_fCurrentServerTimeStamp  [property] 0x20:Net;0x100000000:RepNotify;
+    178  m_nRadarJammedGraffiti  [property] 0x20:Net;
+    179  m_nRadarJammedCharacterUID  [property] 0x20:Net;
+    180  m_eSpotter  [property] 0x20:Net;
+    181  m_fDeployedVehicleSpawnTimeStamp  [property] 0x20:Net;
+    182  m_DeployedVehicle  [property] 0x20:Net;
+    183  m_fCachedHeatAmount  [property] 0x20:Net;
+    184  m_nCachedHeatLevel  [property] 0x20:Net;
+    185  m_nChaosStatsCurrentTimeSeconds  [property] 0x20:Net;0x100000000:RepNotify;
+    186  m_nChaosStatsBestTimeSeconds  [property] 0x20:Net;0x100000000:RepNotify;
+    187  m_eMissionInvolvement  [property] 0x20:Net;0x100000000:RepNotify;
+    188  m_eHUDReticuleOverride  [property] 0x20:Net;
+    189  m_bIsUnstickRespawning  [property] 0x20:Net;0x2000:Transient;
+    190  m_bCameraRightSideKey  [property] 0x20:Net;
+    191  m_bSpectatorMode  [property] 0x20:Net;0x100000000:RepNotify;
+    192  m_bCameraKeysExtraMovement  [property] 0x20:Net;
+    193  m_bUseDirectorCameraMode  [property] 0x20:Net;
+    194  m_bUsingAttachedToActorCamera  [property] 0x20:Net;
+    195  m_bIsUnstickRespawnInProgress  [property] 0x20:Net;0x100000000:RepNotify;
+    196  m_bTutorialComplete  [property] 0x20:Net;0x100000000:RepNotify;
+    197  m_bIsOvermatched  [property] 0x20:Net;
+    198  m_bIsMissionInProgress  [property] 0x20:Net;0x100000000:RepNotify;
+    199  m_bDead  [property] 0x20:Net;
+    200  m_bIsRadarJamming  [property] 0x20:Net;
+    201  m_bShowServerHits  [property] 0x20:Net;0x4000:Config;
+    202  m_bCanRespawnDeployedVehicle  [property] 0x20:Net;
+    203  m_bIsReadyForMissions  [property] 0x20:Net;
+    204  m_bFlyWhileDead  [property] 0x20:Net;0x4000:Config;
+    205  m_ReplicatedHUDMarkerGroup  [property] 0x20:Net;0x100000000:RepNotify;
+    206  StartCapturingMovie  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    207  StopCapturingMovie  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    208  IsCapturingMovie  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    209  OnMissionActivityAssigned  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    210  OnMissionActivityProgressUpdate  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    211  ServerOnProvingGroundsSkipActivity  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    212  ServerCrouchRequest  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    213  ClientCancelCrouchRequest  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    214  NativeVehicleSetup  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    215  ClientOpenUIScene  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    216  ServerSetTutorialsComplete  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    217  ClientSetTutorialsComplete  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    218  ServerSetGroupLeaderPing  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    219  ClientAddHUDMessage  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    220  ClientAddContactHUDMessage  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    221  ClientAddResupplyHUDMessage  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    222  ClientAddWitnessingHUDMessage  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    223  ClientAddItemDeliveryHUDMessage  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    224  ClientFlushHUDMessages  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    225  ClientTriggerZonePopupDialog  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    226  ClientTriggerGameplayPopupDialog  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    227  ClientAddPopupDialog  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    228  ClientOpenDisplayPointUI  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    229  ClientUpdateDisplayPointUI  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    230  ServerPerformDisplayPointInteraction  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    231  ServerUpdateUnlockedContactsList  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    232  ClientUpdateUnlockedContactsList  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    233  ClientOnCSATimerStarted  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    234  ClientOnCSATimerStopped  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    235  ClientOnCSATimerChanged  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    236  ClientNotifyBackupRecieved  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    237  ServerUpdateTimeDebug  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    238  ServerPhysCorrect  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    239  ClientCrimeListChanged  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    240  ClientNotifyEnforcerWitness  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    241  ServerSetPawnAlwaysRelevant  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    242  ServerLeanInOut  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    243  ClientCancelLeanInOut  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    244  ServerShowAllCheckpoints  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    245  ServerShowGameplayMarkers  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    246  GM_ServerSetMissionOffersDisabled  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    247  GM_ClientSetFrozen  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    248  ClientSetSpawnedBefore  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    249  OnVendorSet  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    250  SummonItemServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    251  SummonItemClient  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    252  SummonRewardServer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    253  SummonRedeemableRewardServer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    254  SummonContactRewardServer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    255  SummonRoleRewardServer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    256  SummonDisplayPointTokenServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    257  LoadCharacterStateServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    258  SaveCharacterStateServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    259  TestPersistenceServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    260  OperateOnItemServer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    261  clientOnOperateOnItem  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    262  CombineItemStackGroupServer  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    263  ResetItemAvailabilitiesServer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    264  UnlockAllItemsServer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    265  RemoveUnlockServer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    266  CreateSymbolLicence  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    267  ItemExaminedServer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    268  SetItemExaminedServer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    269  LogInventoryServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    270  StartVehicleSpawnRepairCostUI  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    271  ServerAcceptVehicleSpawnDialogue  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    272  ServerDeclineVehicleSpawnDialogue  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    273  DebugServerIncrementCash  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    274  DebugServerDecrementCash  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    275  DebugServerIncrementRewardTokens  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    276  DebugServerDecrementRewardTokens  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    277  DebugServerIncrementOpenWorldCash  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    278  DebugServerDecrementOpenWorldCash  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    279  ServerLogActorPosition  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    280  ServerDamageCar  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    281  ServerPawnTakeDamage  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    282  ServerResetReuseGroupsNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    283  ServerLogModifiers  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    284  ServerTestKineCar  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    285  ServerDeployNewCar  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    286  ServerSummonTaskItem  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    287  ServerTestTaskItemSpawning  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    288  ServerSummonTestMarker  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    289  ServerSetTestMarkerRelevant  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    290  ServerSetTestMarkerState  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    291  ServerSetTestMarkerType  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    292  ServerMoveTestMarker  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    293  ServerDestroyTestMarker  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    294  LogDistrictBlockContentsServer  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    295  ValidateMissionsServer  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    296  TestMissionAllBlocksServer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    297  ServerRequestCustomisation  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    298  ClientCancelCustomisationRequest  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    299  ClientPrecacheCustomisation  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    300  BeginUploadServer  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    301  UploadChunkServer  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    302  ClientResponseItemAssets  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    303  serverItemCreate  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    304  clientOnItemCreated  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x800000:HasDefaults;0x1000000:NetClient;
+    305  ClientUploadCustomisationData  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    306  ServerReceiveCustomisationData  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    307  ServerNotifyCustomisationUploadComplete  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    308  NotifyOwnCustomisationChanged  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    309  ServerSummon  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    310  ServerKill  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    311  serverPrintToD  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    312  ServerSetToD  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    313  ServerSetRandomToD  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    314  ServerToggleToD  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    315  ServerSetToDPeriod  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    316  ClientSetInCustomisationZone  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    317  ServerSetDebugOpenCustomisation  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    318  SetVerbosityMissionManagerServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    319  serverNetStatue  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    320  ClientReloadFX  [function] 0x40:Net;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    321  NotifyImpactEffect  [function] 0x40:Net;0x800:Event;0x20000:Public;0x200000:NetServer;
+    322  ClientImpactEffect  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    323  ClientNotifyStaticHit  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    324  ClientNotifyDynamicHit  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    325  ClientNotifySelfHit  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    326  ClientProjectileAttack  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    327  ClientExplosion  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    328  ClientPlayPawnEffect  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    329  ClientSelfSay  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    330  ClientGMMessage  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    331  ServerSetVehicleMaxSpeed  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    332  clientSetPVPCombat  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    333  serverSetPVPCombat  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    334  ServerSetCanTargetAll  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    335  ClientServerShootLine  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    336  ServerSetAlwaysAccessInventory  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    337  ServerSetShowServerHits  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    338  ServerMakeUnconscious  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    339  ServerArrest  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    340  ServerRescue  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    341  ServerDebugExplosion  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    342  ServerEnableRespawnInVehicle  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    343  ServerSetVehicleDamageEffect  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    344  ReplicatedServerSpike  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    345  ServerSetControllerPos  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    346  ServerIllegalLocation  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    347  ClientIllegalLocation  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    348  ServerEnableFlyWhileDead  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    349  ServerEnableRespawnAtCamera  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    350  ClientParseCommandLine  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    351  ServerProcessAClientShout  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    352  ServerSendPingRequest  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    353  ClientReceivePingRequest  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    354  ServerReceivePingReply  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    355  ClientReceivePingReply  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    356  ServerStopLCVehicles  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    357  ServerBeginCSA  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    358  ServerTestCSA  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    359  ServerCSAPredicted  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    360  ClientMispredictedCSA  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    361  ServerCSAPredictCancel  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    362  ServerCSAKeyPressed  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    363  ClientResetPendingCSA  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    364  ServerCSAKeyReleased  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    365  StartMissionServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    366  EndMissionServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    367  SetOppositionServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    368  DebugKickSideMemberServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    369  ServerSetFirstStageTargetRangeCheck  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    370  ServerSetFirstStageTargetRange  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    371  DebugChallengeCycledImminentServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    372  ServerTestMissionTarget  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    373  KickSideMemberServer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    374  ClientKickSideMemberFailedCooldown  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    375  ServerAddStorageAmmo  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    376  ServerRemoveStorageAmmo  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    377  ServerEmptyAllEquippedWeapons  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    378  DebugCancelResupplyServer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    379  ServerCancelAllAmmoResupplyActions  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    380  BuyAmmoBoxes  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    381  BuyAmmoAmount  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    382  BeginAmmoResupply  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    383  CancelAmmoResupply  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    384  ClientSetPlayerVelocityZero  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    385  ServerRequestUnstickRespawn  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    386  ServerCancelUnstickRespawn  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    387  ServerPrintState  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    388  ServerSnapRotationToPawn  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    389  ServerPrintNumSpawnZones  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    390  ClientGoToSpawnZoneSelectScreen  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    391  ServerTestMapSelectScreen  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    392  ServerSelectSpawnZone  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    393  ClientSetRadarSpots  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    394  ClientActivateFallbackSpawnZone  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    395  ServerElectSpawnZone  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    396  ClientSpawnZoneElected  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    397  ClientSpawnZoneUnelected  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    398  ClientSpawnZoneUnelectedSilently  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    399  ServerForceSpawnZone  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    400  ClientAbortElectiveSpawning  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    401  ClientEmptyDailyActivities  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    402  ClientDailyActivitiesCycled  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    403  ClientAddDailyActivity  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    404  ClientActivateDailyActivity  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    405  ClientCompleteDailyActivity  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    406  ServerRequestDailyActivity  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    407  DebugClientRemoveDailyActivity  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    408  DebugServerDailyActivityDump  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    409  DebugServerDailyActivitySet  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    410  DebugServerDailyActivityAccept  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    411  DebugServerDailyActivityComplete  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    412  DebugServerDailyActivityCycle  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    413  DebugServerDailyActivityReset  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    414  DebugServerFindClosestCollectable  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    415  DebugClientFindClosestCollectable  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    416  DebugServerPrintClosestCollectable  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    417  DebugServerFindHomelessCollectables  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    418  DebugClientFindHomelessCollectables  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    419  ServerNotifyClientLoaded  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    420  ClientReceiveRespawnInfo  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    421  ServerSetViewTarget  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    422  ServerSetDeadLocation  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    423  NewServerDrive  [function] 0x40:Net;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    424  ClientAckDrive  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    425  ServerSetHealthAmounts  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    426  ServerSetHealthRechargeDuration  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    427  ServerSetHealthRechargeDelay  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    428  ServerEmote  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    429  ServerCosmeticAimRotation  [function] 0x40:Net;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    430  ServerUpdateTarget  [function] 0x40:Net;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    431  ServerIsSpotting  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    432  ClientHasSpotted  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    433  SetCrouchSpeedServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    434  SetWalkSpeedServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    435  SetSprintSpeedServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    436  SetRunSpeedServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    437  ServerTrySetMarksManShip  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    438  ClientSetMarksManShipRequestInfo  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    439  ClientReplicateHUDMarker  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    440  ClientShowHUDMarkerTaskMarker  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    441  ClientDeleteHUDMarker  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    442  ClientShowMarkerType  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    443  ClientReplicateHUDMarkerText  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    444  ClientSetIndividualHUDMarkerState  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    445  AbandonMissionServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    446  MissionOffer_SendChangeNotification  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    447  MissionEvaluate_OpenDialog  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    448  ServerMissionEvaluate  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    449  ClientSetPersistantData  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    450  ServerCallForBackupNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    451  StartCallForBackupUI  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    452  DebugPledgeServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    453  TryPledgeServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    454  BreakPledgeServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    455  OnPledgeChangedClient  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    456  ServerSetMetagroupingIntervalNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    457  ServerSetMetagroupingMissionOfferingNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    458  SetMissionDelayTimerServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    459  ServerDebugSetMissionTimer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    460  ServerDebugAddMissionTimeBonus  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    461  ServerSetBombTimer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    462  UnlockContactServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    463  AwardContactStandingServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    464  SetHeatAmountServerNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    465  ServerSimulateTimeOut  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    466  DebugReallocateTargetServer  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    467  ServerDebugPrintMissionDebugInfo  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    468  ClientGoToCSAAutoRouteState  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    469  CallServerMoveToPositionNoMovementTimer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    470  CallClientCompleteAutoMoveToCSA  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    471  CallServerCompleteSuccessfulyAutoMoveToCSA  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    472  ClientAtAutoReachedPositionServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    473  ServerCancelMoveToPositionState_DONOTCALL  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    474  ClientCancelMoveToPositionState  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    475  ServerCancelVehicleCloseDoorState  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    476  ClientCancelVehicleCloseDoorState  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    477  ClientInvertMouse  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    478  ServerInvertMouse  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    479  ServerSetLookBehind  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    480  ClientSetLookBehind  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    481  ServerRemoteContactInteraction  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    482  ClientBeginInteractionState  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    483  ServerEndInteractionState  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    484  ClientEndInteractionState  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    485  ClientMissionGroupMembersNotification  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    486  ClientMissionStatsNotification  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    487  ClientMedalsNotification  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    488  ClientMedalAwardNotification  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    489  ClientMissionSummaryNotification  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    490  ClientScorerKillNotification  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    491  ServerDebugPrintTrackedActivityStats  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    492  ServerSetTrackedActivity  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    493  GM_ServerToggleInvisibilityNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    494  GM_ServerSetInvisibilityEnabledNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    495  GM_ServerToggleInvulnerabilityNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    496  GM_ServerSetInvulnerabilityEnabledNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    497  GM_ServerToggleIdentifiersNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    498  GM_ServerSetIdentifiersEnabledNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    499  GM_ServerSetRunSpeedNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    500  GM_ServerSetHeatLevelNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    501  GM_ServerEnterFreeCameraMode  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    502  GM_ServerLeaveFreeCameraMode  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    503  GM_ClientNotifyEnterFreeCameraMode  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    504  GM_ClientNotifyLeaveFreeCameraMode  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    505  GM_ServerMoveToLocation  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    506  GM_ClientNotifyMoveToLocationFailed  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    507  GM_ServerMoveToPlayerLocation  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    508  GM_ClientNotifyMoveToPlayerLocationFailed  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    509  GM_ServerMovePlayerToGMLocation  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    510  GM_ClientNotifyMovePlayerToGMLocationFailed  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    511  GM_ClientNotifyTeleportedByGM  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    512  GM_ServerRepairVehicle  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    513  GM_ClientNotifyVehicleRepairFailed  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    514  GM_ServerStartMissionNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    515  GM_ServerEndMissionNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    516  GM_ServerSetOppositionNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    517  GM_ServerInspect  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    518  GM_ClientInspect  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    519  GM_ServerSetToD  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    520  GM_ServerToggleToD  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    521  GM_ServerRecursiveUnlockContact  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    522  ServerDebugSetPermission  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    523  ClientDebugSetPermissionMask  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    524  ServerTeleportToTaskTargetNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    525  ServerSetTaskTargetTriggeredNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    526  ServerSetPreferredTaskTargetNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    527  ServerSetObjectivePreferredTaskTargetNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    528  ServerLogMissionsNative  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    529  ServerDebugSetRating  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    530  ServerDebugSetThreatLevel  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    531  ServerDebugSetConsSkillRating  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    532  ServerDebugSetSkillRating  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    533  ClientContactStandingNotification  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    534  ServerRequestContactStanding  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    535  ServerLeanLeftKeyDown  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    536  ServerLeanRightKeyDown  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    537  ClientReceiveCharacterInfo  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    538  ClientReceiveCharacterInfoMultiPacket  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    539  ClientOnCharacterDistrictExit  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    540  ServerRequestCharacterData  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    541  ClientReceiveCharacterData  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    542  ServerRequestCharacterStats  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    543  ClientReceiveCharacterStats  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    544  ServerRequestVehicleData  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    545  ClientReceiveVehicleData  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    546  ServerRequestOtherPlayerCustomisation  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    547  ServerRequestOtherPlayerContactStanding  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    548  ClientReceiveOtherPlayerContactStanding  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    549  ServerRequestCharacterRolesData  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    550  ClientReceiveCharacterRolesData  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    551  ClientReceiveCharacterMedalsData  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    552  ServerRequestSymbolData  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    553  ClientReceiveSymbolData  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    554  ServerRequestCharacterThemeGuid  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    555  ClientReceiveCharacterThemeGuid  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    556  ServerGrieferPunishmentRLD818  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    557  ClientGrieferPunishmentRLD818  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    558  MusicStudioDataStream_ServerMultiChunkDataBegin  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    559  ClientOnMissionEnded  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    560  ClientShowVoteToGroupOnMissionEnd  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    561  ServerVoteToGroupOnMissionEnd  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    562  ClientOnCheckpointReached  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    563  NotifyServerGroupPublicStateChanged  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    564  NotifyServerLfgStateChanged  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    565  NotifyServerAvailableForMetagroupingChanged  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    566  ClientAutoJoinGroup  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    567  ClientOnGroupJoined  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    568  ClientOnGroupLeft  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    569  ClientOnGroupMemberAdded  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    570  ClientOnGroupMemberRemoved  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    571  ClientReceiveOppositionID  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    572  ClientOnUnreliableGroupDataReceived  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    573  ClientSetInitialState  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    574  ClientSetGroupLeader  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    575  ClientOnSideJoined  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    576  ClientOnSideLeftNative  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    577  ClientOnSideMemberAdded  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    578  ClientOnSideMemberRemoved  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    579  ServerServerRPCOverFlow  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    580  ReliableDoNothingClientRPC  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    581  ReliableDoNothingServerRPC  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    582  ServerDamageActor  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    583  ClientGotoStateIfNotInState  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    584  ServerSetIsCustomising  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    585  NotifyEnterCustomisationStudio  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    586  ServerExitCustomisationStudio  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    587  ServerNotifyEnterCustomisationStudio  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    588  ServerNotifyEnterSymbolEditor  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    589  ServerNotifyExitSymbolEditor  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    590  NotifyEnterMusicStudio  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    591  ServerNotifyEnterMusicStudio  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    592  NotifyExitMusicStudio  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    593  ServerNotifyExitMusicStudio  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    594  SetMusicDeviceVehicle  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    595  SetMusicTrack  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    596  SetMusicStudioTrack  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    597  ResetMusicTrack  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    598  ClientPlayModifierSFX  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    599  serverGetDisplayPointPosition  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    600  clientOnGetDisplayPointPositionComplete  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    601  serverAddGroupWaypoint  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    602  clientOnAddGroupWaypointComplete  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    603  serverDeleteGroupWaypoint  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    604  clientOnDeleteGroupWaypointComplete  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    605  AddPersonalWaypoint  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    606  ServerSetPersistantData  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    607  ServerAwayFromKeyboard  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    608  ServerSetSpawnExcluded  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    609  SetCustomColour  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    610  ServerSetCameraUserDefinedViewScalar  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    611  ServerSetCameraPosition  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    612  ServerSetCameraModeOffsets  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    613  ServerSetCameraModeFOV  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    614  ServerSetClientViewPortSize  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    615  ServerDoCameraCollision  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    616  ServerSpectatorMode  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    617  ServerCameraViewTarget  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    618  ServerUseDirectorCameraMode  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    619  ServerSetCameraMaximumFlySpeed  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    620  ServerSetCameraMaximumUpDownSpeed  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    621  ServerCameraModeOriginLagSpeed  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    622  ServerCameraKeysExtraMovement  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    623  ServerNetSet  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    624  ClientNetSet  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    625  ServerMovementKeyDisallowLean  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    626  GetGolemSpawnerActor  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    627  ServerPossessGolemSpawnerActor  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    628  ServerDestroyGolemSpawnerActor  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    629  ServerGolemSpawnCharacter  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    630  ServerGolemSpawnCharacterAtPlayerLocation  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    631  ServerGolemSetAssetDescriptorTrace  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    632  ServerGolemDestroyAssetTrace  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    633  ServerGolemDestroyAllCharacters  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    634  ServerGolemSetEmoteTrace  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    635  ServerGolemSetEmoteStatusTrace  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    636  ServerGolemSetEmoteStatus  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    637  ServerGolemSetRandomEmoteTrace  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    638  ServerGolemSetRandomEmotes  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    639  ServerGolemSpawnVehicle  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    640  ServerGolemDestroyAllVehicles  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    641  ServerGolemSpawnVehicleAtPlayerLocation  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    642  ServerGolemSaveScene  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    643  ServerGolemSpawnRandomCharacters  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    644  ServerGolemSpawnRandomVehicles  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    645  GetFlythroughSpawnerActor  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    646  ServerDestroyFlythroughSpawnerActor  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    647  ServerFlythroughSpawnPedestrian  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    648  ServerFlythroughDestroyAllPedestrians  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    649  ServerFlythroughSpawnVehicle  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    650  ServerFlythroughDestroyAllVehicles  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    651  ClientHeatDebugInfo  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    652  ClientActiveCrimeDebugInfo  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    653  ClientReceiveActivityMessage  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    654  ClientReceiveActivityMessages  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    655  ServerTriggerGameplayTutorial  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    656  ClientTriggerGameplayTutorial  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    657  ServerTriggerCSABeginEventTutorial  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    658  ClientCSABeginEventTutorial  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    659  ServerTriggerCSAEndEventTutorial  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    660  ClientCSAEndEventTutorial  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    661  ServerCustomisationLimiterUse  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    662  ServerSyncTime  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    663  ClientBeginSyncTime  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    664  ClientSyncTime  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    665  ServerForceCriticalDamageVehicleUse  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x200000:NetServer;
+    666  ServerToggleSwitchCameraSide  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    667  ServerToggleReadyForMissions  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    668  ServerEmitNotReadyNag  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    669  ServerStartAutoReadyTimer  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    670  ServerUseAutoReady  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    671  ClientSetAutoReadyState  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    672  DebugTogglePremiumServer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    673  ServerNotifySecurityViolation  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    674  ClientNotifyInvalidVehicles  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    675  ClientNotifyBloatedVehicles  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    676  ServerSetBotDetectionEventsTime  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    677  ServerDebugIncMissionActivityProgress  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    678  ServerDebugSetNextMissionActivity  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    679  ServerDebugSkipMissionActivity  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    680  SetNumVisibilityRays  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    681  ServerAuthenticateSteamClient  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    682  ClientTeleport  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    683  SetChaosScoreboardOpen  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+
+class cAPBPlayerControllerAnimation extends cHostingPlayerController
+  base=157 ownSlots=1 fieldMax=158 (derived from cHostingPlayerController) [APBGame] source=runtime-netfields
+    157  ServerUpdateTimeStamp  [function] 0x40:Net;0x400:Native;0x20000:Public;0x200000:NetServer;
+
+class cAPBProjectile extends Projectile
+  base=21 ownSlots=3 fieldMax=24 (derived from Projectile) [APBGame] source=runtime-netfields
+    21  m_GrenadeBounceInfo  [property] 0x20:Net;0x100000000:RepNotify;
+    22  m_ProjectileType  [property] 0x20:Net;0x100000000:RepNotify;
+    23  m_bPinOut  [property] 0x20:Net;
+
+class cAPBTempCover extends DynamicSMActor
+  base=26 ownSlots=2 fieldMax=28 (derived from DynamicSMActor) [APBGame] source=runtime-netfields
+    26  m_InitialHealth  [property] 0x20:Net;
+    27  m_Health  [property] 0x1:Editable;0x20:Net;0x4000:Config;
+
+class cAPBVehicle extends cAPBVehicleBase
+  base=112 ownSlots=1 fieldMax=113 (derived from cAPBVehicleBase) [APBGame] source=runtime-netfields
+    112  ServerSetTorqueMods  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+
+class cAPBVehicleBase extends SVehicle
+  base=47 ownSlots=65 fieldMax=112 (derived from SVehicle) [APBGame] source=runtime-netfields
+    47  serverIndicateLeft  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    48  serverIndicateRight  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    49  ServerToggleSpecialLights  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    50  serverStartVehicleHorn  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    51  serverStopVehicleHorn  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    52  TakeVisualDamage  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    53  ExplodeWreck  [function] 0x40:Net;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    54  TookExternalDamage  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    55  ServerEmptyVehicle  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    56  m_fNitroMultiplierApplied  [property] 0x20:Net;0x100000000:RepNotify;
+    57  m_fDamageThresholdMultiplier  [property] 0x20:Net;
+    58  m_PvPFlags  [property] 0x20:Net;
+    59  m_DeployedOwner  [property] 0x2:Const;0x20:Net;0x100000000:RepNotify;
+    60  m_NPCDriverData  [property] 0x20:Net;0x100000000:RepNotify;
+    61  m_nIncrementalID  [property] 0x20:Net;
+    62  m_CustomisationGuids  [property] 0x20:Net;0x100000000:RepNotify;
+    63  m_eTaskOperationID  [property] 0x20:Net;
+    64  m_MusicNameInfo  [property] 0x20:Net;0x400000:CtorLink;
+    65  m_MusicPlaybackInfo  [property] 0x20:Net;0x100000000:RepNotify;
+    66  m_ReplicatedVehicleSetupTypeSettingsNoMods  [property] 0x20:Net;0x100000000:RepNotify;
+    67  m_VehicleSetupTypeSettings  [property] 0x20:Net;0x100000000:RepNotify;
+    68  m_fCargoRearWheelHeightReduction  [property] 0x20:Net;0x100000000:RepNotify;
+    69  m_fOffsetFromLaneCenter  [property] 0x20:Net;0x100000000:RepNotify;
+    70  m_PositionAndOrientation_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    71  m_PositionAndOrientation_ReplicatedInitial  [property] 0x20:Net;0x100000000:RepNotify;
+    72  m_SpeedData_ReplicatedInitial  [property] 0x20:Net;0x100000000:RepNotify;
+    73  m_SpeedData_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    74  m_nVehicleCategory  [property] 0x20:Net;0x100000000:RepNotify;
+    75  m_ReactionID_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    76  m_fLocomotionSpeed  [property] 0x20:Net;0x100000000:RepNotify;
+    77  m_nTypeID  [property] 0x20:Net;0x100000000:RepNotify;
+    78  m_nID  [property] 0x20:Net;0x100000000:RepNotify;
+    79  m_fRepairPercentage  [property] 0x20:Net;
+    80  InitialRotation  [property] 0x20:Net;0x2000:Transient;
+    81  InitialLocation  [property] 0x20:Net;0x2000:Transient;
+    82  stReplicatedStateFSM  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    83  replicatedRBState  [property] 0x20:Net;0x2000:Transient;
+    84  m_lastExternalDamageTime  [property] 0x20:Net;
+    85  m_nVisualDamageMisc  [property] 0x20:Net;0x100000000:RepNotify;
+    86  m_nVisualDamage  [property] 0x20:Net;0x100000000:RepNotify;
+    87  m_fCriticalDamageRate  [property] 0x20:Net;
+    88  m_eDamageHandlingEffectIndex  [property] 0x20:Net;0x100000000:RepNotify;
+    89  m_nMaxHealth  [property] 0x1:Editable;0x20:Net;
+    90  m_bVehicleFieldSupplierModifierActive  [property] 0x20:Net;
+    91  m_bHasBeenPlayerCollisionCategory  [property] 0x20:Net;0x100000000:RepNotify;
+    92  m_bHasBeenUsedByPlayer  [property] 0x20:Net;
+    93  m_bDeployedOwnerValid  [property] 0x20:Net;0x100000000:RepNotify;
+    94  m_bAlarmGoingOff  [property] 0x1:Editable;0x20:Net;0x100000000:RepNotify;
+    95  m_bEnableVehicleHorn  [property] 0x20:Net;
+    96  m_bEnableSpecialLights  [property] 0x20:Net;
+    97  m_bIsRepairing  [property] 0x20:Net;
+    98  m_bIsAmmoCarrierDeployed  [property] 0x20:Net;
+    99  m_bClientHUDMarkerEnabled  [property] 0x20:Net;0x100000000:RepNotify;
+    100  m_CargoInventory  [property] 0x20:Net;
+    101  m_aSeatPawnsForWitnessing  [property] 0x20:Net;0x2000:Transient;
+    102  m_aWindowOpen  [property] 0x20:Net;0x100000000:RepNotify;
+    103  m_eSpawnState  [property] 0x20:Net;0x100000000:RepNotify;
+    104  m_nUsingCollisionGroupID  [property] 0x2:Const;0x20:Net;0x100000000:RepNotify;
+    105  m_nMissionTaskItemInsideOwningCollisionGroupID  [property] 0x20:Net;0x100000000:RepNotify;
+    106  m_nTaskOwningCollisionGroupID  [property] 0x20:Net;0x100000000:RepNotify;
+    107  m_eInitialTheftFaction  [property] 0x20:Net;
+    108  m_eStoppingReason  [property] 0x20:Net;
+    109  m_eBrainAndPhysRepState_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    110  vehicleType  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    111  m_DriverIndicator  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cAudioDisplayPoint extends cInteractiveDynamicSMActor
+  base=26 ownSlots=6 fieldMax=32 (derived from cInteractiveDynamicSMActor) [APBGame] source=runtime-netfields
+    26  m_fDisplayPointVolume  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_MusicNameInfo  [property] 0x20:Net;0x400000:CtorLink;
+    28  m_MusicPlaybackInfo  [property] 0x20:Net;0x100000000:RepNotify;
+    29  m_eCharacterOwnerFaction  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_sCharacterOwnerName  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    31  m_nCharaterOwnerUID  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cBlobCustomisationInfo extends cItemCustomisationInfo
+  base=22 ownSlots=3 fieldMax=25 (derived from cItemCustomisationInfo) [APBGame] source=runtime-netfields
+    22  m_sUserSpecifiedName  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    23  m_nVersion  [property] 0x20:Net;
+    24  m_nUsedBytes  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cBotPlayerController extends cAPBPlayerController
+  base=684 ownSlots=4 fieldMax=688 (derived from cAPBPlayerController) [APBGame] source=runtime-netfields
+    684  ServerRestartBots  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    685  InitDummyPawns  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    686  ServerSetNumDummies  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    687  ServerSetLocation  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+
+class cCheckpoint extends Actor
+  base=21 ownSlots=5 fieldMax=26 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_bDebugAlwaysVisible  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    22  m_nRepTaskOpposingSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    23  m_nRepTaskOwningSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    24  m_nRepTaskOperationID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    25  m_eTaskTargetVFXState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+
+class cClothingCustomisationInfo extends cBlobCustomisationInfo
+  base=25 ownSlots=14 fieldMax=39 (derived from cBlobCustomisationInfo) [APBGame] source=runtime-netfields
+    25  m_Chunk_15  [property] 0x20:Net;0x100000000:RepNotify;
+    26  m_Chunk_14  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_Chunk_13  [property] 0x20:Net;0x100000000:RepNotify;
+    28  m_Chunk_12  [property] 0x20:Net;0x100000000:RepNotify;
+    29  m_Chunk_11  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_Chunk_09  [property] 0x20:Net;0x100000000:RepNotify;
+    31  m_Chunk_08  [property] 0x20:Net;0x100000000:RepNotify;
+    32  m_Chunk_07  [property] 0x20:Net;0x100000000:RepNotify;
+    33  m_Chunk_06  [property] 0x20:Net;0x100000000:RepNotify;
+    34  m_Chunk_05  [property] 0x20:Net;0x100000000:RepNotify;
+    35  m_Chunk_04  [property] 0x20:Net;0x100000000:RepNotify;
+    36  m_Chunk_03  [property] 0x20:Net;0x100000000:RepNotify;
+    37  m_Chunk_02  [property] 0x20:Net;0x100000000:RepNotify;
+    38  m_Chunk_01  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cCustomGraffitiDisplayPoint extends cGraffitiDisplayPoint
+  base=21 ownSlots=2 fieldMax=23 (derived from cGraffitiDisplayPoint) [APBGame] source=runtime-netfields
+    21  m_eNotifyFlag  [property] 0x20:Net;0x100000000:RepNotify;
+    22  m_CustomisationGuid  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cCustomisationReplicator extends ReplicationInfo
+  base=21 ownSlots=4 fieldMax=25 (derived from ReplicationInfo) [APBGame] source=runtime-netfields
+    21  ServerSendData  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    22  ClientReceiveData  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    23  ClientNotifyTransferComplete  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    24  ServerNotifyOperationComplete  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+
+class cDisplayPointStatuePlinth extends cInteractiveDynamicSMActor
+  base=26 ownSlots=3 fieldMax=29 (derived from cInteractiveDynamicSMActor) [APBGame] source=runtime-netfields
+    26  m_eCharacterOwnerFaction  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_sCharacterOwnerName  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    28  m_nCharaterOwnerUID  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cDisplayPointTokenCustomisationInfo extends cItemCustomisationInfo
+  base=22 ownSlots=1 fieldMax=23 (derived from cItemCustomisationInfo) [APBGame] source=runtime-netfields
+    22  m_Guid  [property] 0x20:Net;
+
+class cEngineClientServerDebugManager extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  m_bDisplayLCActive  [property] 0x20:Net;
+
+class cEquipableTaskItem extends cItem
+  base=26 ownSlots=1 fieldMax=27 (derived from cItem) [APBGame] source=runtime-netfields
+    26  m_nVariety  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cFlythroughSkeletalMeshActor extends SkeletalMeshActor
+  base=22 ownSlots=2 fieldMax=24 (derived from SkeletalMeshActor) [APBGame] source=runtime-netfields
+    22  m_meshIndex  [property] 0x20:Net;0x100000000:RepNotify;
+    23  m_ActorType  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cGraffitiCrimeTarget extends cGraffitiDisplayPoint
+  base=21 ownSlots=5 fieldMax=26 (derived from cGraffitiDisplayPoint) [APBGame] source=runtime-netfields
+    21  m_nRepTaskOpposingSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    22  m_nRepTaskOwningSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    23  m_nRepTaskOperationID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    24  m_TextureData  [property] 0x20:Net;0x100000000:RepNotify;
+    25  m_eTaskTargetVFXState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+
+class cGrenadeWeapon extends cProjectileWeapon
+  base=38 ownSlots=2 fieldMax=40 (derived from cProjectileWeapon) [APBGame] source=runtime-netfields
+    38  m_CookingGrenade  [property] 0x20:Net;
+    39  ClientNotifyGrenadeExploded  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+
+class cHoldableItemManager extends Actor
+  base=21 ownSlots=19 fieldMax=40 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_OwningPawn  [property] 0x20:Net;
+    22  m_nNumSmallTaskItems  [property] 0x20:Net;
+    23  m_HeldTaskItem  [property] 0x20:Net;
+    24  m_CurrentItem  [property] 0x20:Net;0x100000000:RepNotify;
+    25  m_nSelectedWeapon  [property] 0x20:Net;
+    26  m_WitnessingWeapon  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_DeployedWeapons  [property] 0x20:Net;0x100000000:RepNotify;
+    28  ClientStartInterrupt  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    29  ClientEndInterrupt  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    30  ServerNotifySpawnedOnClient  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    31  ServerSelectWeapon  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    32  ServerSelectNone  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    33  ServerReloadWeapon  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    34  ClientReloadFailed  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    35  ServerSelectUsable  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    36  ServerGiftAllAmmo  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    37  ServerGiftAmmo  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    38  ClientUnEquip  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    39  ClientEquipCommandFailed  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+
+class cHostingPlayerController extends PlayerController
+  base=127 ownSlots=30 fieldMax=157 (derived from PlayerController) [APBGame] source=runtime-netfields
+    127  m_sClanName  [property] 0x20:Net;0x400000:CtorLink;
+    128  m_eChatState  [property] 0x20:Net;0x100000000:RepNotify;
+    129  m_nOpenWorldCash  [property] 0x20:Net;0x100000000:RepNotify;
+    130  m_nRewardTokens  [property] 0x20:Net;0x100000000:RepNotify;
+    131  m_nCash  [property] 0x20:Net;0x100000000:RepNotify;
+    132  m_nClanUID  [property] 0x20:Net;
+    133  m_nAccountPremium  [property] 0x20:Net;0x100000000:RepNotify;
+    134  m_nAccountUID  [property] 0x20:Net;
+    135  serversystemmessage  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    136  servercash  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    137  ServerRewardTokens  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    138  Receive_GC2DS_ASK_DISTRICT_ENTER  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    139  Receive_DS2GC_ANS_DISTRICT_ENTER  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    140  Receive_GC2DS_CHAT  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    141  Receive_DS2GC_CHAT  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    142  Receive_DS2GC_CHAT_SYSTEM  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    143  Receive_GC2DS_ASK_MARKETPLACE_AUCTION_CREATE  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    144  Receive_DS2GC_ANS_MARKETPLACE_AUCTION_CREATE  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    145  Receive_GC2DS_ASK_MARKETPLACE_AUCTION_BID  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    146  Receive_DS2GC_ANS_MARKETPLACE_AUCTION_BID  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    147  Receive_GC2DS_ASK_PREMIUM_STATUS  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    148  Receive_GC2DS_ASK_MAIL_SEND_HEADER  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    149  Receive_GC2DS_ASK_MAIL_SEND_BODY_PART  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    150  Receive_DS2GC_ANS_MAIL_SEND  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    151  Receive_GC2DS_ASK_MAIL_DETACH_CASH  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    152  Receive_DS2GC_ANS_MAIL_DETACH_CASH  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    153  Receive_GC2DS_ASK_MAIL_DETACH_ITEM  [function] 0x40:Net;0x80:NetReliable;0x4000:HasOptionalParms;0x20000:Public;0x200000:NetServer;
+    154  Receive_DS2GC_ANS_MAIL_DETACH_ITEM  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    155  Receive_DS2GC_MAIL_SYSTEM  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    156  Receive_DS2GC_DISTRICT_SHUTDOWN_NOTIFY  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+
+class cHUDBase extends HUD
+  base=21 ownSlots=4 fieldMax=25 (derived from HUD) [APBGame] source=runtime-netfields
+    21  SelfSay  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    22  ClientSelfSay  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    23  SelfSayTimer  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    24  SelfSayFadeTimer  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+
+class cItem extends Actor
+  base=21 ownSlots=5 fieldMax=26 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_ItemID  [property] 0x20:Net;
+    22  m_OwningManager  [property] 0x20:Net;
+    23  m_eInventoryItemType  [property] 0x20:Net;0x100000000:RepNotify;
+    24  ClientEquipItem  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    25  ClientUnequipItem  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+
+class cItemCustomisationInfo extends ReplicationInfo
+  base=21 ownSlots=1 fieldMax=22 (derived from ReplicationInfo) [APBGame] source=runtime-netfields
+    21  m_ItemID  [property] 0x20:Net;
+
+class cLCManager extends cLCManagerBase
+  base=21 ownSlots=2 fieldMax=23 (derived from cLCManagerBase) [APBGame] source=runtime-netfields
+    21  m_nStatReplicationCompeleted  [property] 0x20:Net;0x100000000:RepNotify;
+    22  m_sNPCStats  [property] 0x20:Net;0x400000:CtorLink;
+
+class cNPCDriverSkeletalMeshActor extends cRagdollableNPCSkeletalMeshActor
+  base=23 ownSlots=1 fieldMax=24 (derived from cRagdollableNPCSkeletalMeshActor) [APBGame] source=runtime-netfields
+    23  m_DriverEjectData  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cNPCSkeletalMeshActor extends cRagdollableNPCSkeletalMeshActor
+  base=23 ownSlots=12 fieldMax=35 (derived from cRagdollableNPCSkeletalMeshActor) [APBGame] source=runtime-netfields
+    23  m_nPhoneDialogueStartTime_ReplicatedInitial  [property] 0x20:Net;0x100000000:RepNotify;
+    24  m_nLastVNodeIDPlayedAt  [property] 0x20:Net;0x100000000:RepNotify;
+    25  m_TTIReactionInProgressData_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    26  m_TTIReactionData_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_afEvtCriteriaTimers_R  [property] 0x20:Net;0x100000000:RepNotify;
+    28  m_PedStateUpdate_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    29  m_PedState_ReplicatedInitial  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_nAssetIndex_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    31  m_fLocomotionSpeed  [property] 0x20:Net;0x100000000:RepNotify;
+    32  m_eBrainAndPhysRepState_Replicated  [property] 0x20:Net;0x100000000:RepNotify;
+    33  m_nTypeID  [property] 0x20:Net;0x100000000:RepNotify;
+    34  m_nID  [property] 0x20:Net;0x100000000:RepNotify;
+
+class Controller extends Actor
+  base=21 ownSlots=5 fieldMax=26 (derived from Actor) [Engine] source=runtime-netfields
+    21  PlayerReplicationInfo  [property] 0x20:Net;0x100000000:RepNotify;
+    22  Pawn  [property] 0x20:Net;
+    23  ClientSetLocation  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    24  ClientSetRotation  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    25  ServerRestartPlayer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+
+class cOutfitCustomisationInfo extends cBlobCustomisationInfo
+  base=25 ownSlots=4 fieldMax=29 (derived from cBlobCustomisationInfo) [APBGame] source=runtime-netfields
+    25  m_Chunk_04  [property] 0x20:Net;0x100000000:RepNotify;
+    26  m_Chunk_03  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_Chunk_02  [property] 0x20:Net;0x100000000:RepNotify;
+    28  m_Chunk_01  [property] 0x20:Net;0x100000000:RepNotify;
+
+class CoverReplicator extends ReplicationInfo
+  base=21 ownSlots=10 fieldMax=31 (derived from ReplicationInfo) [Engine] source=runtime-netfields
+    21  ServerSendInitialCoverReplicationInfo  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    22  ClientReceiveInitialCoverReplicationInfo  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    23  ServerSendEnabledSlots  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    24  ClientReceiveEnabledSlots  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    25  ServerSendDisabledSlots  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    26  ClientReceiveDisabledSlots  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    27  ServerSendAdjustedSlots  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    28  ClientReceiveAdjustedSlots  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    29  ServerSendManualCoverTypeSlots  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    30  ClientReceiveManualCoverTypeSlots  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+
+class cPlayerGraffitiDisplayPoint extends cCustomGraffitiDisplayPoint
+  base=23 ownSlots=3 fieldMax=26 (derived from cCustomGraffitiDisplayPoint) [APBGame] source=runtime-netfields
+    23  m_eCharacterOwnerFaction  [property] 0x20:Net;0x100000000:RepNotify;
+    24  m_sCharacterOwnerName  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    25  m_nCharaterOwnerUID  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cPlayerVehicleDisplayPoint extends StaticMeshActor
+  base=21 ownSlots=5 fieldMax=26 (derived from StaticMeshActor) [APBGame] source=runtime-netfields
+    21  m_sCharacterOwnerName  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    22  m_nCharaterOwnerUID  [property] 0x20:Net;0x100000000:RepNotify;
+    23  m_CurrentVehicle  [property] 0x20:Net;0x100000000:RepNotify;
+    24  m_eCharacterOwnerFaction  [property] 0x20:Net;0x100000000:RepNotify;
+    25  m_eBayState  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cProjectileWeapon extends cWeapon
+  base=35 ownSlots=3 fieldMax=38 (derived from cWeapon) [APBGame] source=runtime-netfields
+    35  m_fMarksmanshipFOV4_4  [property] 0x20:Net;
+    36  m_fMarksmanshipFOV16_10  [property] 0x20:Net;
+    37  m_WeaponRecoilSettings  [property] 0x20:Net;
+
+class cProp extends Actor
+  base=21 ownSlots=15 fieldMax=36 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_nRepTaskOpposingSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    22  m_nRepTaskOwningSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    23  m_vRepBombLocation  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    24  m_nRepBombTimer  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    25  m_nRepBombState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    26  m_nRepTaskOperationID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    27  m_nLastDamageCharacterUID  [property] 0x20:Net;0x2000:Transient;
+    28  aRepRBStates  [property] 0x20:Net;0x1000:Native;0x2000:Transient;
+    29  RepAnimation  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    30  nRepMaxHealth  [property] 0x20:Net;0x100000000:RepNotify;
+    31  nRepCurrentHealth  [property] 0x20:Net;0x100000000:RepNotify;
+    32  m_eIATState  [property] 0x20:Net;
+    33  m_eTaskTargetVFXState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    34  m_eCurrentTaskOperationCategory  [property] 0x20:Net;0x2000:Transient;
+    35  eRepPropState  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cRagdollableNPCSkeletalMeshActor extends SkeletalMeshActor
+  base=22 ownSlots=1 fieldMax=23 (derived from SkeletalMeshActor) [APBGame] source=runtime-netfields
+    22  m_NPCHitData  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cRaycastWeapon extends cWeapon
+  base=35 ownSlots=2 fieldMax=37 (derived from cWeapon) [APBGame] source=runtime-netfields
+    35  m_RangedWeaponTypeSettings  [property] 0x20:Net;
+    36  m_WeaponRecoilSettings  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cReplicatedHUDMarkerGroup extends ReplicationInfo
+  base=21 ownSlots=1 fieldMax=22 (derived from ReplicationInfo) [APBGame] source=runtime-netfields
+    21  m_aHUDMarkerUpdates  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cSetupTypeManager extends Actor
+  base=21 ownSlots=2 fieldMax=23 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_aVehicleAssetRange  [property] 0x20:Net;0x100000000:RepNotify;
+    22  m_aPedestrianAssetRange  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cStaticCrimeTarget extends cPlaceholderBlockingLocator
+  base=21 ownSlots=8 fieldMax=29 (derived from cPlaceholderBlockingLocator) [APBGame] source=runtime-netfields
+    21  m_nRepTaskOpposingSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    22  m_nRepTaskOwningSideID_Initial  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    23  m_nRepTaskOwningSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    24  m_bRepBombExploded_Initial  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    25  m_bRepBombExploded  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    26  m_nRepBombSetLevel  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    27  m_nRepTaskOperationID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    28  m_eTaskTargetVFXState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+
+class cStatueDisplayPoint extends Actor
+  base=21 ownSlots=3 fieldMax=24 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_eCharacterOwnerFaction  [property] 0x20:Net;0x100000000:RepNotify;
+    22  m_sCharacterOwnerName  [property] 0x20:Net;0x400000:CtorLink;0x100000000:RepNotify;
+    23  m_nCharaterOwnerUID  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cStatueModel extends SkeletalMeshActor
+  base=22 ownSlots=2 fieldMax=24 (derived from SkeletalMeshActor) [APBGame] source=runtime-netfields
+    22  m_DisplayPointOwner  [property] 0x20:Net;
+    23  m_CustomisationGuids  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cStorageInventory extends ReplicationInfo
+  base=21 ownSlots=54 fieldMax=75 (derived from ReplicationInfo) [APBGame] source=runtime-netfields
+    21  m_CustomisationLimiterRepData  [property] 0x20:Net;0x100000000:RepNotify;
+    22  m_CustomColours  [property] 0x20:Net;
+    23  m_nGlobalCooldownTimeEnd  [property] 0x20:Net;
+    24  m_nGlobalCooldownTimeBegin  [property] 0x20:Net;
+    25  m_AmmoTotals  [property] 0x20:Net;0x100000000:RepNotify;
+    26  m_AmmoPools  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_aReuseGroups  [property] 0x20:Net;
+    28  m_aFnModsCharacter  [property] 0x20:Net;0x100000000:RepNotify;
+    29  m_nDeployedTitle  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_nDeployedTheme  [property] 0x20:Net;0x100000000:RepNotify;
+    31  m_nDeployedOutfit  [property] 0x20:Net;0x100000000:RepNotify;
+    32  m_nDeployedVehicle  [property] 0x20:Net;0x100000000:RepNotify;
+    33  m_aDeployedVehicleUsables  [property] 0x20:Net;0x100000000:RepNotify;
+    34  m_aDeployedCharacterUsables  [property] 0x20:Net;0x100000000:RepNotify;
+    35  m_aDeployedSymbols  [property] 0x20:Net;0x100000000:RepNotify;
+    36  m_aDeployedEquipment  [property] 0x20:Net;0x100000000:RepNotify;
+    37  m_nDeploymentVersion  [property] 0x20:Net;0x100000000:RepNotify;
+    38  m_nStorageVersion  [property] 0x20:Net;0x100000000:RepNotify;
+    39  m_aWeaponCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    40  m_aVehicleCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    41  m_aSymbolCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    42  m_aDisplayPointTokenCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    43  m_aOutfitCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    44  m_aSongCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    45  m_aThemeCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    46  m_aClothingCustomisations  [property] 0x20:Net;0x100000000:RepNotify;
+    47  m_aStackingSlots  [property] 0x20:Net;
+    48  m_aAvailabilities  [property] 0x20:Net;0x100000000:RepNotify;
+    49  m_aUsableTokenCharges  [property] 0x20:Net;0x100000000:RepNotify;
+    50  m_aExaminedItemBits_5  [property] 0x20:Net;0x100000000:RepNotify;
+    51  m_aExaminedItemBits_4  [property] 0x20:Net;0x100000000:RepNotify;
+    52  m_aExaminedItemBits_3  [property] 0x20:Net;0x100000000:RepNotify;
+    53  m_aExaminedItemBits_2  [property] 0x20:Net;0x100000000:RepNotify;
+    54  m_aExaminedItemBits_1  [property] 0x20:Net;0x100000000:RepNotify;
+    55  m_aUnlockItemBits_5  [property] 0x20:Net;0x100000000:RepNotify;
+    56  m_aUnlockItemBits_4  [property] 0x20:Net;0x100000000:RepNotify;
+    57  m_aUnlockItemBits_3  [property] 0x20:Net;0x100000000:RepNotify;
+    58  m_aUnlockItemBits_2  [property] 0x20:Net;0x100000000:RepNotify;
+    59  m_aUnlockItemBits_1  [property] 0x20:Net;0x100000000:RepNotify;
+    60  m_aWeaponItems  [property] 0x20:Net;0x100000000:RepNotify;
+    61  m_aVehicleItems  [property] 0x20:Net;0x100000000:RepNotify;
+    62  m_aUsableTokenItems  [property] 0x20:Net;0x100000000:RepNotify;
+    63  m_aUnlockItems  [property] 0x20:Net;0x100000000:RepNotify;
+    64  m_aSongItems  [property] 0x20:Net;0x100000000:RepNotify;
+    65  m_aThemeItems  [property] 0x20:Net;0x100000000:RepNotify;
+    66  m_aSymbolItems  [property] 0x20:Net;0x100000000:RepNotify;
+    67  m_aRewardPackageItems  [property] 0x20:Net;0x100000000:RepNotify;
+    68  m_aOutfitItems  [property] 0x20:Net;0x100000000:RepNotify;
+    69  m_aFnModItems  [property] 0x20:Net;0x100000000:RepNotify;
+    70  m_aEquipmentItems  [property] 0x20:Net;0x100000000:RepNotify;
+    71  m_aDisplayPointTokenItems  [property] 0x20:Net;0x100000000:RepNotify;
+    72  m_aClothingItems  [property] 0x20:Net;0x100000000:RepNotify;
+    73  m_aCharacterItems  [property] 0x20:Net;0x100000000:RepNotify;
+    74  m_aCapacityItems  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cSymbolCustomisationInfo extends cBlobCustomisationInfo
+  base=25 ownSlots=8 fieldMax=33 (derived from cBlobCustomisationInfo) [APBGame] source=runtime-netfields
+    25  m_Chunk_08  [property] 0x20:Net;0x100000000:RepNotify;
+    26  m_Chunk_07  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_Chunk_06  [property] 0x20:Net;0x100000000:RepNotify;
+    28  m_Chunk_05  [property] 0x20:Net;0x100000000:RepNotify;
+    29  m_Chunk_04  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_Chunk_03  [property] 0x20:Net;0x100000000:RepNotify;
+    31  m_Chunk_02  [property] 0x20:Net;0x100000000:RepNotify;
+    32  m_Chunk_01  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cTaskDescription extends Actor
+  base=21 ownSlots=31 fieldMax=52 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_OppositionJustification  [property] 0x20:Net;
+    22  m_OwnerJustification  [property] 0x20:Net;
+    23  m_bInOvertime  [property] 0x20:Net;
+    24  m_bInstigated  [property] 0x20:Net;
+    25  m_nMissionTimeLimit  [property] 0x20:Net;
+    26  m_nOppositionObjectivesMirrorLength  [property] 0x20:Net;
+    27  m_OppositionObjectivesMirror  [property] 0x20:Net;
+    28  m_nOwnerObjectivesMirrorLength  [property] 0x20:Net;
+    29  m_OwnerObjectivesMirror  [property] 0x20:Net;
+    30  m_nMissionTimeRemaining  [property] 0x20:Net;
+    31  m_nVIPOppositionTakeoutLimit  [property] 0x20:Net;
+    32  m_nVIPOwnerTakeoutLimit  [property] 0x20:Net;
+    33  m_nOppositionTakeoutLimit  [property] 0x20:Net;
+    34  m_nOwnerTakeoutLimit  [property] 0x20:Net;
+    35  m_nOppositionTakeouts  [property] 0x20:Net;
+    36  m_nOwnerTakeouts  [property] 0x20:Net;
+    37  m_nOppositionObjectivePoints  [property] 0x20:Net;
+    38  m_nOwnerObjectivePoints  [property] 0x20:Net;
+    39  m_nStageObjectivesCompleted  [property] 0x20:Net;
+    40  m_nCurrentStage  [property] 0x20:Net;
+    41  m_nConcurrentObjective  [property] 0x20:Net;0x100000000:RepNotify;
+    42  m_nCurrentObjective  [property] 0x20:Net;0x100000000:RepNotify;
+    43  m_nOpposingSideID  [property] 0x20:Net;0x100000000:RepNotify;
+    44  m_nOwningSideID  [property] 0x20:Net;0x100000000:RepNotify;
+    45  m_nMissionTemplateID  [property] 0x20:Net;
+    46  m_nUniqueID  [property] 0x20:Net;0x100000000:RepNotify;
+    47  m_OpposingSideVIPState  [property] 0x20:Net;
+    48  m_OwningSideVIPState  [property] 0x20:Net;
+    49  m_TaskStatus  [property] 0x20:Net;
+    50  m_eMovingTargetPossession  [property] 0x20:Net;
+    51  NotifyOvertimeStartedClient  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+
+class cTaskItemPickup extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_nVariety  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cTaskObjective extends Actor
+  base=21 ownSlots=19 fieldMax=40 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_nObjectiveHoldPointsOpposition  [property] 0x20:Net;
+    22  m_nObjectiveHoldPointsOwners  [property] 0x20:Net;
+    23  m_nVehiclesDelivered  [property] 0x20:Net;
+    24  m_nTaskItemsDeliveredOpposition  [property] 0x20:Net;
+    25  m_nTaskItemsDeliveredOwners  [property] 0x20:Net;
+    26  m_nTaskItemsSpawned  [property] 0x20:Net;
+    27  m_nTargetsTriggeredOpposition  [property] 0x20:Net;
+    28  m_nTargetsTriggeredOwners  [property] 0x20:Net;
+    29  m_nSddTaskObjectiveRow  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_eSideFaction  [property] 0x20:Net;
+    31  m_eTaskObjectiveState  [property] 0x20:Net;
+    32  m_nEscapeBar  [property] 0x20:Net;
+    33  m_nEscapeBarLimit  [property] 0x20:Net;
+    34  m_nEscapeCurrentPenaltySeconds  [property] 0x20:Net;
+    35  m_nReplicatedNumberOfBombTargets  [property] 0x20:Net;
+    36  m_bReplicatedIsBombTimerActive  [property] 0x20:Net;
+    37  m_nReplicatedBombTimeRemaining  [property] 0x20:Net;
+    38  m_nNumberOfBombsExploded  [property] 0x20:Net;
+    39  m_nNumberOfBombsSet  [property] 0x20:Net;
+
+class cTaskTargetTaskItemSpawner extends Actor
+  base=21 ownSlots=5 fieldMax=26 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_nRepTaskOpposingSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    22  m_nRepTaskOwningSideID_Initial  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    23  m_nRepTaskOwningSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    24  m_nRepTaskOperationID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    25  m_eTaskTargetVFXState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+
+class cTaskTargetVehicleSpawner extends Actor
+  base=21 ownSlots=10 fieldMax=31 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_nRepTaskOpposingSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    22  m_nRepTaskOwningSideID_Initial  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    23  m_nRepTaskOwningSideID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    24  m_vRepBombLocation  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    25  m_nRepBombTimer  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    26  m_nRepBombState_Initial  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    27  m_nRepBombState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    28  m_nRepTaskOperationID  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    29  m_eTaskTargetVFXState  [property] 0x20:Net;0x2000:Transient;0x100000000:RepNotify;
+    30  m_Vehicle  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cThemeCustomisationInfo extends cBlobCustomisationInfo
+  base=25 ownSlots=10 fieldMax=35 (derived from cBlobCustomisationInfo) [APBGame] source=runtime-netfields
+    25  m_Chunk_11  [property] 0x20:Net;0x100000000:RepNotify;
+    26  m_Chunk_09  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_Chunk_08  [property] 0x20:Net;0x100000000:RepNotify;
+    28  m_Chunk_07  [property] 0x20:Net;0x100000000:RepNotify;
+    29  m_Chunk_06  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_Chunk_05  [property] 0x20:Net;0x100000000:RepNotify;
+    31  m_Chunk_04  [property] 0x20:Net;0x100000000:RepNotify;
+    32  m_Chunk_03  [property] 0x20:Net;0x100000000:RepNotify;
+    33  m_Chunk_02  [property] 0x20:Net;0x100000000:RepNotify;
+    34  m_Chunk_01  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cToDManager extends cToDManagerBase
+  base=21 ownSlots=4 fieldMax=25 (derived from cToDManagerBase) [APBGame] source=runtime-netfields
+    21  m_Weather  [property] 0x20:Net;
+    22  m_fToDOffset  [property] 0x20:Net;
+    23  m_eToDPeriod  [property] 0x20:Net;
+    24  m_bActive  [property] 0x20:Net;
+
+class cVehicleCargoInventory extends Actor
+  base=21 ownSlots=6 fieldMax=27 (derived from Actor) [APBGame] source=runtime-netfields
+    21  m_nNumTaskItems  [property] 0x20:Net;
+    22  m_eCurrentCargoType  [property] 0x20:Net;
+    23  m_nCurrentPassengers  [property] 0x20:Net;
+    24  m_nCurrentPips  [property] 0x20:Net;
+    25  m_nMaxPassengers  [property] 0x20:Net;
+    26  m_nMaxPips  [property] 0x20:Net;
+
+class cVehicleCustomisationInfo extends cBlobCustomisationInfo
+  base=25 ownSlots=14 fieldMax=39 (derived from cBlobCustomisationInfo) [APBGame] source=runtime-netfields
+    25  m_aFnMods  [property] 0x20:Net;0x100000000:RepNotify;
+    26  m_Chunk_14  [property] 0x20:Net;0x100000000:RepNotify;
+    27  m_Chunk_13  [property] 0x20:Net;0x100000000:RepNotify;
+    28  m_Chunk_12  [property] 0x20:Net;0x100000000:RepNotify;
+    29  m_Chunk_11  [property] 0x20:Net;0x100000000:RepNotify;
+    30  m_Chunk_09  [property] 0x20:Net;0x100000000:RepNotify;
+    31  m_Chunk_08  [property] 0x20:Net;0x100000000:RepNotify;
+    32  m_Chunk_07  [property] 0x20:Net;0x100000000:RepNotify;
+    33  m_Chunk_06  [property] 0x20:Net;0x100000000:RepNotify;
+    34  m_Chunk_05  [property] 0x20:Net;0x100000000:RepNotify;
+    35  m_Chunk_04  [property] 0x20:Net;0x100000000:RepNotify;
+    36  m_Chunk_03  [property] 0x20:Net;0x100000000:RepNotify;
+    37  m_Chunk_02  [property] 0x20:Net;0x100000000:RepNotify;
+    38  m_Chunk_01  [property] 0x20:Net;0x100000000:RepNotify;
+
+class cVendorContactInterface extends ReplicationInfo
+  base=21 ownSlots=1 fieldMax=22 (derived from ReplicationInfo) [APBGame] source=runtime-netfields
+    21  m_bIsActive  [property] 0x20:Net;
+
+class cWeapon extends cItem
+  base=26 ownSlots=9 fieldMax=35 (derived from cItem) [APBGame] source=runtime-netfields
+    26  m_WeaponTypeSettings  [property] 0x20:Net;
+    27  m_PrimaryAmmoPool  [property] 0x20:Net;0x100000000:RepNotify;
+    28  m_RoundsRemaining  [property] 0x20:Net;0x100000000:RepNotify;
+    29  ClientFireRequestFailed  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    30  ClientReload  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    31  ServerStartFire  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    32  ServerCancelReload  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    33  ClientReloadComplete  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    34  ServerStopFire  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+
+class cWeaponCustomisationInfo extends cItemCustomisationInfo
+  base=22 ownSlots=2 fieldMax=24 (derived from cItemCustomisationInfo) [APBGame] source=runtime-netfields
+    22  m_nSkin  [property] 0x20:Net;0x100000000:RepNotify;
+    23  m_aFnMods  [property] 0x20:Net;0x100000000:RepNotify;
+
+class DynamicSMActor extends Actor
+  base=21 ownSlots=5 fieldMax=26 (derived from Actor) [Engine] source=runtime-netfields
+    21  ReplicatedMeshScale3D  [property] 0x20:Net;0x100000000:RepNotify;
+    22  ReplicatedMeshRotation  [property] 0x20:Net;0x100000000:RepNotify;
+    23  ReplicatedMeshTranslation  [property] 0x20:Net;0x100000000:RepNotify;
+    24  ReplicatedMaterial  [property] 0x20:Net;0x100000000:RepNotify;
+    25  ReplicatedMesh  [property] 0x20:Net;0x100000000:RepNotify;
+
+class Emitter extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  bCurrentlyActive  [property] 0x20:Net;0x100000000:RepNotify;
+
+class EmitterSpawnable extends Emitter
+  base=22 ownSlots=1 fieldMax=23 (derived from Emitter) [Engine] source=runtime-netfields
+    22  ParticleTemplate  [property] 0x20:Net;0x100000000:RepNotify;
+
+class FogVolumeDensityInfo extends Info
+  base=21 ownSlots=1 fieldMax=22 (derived from Info) [Engine] source=runtime-netfields
+    21  bEnabled  [property] 0x20:Net;0x100000000:RepNotify;
+
+class GameReplicationInfo extends ReplicationInfo
+  base=21 ownSlots=27 fieldMax=48 (derived from ReplicationInfo) [Engine] source=runtime-netfields
+    21  m_fServerMaxTickRate  [property] 0x20:Net;
+    22  m_fServerSpikeThresholdMS  [property] 0x20:Net;
+    23  m_nServerSpikesPrev  [property] 0x20:Net;
+    24  m_nServerSpikesCurrent  [property] 0x20:Net;
+    25  m_fServerMaxFrameTime  [property] 0x20:Net;
+    26  m_fServerAvgFrameTime  [property] 0x20:Net;
+    27  m_pEngineClientServerDebugManager  [property] 0x20:Net;
+    28  MatchID  [property] 0x20:Net;
+    29  Winner  [property] 0x20:Net;0x40000000:DataBinding;
+    30  MessageOfTheDay  [property] 0x1:Editable;0x20:Net;0x4000:Config;0x40000:GlobalConfig;0x400000:CtorLink;0x40000000:DataBinding;
+    31  ServerRegion  [property] 0x1:Editable;0x20:Net;0x4000:Config;0x40000:GlobalConfig;0x40000000:DataBinding;
+    32  AdminEmail  [property] 0x1:Editable;0x20:Net;0x4000:Config;0x40000:GlobalConfig;0x400000:CtorLink;0x40000000:DataBinding;
+    33  AdminName  [property] 0x1:Editable;0x20:Net;0x4000:Config;0x40000:GlobalConfig;0x400000:CtorLink;0x40000000:DataBinding;
+    34  ShortName  [property] 0x1:Editable;0x20:Net;0x4000:Config;0x40000:GlobalConfig;0x400000:CtorLink;0x40000000:DataBinding;
+    35  ServerName  [property] 0x1:Editable;0x20:Net;0x4000:Config;0x40000:GlobalConfig;0x400000:CtorLink;0x40000000:DataBinding;
+    36  MaxLives  [property] 0x20:Net;0x40000000:DataBinding;
+    37  TimeLimit  [property] 0x20:Net;0x40000000:DataBinding;
+    38  GoalScore  [property] 0x20:Net;0x40000000:DataBinding;
+    39  RemainingMinute  [property] 0x20:Net;0x40000000:DataBinding;
+    40  ElapsedTime  [property] 0x20:Net;0x40000000:DataBinding;
+    41  RemainingTime  [property] 0x20:Net;0x40000000:DataBinding;
+    42  bTrackStats  [property] 0x20:Net;
+    43  bIsArbitrated  [property] 0x20:Net;
+    44  bMatchIsOver  [property] 0x20:Net;0x100000000:RepNotify;
+    45  bMatchHasBegun  [property] 0x20:Net;0x100000000:RepNotify;
+    46  bStopCountDown  [property] 0x20:Net;
+    47  GameClass  [property] 0x20:Net;
+
+class HeightFog extends Info
+  base=21 ownSlots=1 fieldMax=22 (derived from Info) [Engine] source=runtime-netfields
+    21  bEnabled  [property] 0x20:Net;0x100000000:RepNotify;
+
+class Inventory extends Actor
+  base=21 ownSlots=3 fieldMax=24 (derived from Actor) [Engine] source=runtime-netfields
+    21  InvManager  [property] 0x20:Net;
+    22  Inventory  [property] 0x20:Net;
+    23  ClientGivenTo  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+
+class InventoryManager extends Actor
+  base=21 ownSlots=4 fieldMax=25 (derived from Actor) [Engine] source=runtime-netfields
+    21  InventoryChain  [property] 0x20:Net;
+    22  SetCurrentWeapon  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    23  ServerSetCurrentWeapon  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    24  ClientSyncWeapon  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+
+class KActor extends DynamicSMActor
+  base=26 ownSlots=5 fieldMax=31 (derived from DynamicSMActor) [Engine] source=runtime-netfields
+    26  DrawScaleZ  [property] 0x20:Net;0x100000000:RepNotify;
+    27  DrawScaleY  [property] 0x20:Net;0x100000000:RepNotify;
+    28  DrawScaleX  [property] 0x20:Net;0x100000000:RepNotify;
+    29  RBState  [property] 0x2:Const;0x20:Net;0x1000:Native;
+    30  bWakeOnLevelStart  [property] 0x1:Editable;0x20:Net;0x100000000:RepNotify;
+
+class KAsset extends Actor
+  base=21 ownSlots=2 fieldMax=23 (derived from Actor) [Engine] source=runtime-netfields
+    21  ReplicatedPhysAsset  [property] 0x20:Net;0x100000000:RepNotify;
+    22  ReplicatedMesh  [property] 0x20:Net;0x100000000:RepNotify;
+
+class LensFlareSource extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  bCurrentlyActive  [property] 0x20:Net;0x100000000:RepNotify;
+
+class Light extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  bEnabled  [property] 0x20:Net;0x100000000:RepNotify;
+
+class MatineeActor extends Actor
+  base=21 ownSlots=6 fieldMax=27 (derived from Actor) [Engine] source=runtime-netfields
+    21  Position  [property] 0x20:Net;
+    22  PlayRate  [property] 0x20:Net;
+    23  bPaused  [property] 0x20:Net;
+    24  bReversePlayback  [property] 0x20:Net;
+    25  bIsPlaying  [property] 0x20:Net;
+    26  InterpAction  [property] 0x2:Const;0x20:Net;
+
+class NxForceField extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  bForceActive  [property] 0x1:Editable;0x20:Net;
+
+class Pawn extends Actor
+  base=21 ownSlots=21 fieldMax=42 (derived from Actor) [Engine] source=runtime-netfields
+    21  FlashLocation  [property] 0x20:Net;0x100000000:RepNotify;
+    22  TearOffMomentum  [property] 0x20:Net;
+    23  HitDamageType  [property] 0x20:Net;
+    24  TakeHitLocation  [property] 0x20:Net;
+    25  PlayerReplicationInfo  [property] 0x20:Net;0x100000000:RepNotify;
+    26  Health  [property] 0x1:Editable;0x20:Net;0x100000000:RepNotify;
+    27  CrouchedPct  [property] 0x20:Net;
+    28  WalkingPct  [property] 0x20:Net;
+    29  AirControl  [property] 0x20:Net;
+    30  JumpZ  [property] 0x20:Net;
+    31  AccelRate  [property] 0x20:Net;
+    32  AirSpeed  [property] 0x20:Net;
+    33  WaterSpeed  [property] 0x20:Net;
+    34  GroundSpeed  [property] 0x20:Net;
+    35  FiringMode  [property] 0x20:Net;0x100000000:RepNotify;
+    36  FlashCount  [property] 0x20:Net;0x100000000:RepNotify;
+    37  RemoteViewPitch  [property] 0x2:Const;0x20:Net;
+    38  bSimulateGravity  [property] 0x2:Const;0x20:Net;
+    39  bIsCrouched  [property] 0x2:Const;0x20:Net;
+    40  bIsWalking  [property] 0x20:Net;
+    41  Controller  [property] 0x20:Net;0x100000000:RepNotify;
+
+class PhysXEmitterSpawnable extends Emitter
+  base=22 ownSlots=1 fieldMax=23 (derived from Emitter) [Engine] source=runtime-netfields
+    22  ParticleTemplate  [property] 0x20:Net;0x100000000:RepNotify;
+
+class PickupFactory extends NavigationPoint
+  base=21 ownSlots=1 fieldMax=22 (derived from NavigationPoint) [Engine] source=runtime-netfields
+    21  bPickupHidden  [property] 0x20:Net;0x100000000:RepNotify;
+
+class PlayerController extends Controller
+  base=26 ownSlots=101 fieldMax=127 (derived from Controller) [Engine] source=runtime-netfields
+    26  TargetEyeHeight  [property] 0x20:Net;
+    27  TargetViewRotation  [property] 0x20:Net;
+    28  ClientDrawCoordinateSystem  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    29  ClientTravel  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    30  ClientConvolve  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x40000:Private;0x1000000:NetClient;
+    31  ServerProcessConvolve  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x40000:Private;0x200000:NetServer;
+    32  ServerAddPeer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    33  ServerRemovePeer  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    34  ServerShortTimeout  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    35  ClientReset  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    36  ServerSetUniquePlayerId  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;0x800000:HasDefaults;
+    37  ClientInitializeDataStores  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    38  ClientGotoState  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    39  AskForPawn  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    40  GivePawn  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    41  ServerAcknowledgePossession  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    42  ClientSetHUD  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    43  ReceiveLocalizedMessage  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    44  ClientPlaySound  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    45  ClientHearSound  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    46  Kismet_ClientPlaySound  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    47  Kismet_ClientStopSound  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    48  ClientPlayActorFaceFXAnim  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    49  ClientMessage  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    50  TeamMessage  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    51  ServerMutate  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    52  ServerCamera  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    53  ClientSetCameraMode  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    54  DualServerMove  [function] 0x1:Final;0x40:Net;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    55  OldServerMove  [function] 0x1:Final;0x40:Net;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    56  ServerMove  [function] 0x40:Net;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    57  VeryShortClientAdjustPosition  [function] 0x1:Final;0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x20000:Public;0x800000:HasDefaults;0x1000000:NetClient;
+    58  ShortClientAdjustPosition  [function] 0x1:Final;0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x20000:Public;0x800000:HasDefaults;0x1000000:NetClient;
+    59  ClientCapBandwidth  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    60  ClientAckGoodMove  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    61  ClientAdjustPosition  [function] 0x1:Final;0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x20000:Public;0x800000:HasDefaults;0x1000000:NetClient;
+    62  ServerSetNetSpeed  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    63  LongClientAdjustPosition  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    64  ServerUpdatePing  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    65  ServerRestartGame  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    66  ServerSpeech  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    67  ServerPause  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    68  ServerUTrace  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    69  ServerSuicide  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    70  ServerChangeName  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    71  ClientClearProgressMessages  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    72  ClientSetProgressMessage  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    73  ClientSetProgressTime  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    74  ServerNotifyLoadedWorld  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    75  ClientRestart  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    76  ClientGameEnded  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    77  ClientSetViewTarget  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    78  ServerVerifyViewTarget  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    79  SyncState  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    80  ServerSyncState  [function] 0x40:Net;0x800:Event;0x20000:Public;0x200000:NetServer;
+    81  UnrealiableClientGotoState  [function] 0x2:Defined;0x40:Net;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    82  ServerViewNextPlayer  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    83  ServerViewPrevPlayer  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    84  ServerViewSelf  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    85  ClientIgnoreMoveInput  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    86  ClientIgnoreLookInput  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    87  ServerCauseEvent  [function] 0x40:Net;0x20000:Public;0x200000:NetServer;
+    88  ClientPlayForceFeedbackWaveform  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    89  ClientStopForceFeedbackWaveform  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    90  ClientSetCinematicMode  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    91  ClientForceGarbageCollection  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    92  ClientUpdateLevelStreamingStatus  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    93  ServerUpdateLevelVisibilityIndex  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    94  ServerUpdateLevelVisibilityString  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x400:Native;0x800:Event;0x20000:Public;0x200000:NetServer;
+    95  ClientPrepareMapChange  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    96  ClientCommitMapChange  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    97  ClientCancelPendingMapChange  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    98  ClientFlushLevelStreaming  [function] 0x1:Final;0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    99  ClientSetBlockOnAsyncLoading  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    100  ClientSetOnlineStatus  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    101  ClientMutePlayer  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    102  ClientUnmutePlayer  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    103  ServerMutePlayer  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    104  ServerUnmutePlayer  [function] 0x40:Net;0x80:NetReliable;0x800:Event;0x20000:Public;0x200000:NetServer;
+    105  ClientWasKicked  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    106  ClientRegisterForArbitration  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    107  ServerRegisteredForArbitration  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    108  ServerWritenArbitrationEndGameData  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    109  ClientArbitratedMatchEnded  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    110  ClientWriteOnlinePlayerScores  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x800000:HasDefaults;0x1000000:NetClient;
+    111  ClientSetHostUniqueId  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    112  ClientStopNetworkedVoice  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    113  ClientStartNetworkedVoice  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    114  ServerSendMusicInfo  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    115  ClientCrossFadeMusicTrack_PlayTrack  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    116  ClientFadeOutMusicTrack  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    117  ClientAdjustMusicTrackVolume  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    118  AddDebugText  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    119  CommandManagerBridge_Client  [function] 0x40:Net;0x80:NetReliable;0x100:Simulated;0x400:Native;0x20000:Public;0x1000000:NetClient;
+    120  CommandManagerBridge_Server  [function] 0x40:Net;0x80:NetReliable;0x400:Native;0x20000:Public;0x200000:NetServer;
+    121  RemoveDebugText  [function] 0x1:Final;0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x800:Event;0x20000:Public;0x1000000:NetClient;
+    122  ClientRegisterHostStatGuid  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    123  ServerRegisterClientStatGuid  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    124  ClientShowSurvey  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    125  ClientTravelToSession  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x800000:HasDefaults;0x1000000:NetClient;
+    126  ClientReturnToParty  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+
+class PlayerReplicationInfo extends ReplicationInfo
+  base=21 ownSlots=23 fieldMax=44 (derived from ReplicationInfo) [Engine] source=runtime-netfields
+    21  UniqueId  [property] 0x20:Net;0x40000000:DataBinding;0x100000000:RepNotify;
+    22  StartTime  [property] 0x20:Net;
+    23  bControllerVibrationAllowed  [property] 0x20:Net;
+    24  bIsInactive  [property] 0x20:Net;0x100000000:RepNotify;
+    25  bHasFlag  [property] 0x20:Net;0x40000000:DataBinding;
+    26  bBot  [property] 0x20:Net;0x40000000:DataBinding;
+    27  bOutOfLives  [property] 0x20:Net;0x40000000:DataBinding;
+    28  bReadyToPlay  [property] 0x20:Net;0x40000000:DataBinding;
+    29  bWaitingPlayer  [property] 0x20:Net;0x40000000:DataBinding;
+    30  bOnlySpectator  [property] 0x20:Net;0x40000000:DataBinding;
+    31  bIsSpectator  [property] 0x20:Net;0x40000000:DataBinding;
+    32  bIsFemale  [property] 0x20:Net;0x40000000:DataBinding;
+    33  bAdmin  [property] 0x20:Net;0x40000000:DataBinding;
+    34  TeamID  [property] 0x20:Net;
+    35  Team  [property] 0x20:Net;0x100000000:RepNotify;
+    36  PlayerID  [property] 0x20:Net;
+    37  PlayerAlias  [property] 0x20:Net;0x400000:CtorLink;0x40000000:DataBinding;0x100000000:RepNotify;
+    38  PlayerName  [property] 0x20:Net;0x400000:CtorLink;0x40000000:DataBinding;0x100000000:RepNotify;
+    39  PlayerLocationHint  [property] 0x20:Net;
+    40  PacketLoss  [property] 0x20:Net;
+    41  Ping  [property] 0x20:Net;
+    42  Deaths  [property] 0x20:Net;0x40000000:DataBinding;
+    43  Score  [property] 0x20:Net;0x40000000:DataBinding;
+
+class PostProcessVolume extends Volume
+  base=21 ownSlots=1 fieldMax=22 (derived from Volume) [Engine] source=runtime-netfields
+    21  bEnabled  [property] 0x1:Editable;0x20:Net;
+
+class RB_CylindricalForceActor extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  bForceActive  [property] 0x1:Editable;0x20:Net;
+
+class RB_LineImpulseActor extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  ImpulseCount  [property] 0x20:Net;0x100000000:RepNotify;
+
+class RB_RadialForceActor extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  bForceActive  [property] 0x1:Editable;0x20:Net;
+
+class RB_RadialImpulseActor extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  ImpulseCount  [property] 0x20:Net;0x100000000:RepNotify;
+
+class SkeletalMeshActor extends Actor
+  base=21 ownSlots=1 fieldMax=22 (derived from Actor) [Engine] source=runtime-netfields
+    21  ReplicatedMesh  [property] 0x20:Net;0x100000000:RepNotify;
+
+class SVehicle extends Vehicle
+  base=44 ownSlots=3 fieldMax=47 (derived from Vehicle) [Engine] source=runtime-netfields
+    44  VState  [property] 0x2:Const;0x20:Net;0x1000:Native;
+    45  m_NonLocalVehicleState  [property] 0x2:Const;0x20:Net;0x1000:Native;
+    46  m_bNonLocalVehicleReplication  [property] 0x2:Const;0x20:Net;0x1000:Native;
+
+class TeamInfo extends ReplicationInfo
+  base=21 ownSlots=3 fieldMax=24 (derived from ReplicationInfo) [Engine] source=runtime-netfields
+    21  TeamIndex  [property] 0x20:Net;0x40000000:DataBinding;0x100000000:RepNotify;
+    22  Score  [property] 0x20:Net;0x40000000:DataBinding;
+    23  TeamName  [property] 0x2:Const;0x20:Net;0x8000:Localized;0x400000:CtorLink;0x40000000:DataBinding;
+
+class Teleporter extends NavigationPoint
+  base=21 ownSlots=8 fieldMax=29 (derived from NavigationPoint) [Engine] source=runtime-netfields
+    21  TargetVelocity  [property] 0x1:Editable;0x20:Net;
+    22  bEnabled  [property] 0x1:Editable;0x20:Net;
+    23  bReversesZ  [property] 0x1:Editable;0x20:Net;
+    24  bReversesY  [property] 0x1:Editable;0x20:Net;
+    25  bReversesX  [property] 0x1:Editable;0x20:Net;
+    26  bChangesYaw  [property] 0x1:Editable;0x20:Net;
+    27  bChangesVelocity  [property] 0x1:Editable;0x20:Net;
+    28  URL  [property] 0x1:Editable;0x20:Net;0x400000:CtorLink;
+
+class Vehicle extends Pawn
+  base=42 ownSlots=2 fieldMax=44 (derived from Pawn) [Engine] source=runtime-netfields
+    42  bDriving  [property] 0x20:Net;0x100000000:RepNotify;
+    43  Driver  [property] 0x20:Net;0x100000000:RepNotify;
+
+class Weapon extends Inventory
+  base=24 ownSlots=4 fieldMax=28 (derived from Inventory) [Engine] source=runtime-netfields
+    24  ClientWeaponThrown  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x20000:Public;0x1000000:NetClient;
+    25  ClientWeaponSet  [function] 0x2:Defined;0x40:Net;0x80:NetReliable;0x100:Simulated;0x4000:HasOptionalParms;0x20000:Public;0x1000000:NetClient;
+    26  ServerStartFire  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+    27  ServerStopFire  [function] 0x40:Net;0x80:NetReliable;0x20000:Public;0x200000:NetServer;
+
+class WorldInfo extends ZoneInfo
+  base=21 ownSlots=7 fieldMax=28 (derived from ZoneInfo) [Engine] source=runtime-netfields
+    21  WorldGravityZ  [property] 0x20:Net;0x2000:Transient;
+    22  m_ePhysCorrectMode  [property] 0x20:Net;
+    23  Pauser  [property] 0x20:Net;
+    24  TimeDilation  [property] 0x20:Net;
+    25  bHighPriorityLoading  [property] 0x20:Net;
+    26  bLCCollidesLC  [property] 0x1:Editable;0x20:Net;
+    27  bPlayerCollidesLC  [property] 0x1:Editable;0x20:Net;
+

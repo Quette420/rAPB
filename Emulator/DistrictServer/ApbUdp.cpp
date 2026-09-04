@@ -2163,7 +2163,30 @@ namespace ApbUdp
     {
         BitWriter payload;
         payload.WriteBoundedInt(fieldIndex, fieldMax);
-        payload.WriteName(packageName, 0, nameIncludesNumber);
+
+        // NameProperty является top-level RPC parameter.
+        // Сначала идёт delta/presence bit, затем SerializeName().
+        const bool packageNamePresent = !packageName.empty();
+
+        // Top-level NameProperty parameter delta/presence.
+        payload.WriteBit(packageNamePresent);
+
+        if (packageNamePresent)
+        {
+            // UPackageMap::SerializeName:
+            // false = non-hardcoded name, FString follows.
+            payload.WriteBit(false);
+
+            // Plain name string.
+            payload.WriteFString(
+                packageName,
+                true);
+
+            // FName Number. Ordinary package name has Number == 0.
+            payload.WriteBits(
+                0u,
+                32);
+        }
 
         // The parameter tail is configurable because the client consumes fewer
         // bits than we write: leftover bits decode as a second field index

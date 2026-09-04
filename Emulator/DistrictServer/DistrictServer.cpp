@@ -40,6 +40,87 @@ std::mutex g_channelSequenceMutex;
 std::map<std::pair<std::uint32_t, std::uint16_t>, std::uint16_t>
     g_channelSequences;
 
+struct GriStartupState
+{
+    std::uint32_t OpenPacketId = 0;
+    bool OpenPacketTracked = false;
+    bool OpenAcked = false;
+    bool MatchHasBegunSent = false;
+};
+
+std::mutex g_griStartupMutex;
+
+std::map<std::uint32_t, GriStartupState>
+    g_griStartupStates;
+
+void ResetGriStartupState(Account* account)
+{
+    if (account == nullptr)
+        return;
+
+    std::lock_guard<std::mutex> guard(
+        g_griStartupMutex);
+
+    g_griStartupStates.erase(
+        account->GetId());
+}
+
+void TrackGriOpenPacket(
+    Account* account,
+    std::uint32_t packetId)
+{
+    if (account == nullptr)
+        return;
+
+    std::lock_guard<std::mutex> guard(
+        g_griStartupMutex);
+
+    GriStartupState& state =
+        g_griStartupStates[account->GetId()];
+
+    state.OpenPacketId = packetId;
+    state.OpenPacketTracked = true;
+    state.OpenAcked = false;
+    state.MatchHasBegunSent = false;
+}
+
+bool ConsumeGriOpenAck(
+    Account* account,
+    std::uint32_t acknowledgedPacketId)
+{
+    if (account == nullptr)
+        return false;
+
+    std::lock_guard<std::mutex> guard(
+        g_griStartupMutex);
+
+    auto it =
+        g_griStartupStates.find(
+            account->GetId());
+
+    if (it == g_griStartupStates.end())
+        return false;
+
+    GriStartupState& state = it->second;
+
+    if (!state.OpenPacketTracked)
+        return false;
+
+    if (state.OpenPacketId != acknowledgedPacketId)
+        return false;
+
+    state.OpenAcked = true;
+
+    if (state.MatchHasBegunSent)
+        return false;
+
+    // Сразу резервируем флаг, чтобы повторные ACK
+    // не породили второй property update.
+    state.MatchHasBegunSent = true;
+
+    return true;
+}
+
 std::uint16_t AllocateChannelSequence(
     Account* account,
     std::uint16_t channelIndex)
@@ -893,6 +974,10 @@ constexpr std::uint32_t kFieldPlayerReplicationInfo = 21u;
 constexpr std::uint32_t kControllerFieldMax = 684u;   // cAPBPlayerController
 constexpr std::uint32_t kGriFieldMax        = 63u;    // cAPBGameReplicationInfo
 constexpr std::uint32_t kFieldAskDistrictEnter = 138u;
+// LIVE FClassNetCache:
+// Engine.GameReplicationInfo.bMatchHasBegun
+// в контексте APBGame.cAPBGameReplicationInfo, FieldMax=63.
+constexpr std::uint32_t kFieldGriMatchHasBegun = 45u;
 constexpr std::uint32_t kFieldAnsDistrictEnter = 139u;
 constexpr std::uint32_t kFieldServerUseAutoReady = 670u;
 constexpr std::uint32_t kFieldServerSyncState    = 80u;
@@ -905,6 +990,96 @@ constexpr std::uint32_t kFieldClientGoToSpawnZoneSelectScreen = 390u;
 //     byte Faction,
 //     byte Gender)
 constexpr std::uint32_t kFieldClientSetInitialState = 573u;
+// APB 1.13.1 LIVE FClassNetCache.
+constexpr std::uint32_t kFieldClientUpdateLevelStreamingStatus = 92u;
+constexpr std::uint32_t kFieldServerUpdateLevelVisibilityIndex = 93u;
+constexpr std::uint32_t kFieldServerUpdateLevelVisibilityString = 94u;
+constexpr std::uint32_t kFieldClientFlushLevelStreaming         = 98u;
+constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
+
+struct StreamingPlanEntry
+{
+    const char* PackageName;
+    bool ShouldBeLoaded;
+    bool ShouldBeVisible;
+    bool ShouldBlockOnLoad;
+};
+
+constexpr StreamingPlanEntry kSocialStreamingPlan[] =
+{
+    {
+        "rworldsocialdistrict_artprops_blockout",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_tile_000_000_block_250_000terrain",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_design",
+        true, true, false
+    },
+
+    // Character/vehicle customisation streaming levels exist in the
+    // master StreamingLevels array, but should remain unloaded here.
+    {
+        "cc_background_1",
+        false, false, false
+    },
+    {
+        "cc_matinee",
+        false, false, false
+    },
+    {
+        "vc_matinee",
+        false, false, false
+    },
+    {
+        "wardrobe_matinee",
+        false, false, false
+    },
+
+    {
+        "rworldsocialdistrict_block01",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_block02",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_block03",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_block04",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_props_block01",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_props_block02",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_props_block03",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_props_block04",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_vista",
+        true, true, false
+    },
+    {
+        "rworldsocialdistrict_beacons",
+        true, true, false
+    }
+};
 
 // UPackageMap::Compute() назначает основания как бегущую сумму по списку
 // в порядке отправки Uses. Порядок наш, поэтому индексы задаём мы.
@@ -921,6 +1096,67 @@ std::uint32_t PackageFirstNetIndex(const char* name)
     Logger(lERROR, "District Net",
         "Package '%s' is not in kPackages", name);
     return kBadNetIndex;
+}
+
+bool SendGriMatchHasBegun(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr)
+        return false;
+
+    const std::uint32_t packetId =
+        account->AllocateServerPacketId();
+
+    const std::uint16_t sequence =
+        AllocateChannelSequence(
+            account,
+            kGriChannel);
+
+    std::vector<std::uint8_t> packet =
+        ApbUdp::BuildActorBoolFieldPacket(
+            packetId,
+            kGriChannel,
+            sequence,
+            kFieldGriMatchHasBegun,
+            kGriFieldMax,
+            true);
+
+    if (packet.empty())
+    {
+        Logger(
+            lERROR,
+            "District GRI Startup",
+            "BuildActorBoolFieldPacket returned empty for "
+            "bMatchHasBegun.");
+
+        return false;
+    }
+
+    const bool sent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            packet,
+            "GRI-MATCH-HAS-BEGUN");
+
+    Logger(
+        sent ? lSUCCESS : lERROR,
+        "District GRI Startup",
+        "bMatchHasBegun=true sent=%d "
+        "packetId=%u ch=%u seq=%u field=%u fieldMax=%u",
+        sent ? 1 : 0,
+        static_cast<unsigned int>(packetId),
+        static_cast<unsigned int>(kGriChannel),
+        static_cast<unsigned int>(sequence),
+        static_cast<unsigned int>(
+            kFieldGriMatchHasBegun),
+        static_cast<unsigned int>(
+            kGriFieldMax));
+
+    return sent;
 }
 
 std::uint32_t GlobalNetIndex(const char* package, std::uint32_t localNetIndex)
@@ -1369,6 +1605,140 @@ bool SendPackageUses(
         return sent;
     }
 
+bool SendSocialLevelStreaming(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr)
+        return false;
+
+    constexpr std::size_t planCount =
+        sizeof(kSocialStreamingPlan) /
+        sizeof(kSocialStreamingPlan[0]);
+
+    Logger(
+        lINFO,
+        "District Streaming",
+        "Starting Social streaming plan: entries=%u",
+        static_cast<unsigned int>(planCount));
+
+    for (std::size_t index = 0;
+         index < planCount;
+         ++index)
+    {
+        const StreamingPlanEntry& entry =
+            kSocialStreamingPlan[index];
+
+        const std::uint32_t packetId =
+            account->AllocateServerPacketId();
+
+        const std::uint16_t sequence =
+            AllocateChannelSequence(
+                account,
+                kControllerChannel);
+
+        std::vector<std::uint8_t> packet =
+            ApbUdp::BuildLevelStreamingStatusPacket(
+                packetId,
+                kControllerChannel,
+                sequence,
+                kFieldClientUpdateLevelStreamingStatus,
+                kControllerFieldMax,
+                entry.PackageName,
+                entry.ShouldBeLoaded,
+                entry.ShouldBeVisible,
+                entry.ShouldBlockOnLoad,
+                false,
+                3);
+
+        if (packet.empty())
+        {
+            Logger(
+                lERROR,
+                "District Streaming",
+                "BuildLevelStreamingStatusPacket returned empty: "
+                "entry=%u package=%s",
+                static_cast<unsigned int>(index + 1),
+                entry.PackageName);
+
+            return false;
+        }
+
+        const bool sent =
+            SendProtectedPacket(
+                socket,
+                endpoint,
+                account,
+                packet,
+                "LEVEL-STREAM");
+
+        Logger(
+            sent ? lSUCCESS : lERROR,
+            "District Streaming",
+            "ClientUpdateLevelStreamingStatus sent=%d "
+            "entry=%u/%u packetId=%u ch=%u seq=%u field=%u "
+            "package='%s' loaded=%d visible=%d block=%d",
+            sent ? 1 : 0,
+            static_cast<unsigned int>(index + 1),
+            static_cast<unsigned int>(planCount),
+            static_cast<unsigned int>(packetId),
+            static_cast<unsigned int>(kControllerChannel),
+            static_cast<unsigned int>(sequence),
+            static_cast<unsigned int>(
+                kFieldClientUpdateLevelStreamingStatus),
+            entry.PackageName,
+            entry.ShouldBeLoaded ? 1 : 0,
+            entry.ShouldBeVisible ? 1 : 0,
+            entry.ShouldBlockOnLoad ? 1 : 0);
+
+        if (!sent)
+            return false;
+
+        Logger(
+            lINFO,
+            "District Streaming",
+            "DIAGNOSTIC: first corrected field-92 packet sent; "
+            "stopping before remaining entries and Flush.");
+
+        return true;
+    }
+
+
+    // -------------------------------------------------------------
+    // Ниже временно недостижимый код.
+    // Вернём его после проверки всех field 92.
+    // -------------------------------------------------------------
+    const std::uint32_t flushPacketId =
+        account->AllocateServerPacketId();
+
+    const std::uint16_t flushSequence =
+        AllocateChannelSequence(
+            account,
+            kControllerChannel);
+
+    std::vector<std::uint8_t> flushPacket =
+        ApbUdp::BuildActorVoidFieldPacket(
+            flushPacketId,
+            kControllerChannel,
+            flushSequence,
+            kFieldClientFlushLevelStreaming,
+            kControllerFieldMax);
+
+    if (flushPacket.empty())
+        return false;
+
+    const bool flushSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            flushPacket,
+            "FLUSH-STREAMING");
+
+    return flushSent;
+}
+
         bool ProcessBinaryHandshakePacket(
         SOCKET socket,
         const sockaddr_in& endpoint,
@@ -1684,6 +2054,7 @@ bool SendPackageUses(
                     account->SetHandshakeState(
                         Account::HandshakeState::Complete);
                     ResetChannelSequences(account);
+					ResetGriStartupState(account);
 
                     Logger(lSUCCESS, "District Net",
                         "NMT_Join(9) from account %u",
@@ -1739,16 +2110,39 @@ bool SendPackageUses(
                         const std::uint16_t griSequence =
                             AllocateChannelSequence(account, kGriChannel);
 
-                        std::vector<std::uint8_t> griOpen =
-                            ApbUdp::BuildActorOpenPacket(
-                                account->AllocateServerPacketId(),
-                                kGriChannel,
-                                griSequence,
-                                griArchetype,
-                                0.0f, 0.0f, 0.0f);
+                        const std::uint32_t griOpenPacketId =
+    					account->AllocateServerPacketId();
+
+						std::vector<std::uint8_t> griOpen =
+    						ApbUdp::BuildActorOpenPacket(
+        						griOpenPacketId,
+        						kGriChannel,
+        						griSequence,
+        						griArchetype,
+        						0.0f, 0.0f, 0.0f);
 
                         const bool griSent = SendProtectedPacket(
                             socket, endpoint, account, griOpen, "GRI-OPEN");
+						if (griSent)
+{
+    TrackGriOpenPacket(
+        account,
+        griOpenPacketId);
+
+    Logger(
+        lINFO,
+        "District GRI Startup",
+        "Tracking GRI actor-open ACK: "
+        "account=%u packetId=%u ch=%u seq=%u",
+        static_cast<unsigned int>(
+            account->GetId()),
+        static_cast<unsigned int>(
+            griOpenPacketId),
+        static_cast<unsigned int>(
+            kGriChannel),
+        static_cast<unsigned int>(
+            griSequence));
+}
 
                         Logger(griSent ? lSUCCESS : lERROR, "District Net",
                             "GRI open sent=%d ch=%u seq=%u archetypeNetIndex=%u",
@@ -1773,6 +2167,60 @@ bool SendPackageUses(
 
         return handledAny;
     }
+
+	void ProcessServerPacketAcks(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account,
+    const ApbUdp::Packet& packet)
+{
+    if (account == nullptr)
+        return;
+
+    for (const ApbUdp::Bunch& bunch :
+         packet.Bunches)
+    {
+        if (bunch.Kind !=
+            ApbUdp::BunchKind::Ack)
+        {
+            continue;
+        }
+
+        const std::uint32_t ackedPacketId =
+            bunch.AckPacketId;
+
+        if (!ConsumeGriOpenAck(
+                account,
+                ackedPacketId))
+        {
+            continue;
+        }
+
+        Logger(
+            lSUCCESS,
+            "District GRI Startup",
+            "GRI actor-open ACK received: "
+            "account=%u ACK(%u). "
+            "Sending bMatchHasBegun=true.",
+            static_cast<unsigned int>(
+                account->GetId()),
+            static_cast<unsigned int>(
+                ackedPacketId));
+
+        if (!SendGriMatchHasBegun(
+                socket,
+                endpoint,
+                account))
+        {
+            Logger(
+                lERROR,
+                "District GRI Startup",
+                "Failed to send "
+                "bMatchHasBegun=true after "
+                "GRI actor-open ACK.");
+        }
+    }
+}
 
     bool ProcessAuthPacket(
         SOCKET socket,
@@ -2093,10 +2541,37 @@ bool SendPackageUses(
                 static_cast<unsigned int>(kControllerFieldMax),
                 static_cast<unsigned int>(parameterBits));
 
-                        if (sent)
+            if (sent)
             {
+                // Reference lifecycle:
+                // ANS_DISTRICT_ENTER
+                //   -> 750 ms settle
+                //   -> 500 ms GRI/startup settle
+                //   -> ClientSetHUD
+                //   -> 250 ms
+                //   -> ClientSetInitialState
+                //   -> 50 ms
+                //   -> ClientGoToSpawnZoneSelectScreen
+                //   -> 250 ms
+                //   -> STOP before streaming
+
+                Logger(
+                    lINFO,
+                    "District Bootstrap",
+                    "ANS_DISTRICT_ENTER sent; waiting 750 ms before "
+                    "controller startup.");
+
+                Sleep(750);
+
+                Logger(
+                    lINFO,
+                    "District Bootstrap",
+                    "Waiting 500 ms GRI/startup settle.");
+
+                Sleep(500);
+
                 // ---------------------------------------------------------
-                // Stage 1: базовый local-player bootstrap.
+                // Stage 1: HUD.
                 // ---------------------------------------------------------
                 const bool hudSent =
                     SendClientSetHUD(
@@ -2107,43 +2582,99 @@ bool SendPackageUses(
                             "APBGame",
                             kHudClassLocalNetIndex));
 
-                const bool priSent =
-                    hudSent &&
-                    SendPlayerReplicationInfo(
-                        socket,
-                        endpoint,
-                        account);
+                if (!hudSent)
+                {
+                    Logger(
+                        lERROR,
+                        "District Bootstrap",
+                        "ClientSetHUD failed; stopping bootstrap.");
+
+                    return sent;
+                }
+
+                // Reference HUD -> startup settle.
+                Sleep(250);
 
                 // ---------------------------------------------------------
-                // Stage 2: сообщить клиенту identity локального персонажа.
+                // IMPORTANT:
+                // PRI is intentionally NOT opened here.
+                // Reference emulator creates/links PRI later with pawn bootstrap.
+                // ---------------------------------------------------------
+
+                // ---------------------------------------------------------
+                // Stage 2: local character identity.
                 // ---------------------------------------------------------
                 const bool initialStateSent =
-                    priSent &&
                     SendClientSetInitialState(
                         socket,
                         endpoint,
                         account);
 
+                if (!initialStateSent)
+                {
+                    Logger(
+                        lERROR,
+                        "District Bootstrap",
+                        "ClientSetInitialState failed; stopping bootstrap.");
+
+                    return sent;
+                }
+
+                Sleep(50);
+
                 // ---------------------------------------------------------
-                // Stage 3: перевести контроллер в spawn-zone / MapSelect
-                // startup path.
+                // Stage 3: MapSelect.
                 // ---------------------------------------------------------
                 const bool spawnZoneScreenSent =
-                    initialStateSent &&
                     SendClientGoToSpawnZoneSelectScreen(
                         socket,
                         endpoint,
                         account);
 
+                if (!spawnZoneScreenSent)
+                {
+                    Logger(
+                        lERROR,
+                        "District Bootstrap",
+                        "ClientGoToSpawnZoneSelectScreen failed; "
+                        "stopping bootstrap.");
+
+                    return sent;
+                }
+
+                // Give BeginState(Map Select) time to complete.
+                Sleep(250);
+
+                // ---------------------------------------------------------
+                // Stage 4: Social district streaming.
+                // 17 x ClientUpdateLevelStreamingStatus
+                // + ClientFlushLevelStreaming
+                // ---------------------------------------------------------
+                const bool streamingSent =
+                    SendSocialLevelStreaming(
+                        socket,
+                        endpoint,
+                        account);
+
+                if (!streamingSent)
+                {
+                    Logger(
+                        lERROR,
+                        "District Streaming",
+                        "Corrected field-92 diagnostic failed.");
+
+                    return sent;
+                }
+
                 Logger(
-                    spawnZoneScreenSent ? lSUCCESS : lERROR,
+                    lSUCCESS,
                     "District Bootstrap",
-                    "post-enter bootstrap: HUD=%d PRI=%d "
-                    "InitialState=%d SpawnZoneScreen=%d",
+                    "post-enter bootstrap: HUD=%d PRI=DEFERRED "
+                    "InitialState=%d SpawnZoneScreen=%d Streaming=%d",
                     hudSent ? 1 : 0,
-                    priSent ? 1 : 0,
                     initialStateSent ? 1 : 0,
-                    spawnZoneScreenSent ? 1 : 0);
+                    spawnZoneScreenSent ? 1 : 0,
+                    streamingSent ? 1 : 0);
             }
 
             return sent;
@@ -2369,7 +2900,29 @@ bool SendPackageUses(
                     }
                 }
             }
-            
+            // Client ACKs of packets previously sent by the server.
+// Process these before controller RPCs from the same incoming
+// packet: ACK(GRI-OPEN) and ASK_DISTRICT_ENTER may arrive together.
+{
+    Account* ackedAccount =
+        endpointAccount;
+
+    if (ackedAccount == nullptr)
+    {
+        ackedAccount =
+            FindAccountByEndpoint(
+                remoteAddress);
+    }
+
+    if (ackedAccount != nullptr)
+    {
+        ProcessServerPacketAcks(
+            socketHandle,
+            remoteAddress,
+            ackedAccount,
+            packet);
+    }
+}
 
             // Packet ACK only retires transport reliability. Handle the APB
             // application-level PlayerController RPC separately.
