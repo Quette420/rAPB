@@ -966,9 +966,10 @@ constexpr std::uint16_t kPriChannel = 5u;
 // Live probe: NetIndex=13199 @0x06BD5A80. Глобальный: 33506 + 13199 = 46705.
 constexpr std::uint32_t kPriLocalNetIndex = 13199u;
 
-// LIVE FClassNetCache, Engine.Controller.PlayerReplicationInfo,
-// ObjectProperty, ConditionIndex=21.
-constexpr std::uint32_t kFieldPlayerReplicationInfo = 21u;
+// APBGame.Default__cAPBPawn
+// Local NetIndex = 3764
+// Global NetIndex = 33506 + 3764 = 37270
+constexpr std::uint32_t kPawnLocalNetIndex = 3764u;
 
 // LIVE FClassNetCache, APB 1.13.1:
 constexpr std::uint32_t kControllerFieldMax = 684u;   // cAPBPlayerController
@@ -996,6 +997,35 @@ constexpr std::uint32_t kFieldServerUpdateLevelVisibilityIndex = 93u;
 constexpr std::uint32_t kFieldServerUpdateLevelVisibilityString = 94u;
 constexpr std::uint32_t kFieldClientFlushLevelStreaming         = 98u;
 constexpr std::uint32_t kFieldServerNotifyClientLoaded          = 419u;
+    // ---------------------------------------------------------
+    // APB 1.13.1 live-derived ClassNetCache
+    // cAPBPlayerController: fieldMax = 684
+    // cAPBPawn:             fieldMax = 123
+    // ---------------------------------------------------------
+
+    constexpr std::uint32_t kPlayerControllerFieldMax = 684u;
+    constexpr std::uint32_t kPawnFieldMax             = 123u;
+
+    // Engine.PlayerController / cAPBPlayerController inherited fields.
+    constexpr std::uint32_t kFieldPlayerReplicationInfo = 21u;
+    constexpr std::uint32_t kFieldControllerPawn        = 22u;
+
+    constexpr std::uint32_t kFieldGivePawn             = 40u;
+    constexpr std::uint32_t kFieldClientRestart        = 75u;
+    constexpr std::uint32_t kFieldClientSetViewTarget  = 77u;
+    constexpr std::uint32_t kFieldClientIgnoreMoveInput = 85u;
+
+    constexpr std::uint32_t kFieldControllerDead = 199u;
+
+    // cAPBPawn inherited fields.
+    constexpr std::uint32_t kFieldPawnPlayerReplicationInfo = 25u;
+    constexpr std::uint32_t kFieldPawnController            = 41u;
+
+    constexpr std::uint32_t kFieldPawnControllerCharacterUid = 68u;
+    constexpr std::uint32_t kFieldPawnCustomisationGuids     = 77u;
+    constexpr std::uint32_t kFieldPawnGender                 = 96u;
+    constexpr std::uint32_t kFieldPawnFaction                = 97u;
+    constexpr std::uint32_t kFieldPawnIsWinded               = 107u;
 
 struct StreamingPlanEntry
 {
@@ -1358,6 +1388,200 @@ bool SendPackageUses(
 
         return linkSent;
     }
+    
+    bool SendPlayerPawn(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr)
+        return false;
+
+    constexpr float spawnX = 33063.848f;
+    constexpr float spawnY = 37346.258f;
+    constexpr float spawnZ = 1328.0f;
+
+    const std::uint32_t pawnArchetype =
+        GlobalNetIndex(
+            "APBGame",
+            kPawnLocalNetIndex);
+
+    if (pawnArchetype == kBadNetIndex)
+    {
+        Logger(
+            lERROR,
+            "District Pawn",
+            "Could not resolve Default__cAPBPawn.");
+        return false;
+    }
+
+    // ---------------------------------------------------------
+    // 1. Open Pawn actor channel.
+    // ---------------------------------------------------------
+
+    const std::uint32_t pawnOpenPacketId =
+        account->AllocateServerPacketId();
+
+    const std::uint16_t pawnOpenSequence =
+        AllocateChannelSequence(
+            account,
+            kPawnChannel);
+
+    const std::vector<std::uint8_t> pawnOpen =
+        ApbUdp::BuildActorOpenPacket(
+            pawnOpenPacketId,
+            kPawnChannel,
+            pawnOpenSequence,
+            pawnArchetype,
+            spawnX,
+            spawnY,
+            spawnZ);
+
+    const bool pawnOpenSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            pawnOpen,
+            "PAWN-OPEN");
+
+    Logger(
+        pawnOpenSent ? lSUCCESS : lERROR,
+        "District Pawn",
+        "Pawn open sent=%d packetId=%u ch=%u seq=%u "
+        "archetype=%u location=(%.3f %.3f %.3f)",
+        pawnOpenSent ? 1 : 0,
+        pawnOpenPacketId,
+        static_cast<unsigned int>(kPawnChannel),
+        static_cast<unsigned int>(pawnOpenSequence),
+        pawnArchetype,
+        spawnX,
+        spawnY,
+        spawnZ);
+
+    if (!pawnOpenSent)
+        return false;
+
+    Sleep(50);
+
+    // ---------------------------------------------------------
+    // 2. Pawn.PlayerReplicationInfo = PRI channel 5
+    //
+    // cAPBPawn.PlayerReplicationInfo:
+    // FieldIndex = 25
+    // FieldMax   = 123
+    // ---------------------------------------------------------
+
+    const std::vector<std::uint8_t> pawnPri =
+        ApbUdp::BuildActorObjectFieldPacket(
+            account->AllocateServerPacketId(),
+            kPawnChannel,
+            AllocateChannelSequence(
+                account,
+                kPawnChannel),
+            kFieldPawnPlayerReplicationInfo,
+            kPawnFieldMax,
+            kPriChannel);
+
+    const bool pawnPriSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            pawnPri,
+            "PAWN-PRI");
+
+    Logger(
+        pawnPriSent ? lSUCCESS : lERROR,
+        "District Pawn",
+        "Pawn.PlayerReplicationInfo -> ch%u field=%u sent=%d",
+        static_cast<unsigned int>(kPriChannel),
+        kFieldPawnPlayerReplicationInfo,
+        pawnPriSent ? 1 : 0);
+
+    if (!pawnPriSent)
+        return false;
+
+    Sleep(25);
+
+    // ---------------------------------------------------------
+    // 3. Pawn.Controller = PlayerController channel 2
+    //
+    // cAPBPawn.Controller:
+    // FieldIndex = 41
+    // FieldMax   = 123
+    // ---------------------------------------------------------
+
+    const std::vector<std::uint8_t> pawnController =
+        ApbUdp::BuildActorObjectFieldPacket(
+            account->AllocateServerPacketId(),
+            kPawnChannel,
+            AllocateChannelSequence(
+                account,
+                kPawnChannel),
+            kFieldPawnController,
+            kPawnFieldMax,
+            kControllerChannel);
+
+    const bool pawnControllerSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            pawnController,
+            "PAWN-CONTROLLER");
+
+    Logger(
+        pawnControllerSent ? lSUCCESS : lERROR,
+        "District Pawn",
+        "Pawn.Controller -> ch%u field=%u sent=%d",
+        static_cast<unsigned int>(kControllerChannel),
+        kFieldPawnController,
+        pawnControllerSent ? 1 : 0);
+
+    if (!pawnControllerSent)
+        return false;
+
+    Sleep(25);
+
+    // ---------------------------------------------------------
+    // 4. PlayerController.Pawn = Pawn channel 4
+    //
+    // PlayerController.Pawn:
+    // FieldIndex = 22
+    // FieldMax   = 684
+    // ---------------------------------------------------------
+
+    const std::vector<std::uint8_t> controllerPawn =
+        ApbUdp::BuildActorObjectFieldPacket(
+            account->AllocateServerPacketId(),
+            kControllerChannel,
+            AllocateChannelSequence(
+                account,
+                kControllerChannel),
+            kFieldControllerPawn,
+            kPlayerControllerFieldMax,
+            kPawnChannel);
+
+    const bool controllerPawnSent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            controllerPawn,
+            "CONTROLLER-PAWN");
+
+    Logger(
+        controllerPawnSent ? lSUCCESS : lERROR,
+        "District Pawn",
+        "Controller.Pawn -> ch%u field=%u sent=%d",
+        static_cast<unsigned int>(kPawnChannel),
+        kFieldControllerPawn,
+        controllerPawnSent ? 1 : 0);
+
+    return controllerPawnSent;
+}
+    
 	    // Engine.PlayerController.ClientSetHUD(class<HUD>, class<Scoreboard>)
     // LIVE FClassNetCache: field 42, fieldMax 684.
     // Оба параметра -- ClassProperty, идут как ссылки через package map.
@@ -2506,6 +2730,9 @@ bool SendSocialLevelStreaming(
                     "ServerNotifyClientLoaded received: account=%u",
                     account->GetId());
 
+                // ---------------------------------------------------------
+                // Stage 1: PlayerReplicationInfo.
+                // ---------------------------------------------------------
                 const bool priSent =
                     SendPlayerReplicationInfo(
                         socket,
@@ -2517,6 +2744,34 @@ bool SendSocialLevelStreaming(
                     "District Bootstrap",
                     "Post-load PRI sent=%d",
                     priSent ? 1 : 0);
+
+                if (!priSent)
+                {
+                    Logger(
+                        lERROR,
+                        "District Bootstrap",
+                        "PRI failed; Pawn bootstrap cancelled.");
+
+                    continue;
+                }
+
+                // Дать клиенту обработать PRI actor-open + link.
+                Sleep(100);
+
+                // ---------------------------------------------------------
+                // Stage 2: Pawn actor.
+                // ---------------------------------------------------------
+                const bool pawnSent =
+                    SendPlayerPawn(
+                        socket,
+                        endpoint,
+                        account);
+
+                Logger(
+                    pawnSent ? lSUCCESS : lERROR,
+                    "District Bootstrap",
+                    "Post-load Pawn sent=%d",
+                    pawnSent ? 1 : 0);
 
                 continue;
             }
