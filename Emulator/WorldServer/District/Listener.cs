@@ -96,16 +96,20 @@ namespace WorldServer.Districts
 
                     if (GetValue(data[0]) == 0)
                     {
-                        int type = GetValue(data[1]); 
-                        byte ID = (byte)GetValue(data[2]); 
-                        LanguageCodes language = (LanguageCodes)GetValue(data[3]);
+                        // DistrictServer writes a fixed two-digit district
+                        // type: 01=Social, 02=Financial, 21=Waterfront.
+                        // Keeping this fixed-width prevents Waterfront from
+                        // shifting ID/language and all following lengths.
+                        int type = GetValue(data[1]) * 10 + GetValue(data[2]);
+                        byte ID = (byte)GetValue(data[3]);
+                        LanguageCodes language = (LanguageCodes)GetValue(data[4]);
 
                         int iplen = 0;
-                        int a = GetValue(data[4]);
-                        if (a == 1) iplen = GetValue(data[5]);
-                        else if (a == 2) iplen = GetValue(data[5]) * 10 + GetValue(data[6]);
+                        int a = GetValue(data[5]);
+                        if (a == 1) iplen = GetValue(data[6]);
+                        else if (a == 2) iplen = GetValue(data[6]) * 10 + GetValue(data[7]);
 
-                        int position = 5 + a;
+                        int position = 6 + a;
                         string ip = null;
                         for (int i = position; i < position + iplen; i++) ip += Convert.ToChar(data[i]);
                         position += iplen;

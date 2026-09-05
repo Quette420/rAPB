@@ -105,10 +105,13 @@ int Network::SendInitial(
             ? 1
             : 2;
 
+    // The district type is fixed-width.  The old one-character field worked
+    // for Social (1) and Financial (2), but Waterfront (21) shifted every
+    // following field and made WorldServer parse invalid string lengths.
     sprintf_s(
         buffer,
         sizeof(buffer),
-        "%d%d%d%d%d%d%s%d%d%s%d%d%s",
+        "%d%02d%d%d%d%d%s%d%d%s%d%d%s",
         0,
         districtType,
         districtId,

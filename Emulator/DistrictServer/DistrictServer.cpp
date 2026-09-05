@@ -958,6 +958,13 @@ void ResetChannelSequences(Account* account)
         { 0x7DB7FE84, 0x4FD39264, 0x1C467996, 0xF43BBA9C },
         1,
         75
+    },
+    // APB 1.13.1 runtime-probed Waterfront spawn package
+    {
+        "waterfrontdistrict_hubspawns",
+        { 0xD444698D, 0x431D6848, 0x0A86CEB9, 0xA55E5BE7 },
+        1,
+        75
     }
     };
     
@@ -973,6 +980,9 @@ void ResetChannelSequences(Account* account)
 
         case 2:
             return &kPackages[4]; // financialdistrict_hubspawns
+
+        case 21:
+            return &kPackages[5]; // waterfrontdistrict_hubspawns
 
         default:
             return nullptr;
@@ -1319,6 +1329,7 @@ void ResetChannelSequences(Account* account)
     }
 };
 #include "FinancialStreamingPlan.h"
+#include "WaterfrontStreamingPlan.h"
     
     std::uint32_t ReadLittleEndianUInt32(const std::uint8_t* p)
     {
@@ -3068,11 +3079,18 @@ void ResetChannelSequences(Account* account)
             break;
 
         case 21:
-            Logger(
-                lINFO,
-                "District Spawn",
-                "Waterfront Zone_Spawn marker is not measured yet.");
-            return true;
+            // APB 1.13.1 LIVE:
+            // waterfrontdistrict_hubspawns
+            // cPlayerCharacterSpawnZone_11
+            // factionOrdinal=2
+            // m_bMasterSpawnZone=false
+            spawnPackage = "waterfrontdistrict_hubspawns";
+            spawnLocalNet = 28u;
+
+            markerX = 110240.570312f;
+            markerY = 110730.500000f;
+            markerZ = 229.779480f;
+            break;
 
         default:
             Logger(
@@ -3473,12 +3491,12 @@ bool SendDistrictLevelStreaming(
         break;
 
     case 21:
-        Logger(
-            lERROR,
-            "District Streaming",
-            "Waterfront streaming plan is not populated yet.");
-
-        return false;
+        plan = kWaterfrontStreamingPlan;
+        planCount =
+            sizeof(kWaterfrontStreamingPlan) /
+            sizeof(kWaterfrontStreamingPlan[0]);
+        planName = "Waterfront";
+        break;
 
     default:
         Logger(
@@ -4760,6 +4778,13 @@ if (fieldIndex ==
                     expectedSpawnLocalNet = 27u;
                     break;
 
+                case 21:
+                    // APB 1.13.1 live-probed Waterfront faction-2 zone.
+                    expectedSpawnPackage =
+                        "waterfrontdistrict_hubspawns";
+                    expectedSpawnLocalNet = 28u;
+                    break;
+
                 default:
                     Logger(
                         lERROR,
@@ -4822,14 +4847,15 @@ if (fieldIndex ==
             continue;
         }
                 
-                if (districtType == 2)
+                if (districtType == 2 || districtType == 21)
                 {
                     Logger(
                         lSUCCESS,
                         "District Spawn",
-                        "Financial spawn-zone selection CONFIRMED: "
+                        "%s spawn-zone selection CONFIRMED: "
                         "package='%s' localNet=%u globalNet=%u. "
                         "Continuing with Pawn at the selected location.",
+                        districtType == 2 ? "Financial" : "Waterfront",
                         expectedSpawnPackage,
                         static_cast<unsigned int>(
                             expectedSpawnLocalNet),
@@ -4873,35 +4899,40 @@ if (fieldIndex ==
             continue;
         }
 
-        if (districtType == 2)
+        if (districtType == 2 || districtType == 21)
         {
-            // The client entered PlayerSpawnWaitOnStreaming with this exact
-            // location after selecting financialdistrict_hubspawns localNet
-            // 27. Spawn the Pawn there so its location and the streaming
-            // target agree. SendPlayerPawn also supplies the character UID,
-            // faction, gender, compact customisation descriptor and precache
-            // request required by IsStreamingComplete.
-            constexpr float financialSpawnX = 119378.296875f;
-            constexpr float financialSpawnY = 176205.328125f;
-            constexpr float financialSpawnZ = 50.020523f;
+            // Keep the Pawn location aligned with the exact hub spawn actor
+            // selected on the district map. SendPlayerPawn also supplies the
+            // UID, faction, gender, customisation and precache state required
+            // by IsStreamingComplete.
+            const char* districtName =
+                districtType == 2 ? "Financial" : "Waterfront";
+
+            const float spawnX =
+                districtType == 2 ? 119378.296875f : 110240.570312f;
+            const float spawnY =
+                districtType == 2 ? 176205.328125f : 110730.500000f;
+            const float spawnZ =
+                districtType == 2 ? 50.020523f : 229.779480f;
 
             const bool pawnSent = SendPlayerPawn(
                 socket,
                 endpoint,
                 account,
-                financialSpawnX,
-                financialSpawnY,
-                financialSpawnZ);
+                spawnX,
+                spawnY,
+                spawnZ);
 
             Logger(
                 pawnSent ? lSUCCESS : lERROR,
                 "District Spawn",
-                "Financial Pawn/customisation bootstrap sent=%d "
+                "%s Pawn/customisation bootstrap sent=%d "
                 "location=(%.3f %.3f %.3f)",
+                districtName,
                 pawnSent ? 1 : 0,
-                financialSpawnX,
-                financialSpawnY,
-                financialSpawnZ);
+                spawnX,
+                spawnY,
+                spawnZ);
 
             if (!pawnSent)
             {
@@ -5159,7 +5190,7 @@ if (fieldIndex ==
                         "waiting for ServerSelectSpawnZone(field392).",
                         districtType);
 
-                    if (districtType == 2)
+                    if (districtType == 2 || districtType == 21)
                     {
                         const bool spawnMarkerSent =
                             SendSpawnZoneHudMarker(
@@ -5170,7 +5201,8 @@ if (fieldIndex ==
                         Logger(
                             spawnMarkerSent ? lSUCCESS : lERROR,
                             "District Spawn",
-                            "Financial initial Zone_Spawn HUD marker sent=%d",
+                            "%s initial Zone_Spawn HUD marker sent=%d",
+                            districtType == 2 ? "Financial" : "Waterfront",
                             spawnMarkerSent ? 1 : 0);
                     }
 
@@ -5959,7 +5991,7 @@ int main()
             "Configs\\District.conf");
 
     static_assert(
-    std::size(kPackages) >= 5,
+    std::size(kPackages) >= 6,
     "Expected base packages + district-specific packages");
 
     if (g_cfg->GetDistrictType() == 1)

@@ -23,6 +23,14 @@ namespace WorldServer.Districts
                 case DistrictTypes.WATERFRONT:
                     district = new WaterFrontDistrict(ID, language);
                     break;
+                default:
+                    Log.Error(
+                        "RegisterDistrict",
+                        "Unsupported district type " + type + "."
+                    );
+                    tcpClient.Client.Send(new byte[] { 0x30, 0x30 });
+                    tcpClient.Close();
+                    return;
             }
 
             district.tcp = tcpClient;
