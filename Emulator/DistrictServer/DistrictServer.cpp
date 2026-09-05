@@ -2700,14 +2700,13 @@ void ResetChannelSequences(Account* account)
     bool SendPlayerPawn(
     SOCKET socket,
     const sockaddr_in& endpoint,
-    Account* account)
+    Account* account,
+    float spawnX = 33063.848f,
+    float spawnY = 37346.258f,
+    float spawnZ = 1328.0f)
 {
     if (account == nullptr)
         return false;
-
-    constexpr float spawnX = 33063.848f;
-    constexpr float spawnY = 37346.258f;
-    constexpr float spawnZ = 1328.0f;
 
     const std::uint32_t pawnArchetype =
         GlobalNetIndex(
@@ -4830,15 +4829,13 @@ if (fieldIndex ==
                         "District Spawn",
                         "Financial spawn-zone selection CONFIRMED: "
                         "package='%s' localNet=%u globalNet=%u. "
-                        "Pawn/GivePawn intentionally deferred for this probe.",
+                        "Continuing with Pawn at the selected location.",
                         expectedSpawnPackage,
                         static_cast<unsigned int>(
                             expectedSpawnLocalNet),
                         static_cast<unsigned int>(
                             expectedSpawnZone));
-
-                    continue;
-                }            
+                }
 
         bool startPossession = false;
 
@@ -4846,25 +4843,22 @@ if (fieldIndex ==
             std::lock_guard<std::mutex> guard(
                 g_customisationMutex);
 
-            auto it =
-                g_customisationTransfers.find(
-                    account->GetId());
+            // Financial may already have the character appearance cached and
+            // therefore never call ServerRequestCustomisation. Do not require
+            // a customisation-transfer entry to exist before possession.
+            CustomisationTransferState& state =
+                g_customisationTransfers[account->GetId()];
 
-            if (it != g_customisationTransfers.end())
+            if (!state.PossessionStarted)
             {
-                CustomisationTransferState& state = it->second;
+                state.PossessionStarted = true;
+                state.PossessionAcknowledged = false;
+                state.ClientRestartSent = false;
+                state.ClientRestartPacketId = 0;
+                state.ClientRestartAcked = false;
+                state.SpawnedBeforeSent = false;
 
-                if (!state.PossessionStarted)
-                {
-                    state.PossessionStarted = true;
-                    state.PossessionAcknowledged = false;
-                    state.ClientRestartSent = false;
-                    state.ClientRestartPacketId = 0;
-                    state.ClientRestartAcked = false;
-                    state.SpawnedBeforeSent = false;
-
-                    startPossession = true;
-                }
+                startPossession = true;
             }
         }
 
@@ -4874,9 +4868,55 @@ if (fieldIndex ==
                 lWARN,
                 "District Spawn",
                 "ServerSelectSpawnZone accepted but possession "
-                "was already started or state is missing.");
+                "was already started.");
 
             continue;
+        }
+
+        if (districtType == 2)
+        {
+            // The client entered PlayerSpawnWaitOnStreaming with this exact
+            // location after selecting financialdistrict_hubspawns localNet
+            // 27. Spawn the Pawn there so its location and the streaming
+            // target agree. SendPlayerPawn also supplies the character UID,
+            // faction, gender, compact customisation descriptor and precache
+            // request required by IsStreamingComplete.
+            constexpr float financialSpawnX = 119378.296875f;
+            constexpr float financialSpawnY = 176205.328125f;
+            constexpr float financialSpawnZ = 50.020523f;
+
+            const bool pawnSent = SendPlayerPawn(
+                socket,
+                endpoint,
+                account,
+                financialSpawnX,
+                financialSpawnY,
+                financialSpawnZ);
+
+            Logger(
+                pawnSent ? lSUCCESS : lERROR,
+                "District Spawn",
+                "Financial Pawn/customisation bootstrap sent=%d "
+                "location=(%.3f %.3f %.3f)",
+                pawnSent ? 1 : 0,
+                financialSpawnX,
+                financialSpawnY,
+                financialSpawnZ);
+
+            if (!pawnSent)
+            {
+                std::lock_guard<std::mutex> guard(
+                    g_customisationMutex);
+
+                auto it =
+                    g_customisationTransfers.find(
+                        account->GetId());
+
+                if (it != g_customisationTransfers.end())
+                    it->second.PossessionStarted = false;
+
+                continue;
+            }
         }
 
         Logger(
@@ -5088,10 +5128,30 @@ if (fieldIndex ==
                 // The spawn location is selected later through
                 // ServerSelectSpawnZone(field392).
                 //
-                // Current SendPlayerPawn() still contains the proven Social
-                // coordinates, which are invalid in Financial.
+                // The default SendPlayerPawn() arguments remain the proven
+                // Social coordinates. Financial supplies its selected
+                // location later, after ServerSelectSpawnZone(field392).
                 if (districtType != 1)
                 {
+                    {
+                        std::lock_guard<std::mutex> guard(
+                            g_customisationMutex);
+
+                        // A new Financial map-select lifecycle starts here.
+                        // Preserve any active customisation transfer fields,
+                        // but clear possession state left by an earlier spawn
+                        // attempt on the same server/account connection.
+                        CustomisationTransferState& state =
+                            g_customisationTransfers[account->GetId()];
+
+                        state.PossessionStarted = false;
+                        state.PossessionAcknowledged = false;
+                        state.ClientRestartSent = false;
+                        state.ClientRestartPacketId = 0;
+                        state.ClientRestartAcked = false;
+                        state.SpawnedBeforeSent = false;
+                    }
+
                     Logger(
                         lINFO,
                         "District Bootstrap",

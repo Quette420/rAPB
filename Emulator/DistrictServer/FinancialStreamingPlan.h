@@ -252,7 +252,12 @@ constexpr StreamingPlanEntry kFinancialStreamingPlan[] =
     { "financialdistrict_block44", true, true, false },
     { "financialdistrict_props_block44", true, true, false },
     { "financialdistrict_contacts", true, true, false },
-    { "financialdistrict_missionspawnzones", true, true, false },
+    // Initial district-entry map select must expose only the hub master
+    // spawn zone. Loading this package together with hubspawns produces two
+    // cPlayerCharacterSpawnZone actors with m_bMasterSpawnZone set, after
+    // which the client keeps restarting its spawn delay and never sends
+    // ServerSelectSpawnZone.
+    { "financialdistrict_missionspawnzones", false, false, false },
     { "financialdistrict_beacons", true, true, false },
     { "financialdistrict_racecheckpoints_old", true, true, false },
     { "financialdistrict_adhocdropoffs", true, true, false },

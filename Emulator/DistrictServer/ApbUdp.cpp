@@ -3962,6 +3962,49 @@ writer.WriteBoundedInt(channelIndex, 0x800u);
                 continue;
             }
 
+            // APB 1.13.1 LIVE ClassNetCache:
+            //
+            //   534 ServerRequestContactStanding(int nContactID)
+            //
+            // Financial sends a batch of these immediately after its level
+            // visibility acknowledgements. IntProperty RPC parameters use
+            // the ordinary non-default/presence bit followed by int32. We do
+            // not need to answer this diagnostic request yet, but we must
+            // consume it so a later RPC in the same bunch is not discarded.
+            constexpr std::uint32_t
+                kServerRequestContactStandingField = 534u;
+
+            if (fieldIndex ==
+                    kServerRequestContactStandingField)
+            {
+                bool contactIdPresent = false;
+
+                if (!reader.ReadBit(contactIdPresent))
+                {
+                    error =
+                        "truncated nContactID presence bit for "
+                        "ServerRequestContactStanding";
+                    return !fields.empty();
+                }
+
+                if (contactIdPresent)
+                {
+                    std::uint32_t ignoredContactId = 0u;
+
+                    if (!reader.ReadBits(32u, ignoredContactId))
+                    {
+                        error =
+                            "truncated nContactID for "
+                            "ServerRequestContactStanding";
+                        return !fields.empty();
+                    }
+                }
+
+                field.EndBit = reader.Tell();
+                fields.push_back(field);
+                continue;
+            }
+
             // Exact build-3908 wire index from the inherited
             // cAPBPlayerController ClassNetCache:
             //
