@@ -4605,17 +4605,22 @@ bool SendDistrictLevelStreaming(
             }
             
             // ---------------------------------------------------------
-// Financial-only diagnostic.
+// Action-district streaming acknowledgements.
 //
 // Do NOT change Social behaviour here.
 // Decode the client's field 93 visibility acknowledgements
-// so we can identify the exact runtime PackageNameIndex for
-// financialdistrict_hubspawns.
+// as a sequence because UE3 may append ServerNotifyClientLoaded
+// (field 419) or ServerSelectSpawnZone (field 392) to the same
+// reliable bunch. Looking only at the first field makes district
+// startup timing-dependent: a separately packed field 419 works,
+// while a field 419 appended after Waterfront visibility updates
+// is silently lost.
 // ---------------------------------------------------------
 if (fieldIndex ==
         kFieldServerUpdateLevelVisibilityIndex &&
     g_cfg != nullptr &&
-    g_cfg->GetDistrictType() == 2)
+    (g_cfg->GetDistrictType() == 2 ||
+     g_cfg->GetDistrictType() == 21))
 {
     std::vector<ApbUdp::ControllerActorField>
         visibilityFields;
