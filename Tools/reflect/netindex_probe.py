@@ -1029,7 +1029,12 @@ def probe_package_net(
 # UNetConnection -> UPackageMap -> FPackageInfo runtime probe
 # ---------------------------------------------------------------------------
 
-DEFAULT_MAP_PACKAGES = ("Core", "Engine", "APBGame")
+DEFAULT_MAP_PACKAGES = (
+    "Core",
+    "Engine",
+    "APBGame",
+    "rworldsocialdistrict_design",
+)
 KNOWN_CORE_GUID = (
     0x0FE825BC,
     0x4970D0BC,
@@ -1945,9 +1950,8 @@ def probe_packagemap(
             ok_count = count == exp["object_count"]
             ok_local = local_gen == exp["local_generation"]
 
-            # RemoteGeneration should equal the Generation supplied by
-            # the server. We currently expect Generation=2 for all three.
-            ok_remote = remote_gen == 2
+           # Server sends the runtime generation for each package.
+           ok_remote = remote_gen == exp["local_generation"]
 
             ok = (
                 ok_parent
