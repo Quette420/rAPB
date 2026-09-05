@@ -2998,22 +2998,30 @@ writer.WriteBoundedInt(channelIndex, 0x800u);
         //   eCSAAutoRouteData  ByteProperty, Enum=None  -> raw 8 bits
         //   eType              ByteProperty, Enum=None  -> raw 8 bits
         //   eState             ByteProperty, Enum=etHUDMarkerState
-        //                                          -> SerializeInt(value, 19)
+        //                                          -> SerializeInt(value, 21)
         // The previous all-bounded encoding shifted the archive by 13 bits
         // and made the client reject the RPC as an irrational FString size.
         payload.WriteBits(marker.OffsetOverride, 8);
         payload.WriteBits(marker.AutoRouteData, 8);
         payload.WriteBits(marker.Type, 8);
+
         if (marker.RawByteEncoding)
+        {
             payload.WriteBits(marker.State, 8);
+        }
         else
+        {
             payload.WriteBoundedInt(
                 static_cast<std::uint32_t>(marker.State),
                 (std::max<std::uint32_t>)(marker.StateMax, 2u));
+        }
 
         payload.WriteBit(marker.IsBeingModified);
+        payload.WriteBit(marker.IsCharacterName);
+
         payload.WriteBits(
             static_cast<std::uint32_t>(marker.UserData), 32);
+
         payload.WriteBits(
             static_cast<std::uint32_t>(marker.UserData2), 32);
 
@@ -4702,12 +4710,17 @@ writer.WriteBoundedInt(channelIndex, 0x800u);
         markerFixture.LocationX = 33063.848f;
         markerFixture.LocationY = 37346.258f;
         markerFixture.LocationZ = 1328.0f;
-        markerFixture.Type = 31;
         markerFixture.ServerMarkerId = 900001;
+        markerFixture.Type = 41;
 
         const std::vector<std::uint8_t> markerPacket =
             BuildClientReplicateHudMarkerPacket(
-                7, 2, 4, 392, 634, markerFixture);
+                7,
+                2,
+                4,
+                439,
+                684,
+                markerFixture);
 
         Packet parsedMarkerPacket;
         if (!ParsePacket(

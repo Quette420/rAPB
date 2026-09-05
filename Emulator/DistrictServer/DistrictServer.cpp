@@ -1069,6 +1069,7 @@ void ResetChannelSequences(Account* account)
     constexpr std::uint32_t kFieldCustomisationServerNotifyOperationComplete = 24u;
     constexpr std::uint32_t kFieldClientPrecacheCustomisation = 299u;
     constexpr std::uint32_t kFieldServerAcknowledgePossession = 41u;
+    constexpr std::uint32_t kFieldClientReplicateHUDMarker = 439u;
     
     struct CustomisationTransferState
     {
@@ -2915,6 +2916,93 @@ bool SendPackageUses(
     return customisationSent;
 }
     
+    bool SendSpawnZoneHudMarker(
+    SOCKET socket,
+    const sockaddr_in& endpoint,
+    Account* account)
+{
+    if (account == nullptr)
+        return false;
+
+    ApbUdp::HUDMarkerWireData marker{};
+
+    // UObject None. Для Tick-query linked actor не требуется.
+    marker.LinkedActorByChannel = false;
+    marker.LinkedActorReference = 0;
+
+    // Реальная spawn-zone location; для самого Zone_Spawn query
+    // конкретная координата не критична.
+    marker.LocationX = 32973.77f;
+    marker.LocationY = 37345.36f;
+    marker.LocationZ = 439.65f;
+
+    marker.OffsetOverride = 0;
+    marker.AutoRouteData = 0;
+
+    // APB 1.13.1 runtime:
+    // HUDMarkerVisual[41].DistrictMapMarkerIndex == 31 == Zone_Spawn.
+    marker.Type = 41;
+
+    // Query отвергает state == 3; default state 0 подходит.
+    marker.State = 0;
+    marker.StateMax = 21;
+    marker.RawByteEncoding = false;
+
+    marker.IsBeingModified = false;
+    marker.IsCharacterName = false;
+
+    marker.UserData = 0;
+    marker.UserData2 = 0;
+
+    // Server-controlled marker ID. Должен быть nonzero и стабильным.
+    marker.ServerMarkerId = 1;
+
+    marker.CompressedLocation = true;
+
+    const std::uint32_t packetId =
+        account->AllocateServerPacketId();
+
+    const std::uint16_t sequence =
+        AllocateChannelSequence(
+            account,
+            kControllerChannel);
+
+    const std::vector<std::uint8_t> packet =
+        ApbUdp::BuildClientReplicateHudMarkerPacket(
+            packetId,
+            kControllerChannel,
+            sequence,
+            kFieldClientReplicateHUDMarker,
+            kControllerFieldMax,
+            marker);
+
+    if (packet.empty())
+    {
+        Logger(
+            lERROR,
+            "District Spawn",
+            "ClientReplicateHUDMarker builder returned empty.");
+        return false;
+    }
+
+    const bool sent =
+        SendProtectedPacket(
+            socket,
+            endpoint,
+            account,
+            packet,
+            "HUD-ZONE-SPAWN");
+
+    Logger(
+        sent ? lSUCCESS : lERROR,
+        "District Spawn",
+        "ClientReplicateHUDMarker Zone_Spawn "
+        "sent=%d type=41 state=0 stateMax=21 markerId=1",
+        sent ? 1 : 0);
+
+    return sent;
+}
+    
 	    // Engine.PlayerController.ClientSetHUD(class<HUD>, class<Scoreboard>)
     // LIVE FClassNetCache: field 42, fieldMax 684.
     // Оба параметра -- ClassProperty, идут как ссылки через package map.
@@ -4150,8 +4238,7 @@ bool SendSocialLevelStreaming(
             // ---------------------------------------------------------
             // cCustomisationReplicator.ServerNotifyOperationComplete()
             // ---------------------------------------------------------
-            if (fieldIndex ==
-    kFieldCustomisationServerNotifyOperationComplete)
+            if (fieldIndex == kFieldCustomisationServerNotifyOperationComplete)
             {
                 {
                     std::lock_guard<std::mutex> guard(
@@ -4171,7 +4258,19 @@ bool SendSocialLevelStreaming(
                         it->second.PossessionStarted = false;
                     }
                 }
+                
+                const bool spawnMarkerSent =
+                SendSpawnZoneHudMarker(
+                    socket,
+                    endpoint,
+                    account);
 
+                Logger(
+                    spawnMarkerSent ? lSUCCESS : lERROR,
+                    "District Spawn",
+                    "Initial Zone_Spawn HUD marker sent=%d",
+                    spawnMarkerSent ? 1 : 0);
+                
                 Logger(
                     lSUCCESS,
                     "District Customisation",

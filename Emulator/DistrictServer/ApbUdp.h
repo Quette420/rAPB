@@ -619,13 +619,14 @@ namespace ApbUdp
         std::uint8_t Type = 0;
         std::uint8_t State = 0;
         bool IsBeingModified = false;
+        bool IsCharacterName = false;
         std::int32_t UserData = 0;
         std::int32_t UserData2 = 0;
         std::int32_t ServerMarkerId = 0;
 
         // APBGame.u metadata: OffsetOverride, AutoRouteData and Type are
         // unbacked ByteProperties (raw 8 bits); only State is enum-backed and
-        // uses SerializeInt(value, 19). RawByteEncoding makes State raw too.
+        // uses SerializeInt(value, 21). RawByteEncoding makes State raw too.
         bool RawByteEncoding = false;
         // HUDMarkerData.Location resolves to Core.Vector. Its UE3 NetSerializeItem
         // path uses FVector compressed network serialization.
@@ -638,7 +639,7 @@ namespace ApbUdp
         std::uint32_t OffsetOverrideMax = 2;
         std::uint32_t AutoRouteDataMax = 4;
         std::uint32_t TypeMax = 256;
-        std::uint32_t StateMax = 19;
+        std::uint32_t StateMax = 21;
     };
 
     std::vector<std::uint8_t> BuildClientReplicateHudMarkerPacket(
