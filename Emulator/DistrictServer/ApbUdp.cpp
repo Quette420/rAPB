@@ -3891,6 +3891,76 @@ writer.WriteBoundedInt(channelIndex, 0x800u);
             }
 
             field.FieldIndex = fieldIndex;
+            
+            // ---------------------------------------------------------
+            // APB 1.13.1 LIVE:
+            //
+            // field 93:
+            // ServerUpdateLevelVisibilityIndex(
+            //     IntProperty  PackageNameIndex,
+            //     BoolProperty bIsVisible)
+            //
+            // IntProperty uses its ordinary RPC non-default/presence bit,
+            // exactly like the already decoded CharacterUID int params.
+            // BoolProperty is serialized as its value bit.
+            // ---------------------------------------------------------
+            constexpr std::uint32_t
+                kServerUpdateLevelVisibilityIndexField = 93u;
+
+            if (fieldIndex ==
+                    kServerUpdateLevelVisibilityIndexField)
+            {
+                bool packageNameIndexPresent = false;
+
+                if (!reader.ReadBit(
+                        packageNameIndexPresent))
+                {
+                    error =
+                        "truncated PackageNameIndex presence bit for "
+                        "ServerUpdateLevelVisibilityIndex";
+
+                    return !fields.empty();
+                }
+
+                std::uint32_t packageNameIndex = 0u;
+
+                if (packageNameIndexPresent)
+                {
+                    if (!reader.ReadBits(
+                            32u,
+                            packageNameIndex))
+                    {
+                        error =
+                            "truncated PackageNameIndex for "
+                            "ServerUpdateLevelVisibilityIndex";
+
+                        return !fields.empty();
+                    }
+                }
+
+                bool visible = false;
+
+                if (!reader.ReadBit(visible))
+                {
+                    error =
+                        "truncated bIsVisible for "
+                        "ServerUpdateLevelVisibilityIndex";
+
+                    return !fields.empty();
+                }
+
+                field.IsServerUpdateLevelVisibilityIndex = true;
+                field.PackageNameIndexPresent =
+                    packageNameIndexPresent;
+                field.PackageNameIndex =
+                    static_cast<std::int32_t>(
+                        packageNameIndex);
+                field.IsVisible = visible;
+                field.EndBit = reader.Tell();
+
+                fields.push_back(field);
+                continue;
+            }
 
             // Exact build-3908 wire index from the inherited
             // cAPBPlayerController ClassNetCache:

@@ -731,6 +731,9 @@ namespace ApbUdp
         std::size_t EndBit = 0;
 
         bool IsServerUpdateLevelVisibility = false;
+        bool IsServerUpdateLevelVisibilityIndex = false;
+        bool PackageNameIndexPresent = false;
+        std::int32_t PackageNameIndex = 0;
         bool IsServerNotifyClientLoaded = false;
         bool IsServerSelectSpawnZone = false;
         bool IsServerRequestCharacterData = false;

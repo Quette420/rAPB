@@ -952,7 +952,32 @@ void ResetChannelSequences(Account* account)
             1,
             923
         },
+        // APB 1.13.1 runtime-probed Financial spawn package
+    {
+        "financialdistrict_hubspawns",
+        { 0x7DB7FE84, 0x4FD39264, 0x1C467996, 0xF43BBA9C },
+        1,
+        75
+    }
     };
+    
+    const UsesEntry* DistrictSpecificUsesEntry()
+    {
+        const int districtType =
+            g_cfg != nullptr ? g_cfg->GetDistrictType() : 1;
+
+        switch (districtType)
+        {
+        case 1:
+            return &kPackages[3]; // rworldsocialdistrict_design
+
+        case 2:
+            return &kPackages[4]; // financialdistrict_hubspawns
+
+        default:
+            return nullptr;
+        }
+    }
 
     constexpr std::uint32_t kBadNetIndex = 0xFFFFFFFFu;
     // APBGame.Default__cAPBPlayerController, локальный NetIndex.
@@ -1172,16 +1197,43 @@ void ResetChannelSequences(Account* account)
     // в порядке отправки Uses. Порядок наш, поэтому индексы задаём мы.
     std::uint32_t PackageFirstNetIndex(const char* name)
     {
+        if (name == nullptr)
+            return kBadNetIndex;
 
         std::uint32_t base = 0;
-        for (const UsesEntry& e : kPackages)
+
+        // Common packages are always first and preserve their proven bases.
+        for (std::size_t i = 0; i < 3u; ++i)
         {
+            const UsesEntry& e = kPackages[i];
+
             if (std::strcmp(e.Name, name) == 0)
                 return base;
+
             base += e.NetObjectCount;
         }
-        Logger(lERROR, "District Net",
-            "Package '%s' is not in kPackages", name);
+
+        // base is now:
+        // Core 1575 + Engine 31931 + APBGame 30964 = 64470
+
+        const UsesEntry* districtPackage =
+            DistrictSpecificUsesEntry();
+
+        if (districtPackage != nullptr &&
+            std::strcmp(districtPackage->Name, name) == 0)
+        {
+            return base;
+        }
+
+        Logger(
+            lERROR,
+            "District Net",
+            "Package '%s' is not active for districtType=%d",
+            name,
+            g_cfg != nullptr
+                ? g_cfg->GetDistrictType()
+                : 1);
+
         return kBadNetIndex;
     }
     
@@ -1266,6 +1318,7 @@ void ResetChannelSequences(Account* account)
         true, true, false
     }
 };
+#include "FinancialStreamingPlan.h"
     
     std::uint32_t ReadLittleEndianUInt32(const std::uint8_t* p)
     {
@@ -1914,27 +1967,54 @@ void ResetChannelSequences(Account* account)
         return sent;
     }
 
-bool SendPackageUses(
+    bool SendPackageUses(
         SOCKET socket,
         const sockaddr_in& endpoint,
         Account* account)
     {
         if (account == nullptr)
             return false;
- 
+
         bool allSent = true;
 
-        for (const UsesEntry& e : kPackages)
+        const UsesEntry* activePackages[4] =
         {
+            &kPackages[0], // Core
+            &kPackages[1], // Engine
+            &kPackages[2], // APBGame
+            nullptr
+        };
+
+        std::size_t packageCount = 3u;
+
+        const UsesEntry* districtPackage =
+            DistrictSpecificUsesEntry();
+
+        if (districtPackage != nullptr)
+        {
+            activePackages[packageCount++] =
+                districtPackage;
+        }
+
+        for (std::size_t packageIndex = 0;
+             packageIndex < packageCount;
+             ++packageIndex)
+        {
+            const UsesEntry& e =
+                *activePackages[packageIndex];
+
+            // весь существующий BuildNMTUses / Send код оставить как есть
+
             std::vector<std::uint8_t> body;
+
             AppendGuid(body, e.Guid);
             AppendFString(body, e.Name);
             AppendFString(body, "");
             AppendFString(body, "");
-            AppendInt32(body, 0);            // PackageFlags: PKG_Need не ставим
+            AppendInt32(body, 0);
             AppendInt32(body, e.Generation);
             AppendFString(body, "");
-            body.push_back(0);               // BYTE
+            body.push_back(0);
 
             std::vector<std::uint8_t> packet =
                 ApbUdp::BuildBinaryControlPacket(
@@ -1945,15 +2025,25 @@ bool SendPackageUses(
                     body.data(),
                     body.size());
 
-            const bool sent = SendProtectedPacket(
-                socket, endpoint, account, packet, "NET-USES");
+            const bool sent =
+                SendProtectedPacket(
+                    socket,
+                    endpoint,
+                    account,
+                    packet,
+                    "NET-USES");
 
             allSent = allSent && sent;
 
-            Logger(sent ? lSUCCESS : lERROR, "District Net",
-                "Sent NMT_Uses(7) package='%s' generation=%d bodyBytes=%u",
-                e.Name, e.Generation,
-                static_cast<unsigned int>(body.size()));
+            Logger(
+                sent ? lSUCCESS : lERROR,
+                "District Net",
+                "Sent NMT_Uses(7) package='%s' "
+                "generation=%d bodyBytes=%u",
+                e.Name,
+                e.Generation,
+                static_cast<unsigned int>(
+                    body.size()));
         }
 
         return allSent;
@@ -2938,40 +3028,101 @@ bool SendPackageUses(
 {
     if (account == nullptr)
         return false;
+        
+        const int districtType =
+        g_cfg != nullptr
+            ? g_cfg->GetDistrictType()
+            : 1;
 
-    ApbUdp::HUDMarkerWireData marker{};
+        const char* spawnPackage = nullptr;
+        std::uint32_t spawnLocalNet = 0u;
 
-        // APB 1.13.1 LIVE:
-        // rworldsocialdistrict_design.cPlayerCharacterSpawnZone_6
-        // local NetIndex = 283
-        // m_eSpawnFactionOrdinal = 2, совпадает с faction текущего персонажа.
+        float markerX = 0.0f;
+        float markerY = 0.0f;
+        float markerZ = 0.0f;
+
+        switch (districtType)
+        {
+        case 1:
+            // Оставь здесь ТЕКУЩИЕ рабочие Social значения,
+            // которые уже используются ниже в функции.
+            spawnPackage = "rworldsocialdistrict_design";
+            spawnLocalNet = 283u;
+
+            markerX = 39530.0f;
+            markerY = 29750.84765625f;
+            markerZ = 1037.0f;
+            break;
+
+        case 2:
+            // APB 1.13.1 LIVE:
+            // financialdistrict_hubspawns
+            // cPlayerCharacterSpawnZone_2
+            // factionOrdinal=2
+            // m_bMasterSpawnZone=false
+            spawnPackage = "financialdistrict_hubspawns";
+            spawnLocalNet = 27u;
+
+            markerX = 119378.296875f;
+            markerY = 176205.328125f;
+            markerZ = 50.020523f;
+            break;
+
+        case 21:
+            Logger(
+                lINFO,
+                "District Spawn",
+                "Waterfront Zone_Spawn marker is not measured yet.");
+            return true;
+
+        default:
+            Logger(
+                lERROR,
+                "District Spawn",
+                "Unsupported districtType=%d",
+                districtType);
+            return false;
+        }    
+
+        ApbUdp::HUDMarkerWireData marker{};
+
         const std::uint32_t spawnZoneNetIndex =
             GlobalNetIndex(
-                "rworldsocialdistrict_design",
-                283u);
+                spawnPackage,
+                spawnLocalNet);
 
         if (spawnZoneNetIndex == kBadNetIndex)
         {
             Logger(
                 lERROR,
                 "District Spawn",
-                "Could not resolve cPlayerCharacterSpawnZone_6.");
+                "Could not resolve Zone_Spawn package='%s' localNet=%u.",
+                spawnPackage,
+                static_cast<unsigned int>(spawnLocalNet));
+
             return false;
         }
 
         marker.LinkedActorByChannel = false;
         marker.LinkedActorReference = spawnZoneNetIndex;
 
-        // LIVE Location cPlayerCharacterSpawnZone_6.
-        marker.LocationX = 39530.0f;
-        marker.LocationY = 29750.84765625f;
-        marker.LocationZ = 1037.0f;
+        marker.LocationX = markerX;
+        marker.LocationY = markerY;
+        marker.LocationZ = markerZ;
 
         Logger(
             lINFO,
             "District Spawn",
-            "Zone_Spawn linked actor globalNet=%u localNet=283",
-            static_cast<unsigned int>(spawnZoneNetIndex));
+            "Zone_Spawn linked actor districtType=%d "
+            "package='%s' globalNet=%u localNet=%u "
+            "location=(%.3f %.3f %.3f)",
+            districtType,
+            spawnPackage,
+            static_cast<unsigned int>(spawnZoneNetIndex),
+            static_cast<unsigned int>(spawnLocalNet),
+            markerX,
+            markerY,
+            markerZ);
 
     marker.OffsetOverride = 0;
     marker.AutoRouteData = 0;
@@ -3287,7 +3438,7 @@ bool SendPackageUses(
         return sent;
     }
 
-bool SendSocialLevelStreaming(
+bool SendDistrictLevelStreaming(
     SOCKET socket,
     const sockaddr_in& endpoint,
     Account* account)
@@ -3295,14 +3446,56 @@ bool SendSocialLevelStreaming(
     if (account == nullptr)
         return false;
 
-    constexpr std::size_t planCount =
-        sizeof(kSocialStreamingPlan) /
-        sizeof(kSocialStreamingPlan[0]);
+    const StreamingPlanEntry* plan = nullptr;
+    std::size_t planCount = 0;
+    const char* planName = nullptr;
+
+    const int districtType =
+        g_cfg != nullptr
+            ? g_cfg->GetDistrictType()
+            : 1;
+
+    switch (districtType)
+    {
+    case 1:
+        plan = kSocialStreamingPlan;
+        planCount =
+            sizeof(kSocialStreamingPlan) /
+            sizeof(kSocialStreamingPlan[0]);
+        planName = "Social";
+        break;
+
+    case 2:
+        plan = kFinancialStreamingPlan;
+        planCount =
+            sizeof(kFinancialStreamingPlan) /
+            sizeof(kFinancialStreamingPlan[0]);
+        planName = "Financial";
+        break;
+
+    case 21:
+        Logger(
+            lERROR,
+            "District Streaming",
+            "Waterfront streaming plan is not populated yet.");
+
+        return false;
+
+    default:
+        Logger(
+            lERROR,
+            "District Streaming",
+            "Unknown districtType=%d",
+            districtType);
+
+        return false;
+    }
 
     Logger(
         lINFO,
         "District Streaming",
-        "Starting Social streaming plan: entries=%u",
+        "Starting %s streaming plan: entries=%u",
+        planName,
         static_cast<unsigned int>(planCount));
 
     for (std::size_t index = 0;
@@ -3310,7 +3503,7 @@ bool SendSocialLevelStreaming(
          ++index)
     {
         const StreamingPlanEntry& entry =
-            kSocialStreamingPlan[index];
+            plan[index];
 
         const std::uint32_t packetId =
             account->AllocateServerPacketId();
@@ -3356,66 +3549,42 @@ bool SendSocialLevelStreaming(
                 "LEVEL-STREAM");
 
         Logger(
-        sent ? lSUCCESS : lERROR,
-        "District Streaming",
-        "ClientUpdateLevelStreamingStatus sent=%d "
-        "entry=%u/%u packetId=%u ch=%u seq=%u "
-        "field=%u package='%s' loaded=%d visible=%d block=%d",
-        sent ? 1 : 0,
-        static_cast<unsigned int>(index + 1),
-        static_cast<unsigned int>(planCount),
-        static_cast<unsigned int>(packetId),
-        static_cast<unsigned int>(kControllerChannel),
-        static_cast<unsigned int>(sequence),
-        static_cast<unsigned int>(
-            kFieldClientUpdateLevelStreamingStatus),
-        entry.PackageName,
-        entry.ShouldBeLoaded ? 1 : 0,
-        entry.ShouldBeVisible ? 1 : 0,
-        entry.ShouldBlockOnLoad ? 1 : 0);
+            sent ? lSUCCESS : lERROR,
+            "District Streaming",
+            "ClientUpdateLevelStreamingStatus sent=%d "
+            "entry=%u/%u packetId=%u ch=%u seq=%u "
+            "field=%u package='%s' "
+            "loaded=%d visible=%d block=%d",
+            sent ? 1 : 0,
+            static_cast<unsigned int>(index + 1),
+            static_cast<unsigned int>(planCount),
+            static_cast<unsigned int>(packetId),
+            static_cast<unsigned int>(kControllerChannel),
+            static_cast<unsigned int>(sequence),
+            static_cast<unsigned int>(
+                kFieldClientUpdateLevelStreamingStatus),
+            entry.PackageName,
+            entry.ShouldBeLoaded ? 1 : 0,
+            entry.ShouldBeVisible ? 1 : 0,
+            entry.ShouldBlockOnLoad ? 1 : 0);
 
         if (!sent)
             return false;
     }
 
-    // ВОТ СЮДА
+    //
+    // Не добавляем ClientFlushLevelStreaming.
+    // Для текущего APB 1.13.1 bootstrap он не требуется и
+    // Social уже работает без него.
+    //
     Logger(
-        lINFO,
+        lSUCCESS,
         "District Streaming",
-        "DIAGNOSTIC: all 17 corrected field-92 entries sent; "
-        "stopping before ClientFlushLevelStreaming.");
+        "%s streaming plan complete: %u entries sent.",
+        planName,
+        static_cast<unsigned int>(planCount));
 
     return true;
-
-    // Ниже существующий Flush пока недостижим.
-    const std::uint32_t flushPacketId =
-        account->AllocateServerPacketId();
-
-    const std::uint16_t flushSequence =
-        AllocateChannelSequence(
-            account,
-            kControllerChannel);
-
-    std::vector<std::uint8_t> flushPacket =
-        ApbUdp::BuildActorVoidFieldPacket(
-            flushPacketId,
-            kControllerChannel,
-            flushSequence,
-            kFieldClientFlushLevelStreaming,
-            kControllerFieldMax);
-
-    if (flushPacket.empty())
-        return false;
-
-    const bool flushSent =
-        SendProtectedPacket(
-            socket,
-            endpoint,
-            account,
-            flushPacket,
-            "FLUSH-STREAMING");
-
-    return flushSent;
 }
 
         bool ProcessBinaryHandshakePacket(
@@ -4418,6 +4587,115 @@ bool SendSocialLevelStreaming(
                 continue;
             }
             
+            // ---------------------------------------------------------
+// Financial-only diagnostic.
+//
+// Do NOT change Social behaviour here.
+// Decode the client's field 93 visibility acknowledgements
+// so we can identify the exact runtime PackageNameIndex for
+// financialdistrict_hubspawns.
+// ---------------------------------------------------------
+if (fieldIndex ==
+        kFieldServerUpdateLevelVisibilityIndex &&
+    g_cfg != nullptr &&
+    g_cfg->GetDistrictType() == 2)
+{
+    std::vector<ApbUdp::ControllerActorField>
+        visibilityFields;
+
+    std::string visibilityError;
+
+    const bool decodedVisibility =
+        ApbUdp::DecodeControllerActorFields(
+            bunch,
+            kControllerFieldMax,
+            kFieldServerUpdateLevelVisibilityString,
+            kFieldServerNotifyClientLoaded,
+            kFieldServerSelectSpawnZone,
+            visibilityFields,
+            visibilityError);
+
+    if (!decodedVisibility)
+    {
+        Logger(
+            lERROR,
+            "District Streaming",
+            "field93 decode failed: %s",
+            visibilityError.c_str());
+
+        continue;
+    }
+
+    std::uint32_t followupField = 0u;
+
+    for (const ApbUdp::ControllerActorField& field :
+         visibilityFields)
+    {
+        if (field.IsServerUpdateLevelVisibilityIndex)
+        {
+            Logger(
+                lINFO,
+                "District Streaming",
+                "ServerUpdateLevelVisibilityIndex: "
+                "PackageNameIndexPresent=%d "
+                "PackageNameIndex=%d Visible=%d "
+                "bits=%u..%u",
+                field.PackageNameIndexPresent ? 1 : 0,
+                field.PackageNameIndex,
+                field.IsVisible ? 1 : 0,
+                static_cast<unsigned int>(
+                    field.BeginBit),
+                static_cast<unsigned int>(
+                    field.EndBit));
+
+            continue;
+        }
+
+        // Не потерять важный RPC, если клиент упаковал его
+        // после серии field93 в тот же reliable bunch.
+        if (field.IsServerNotifyClientLoaded &&
+            followupField == 0u)
+        {
+            followupField =
+                kFieldServerNotifyClientLoaded;
+        }
+
+        if (field.IsServerSelectSpawnZone)
+        {
+            // Spawn click важнее 419, если вдруг встретились оба.
+            followupField =
+                kFieldServerSelectSpawnZone;
+        }
+    }
+
+    if (!visibilityError.empty())
+    {
+        Logger(
+            lWARN,
+            "District Streaming",
+            "field93 partial decode stopped: %s",
+            visibilityError.c_str());
+    }
+
+    if (followupField == 0u)
+    {
+        continue;
+    }
+
+    Logger(
+        lINFO,
+        "District Streaming",
+        "field93 bunch also contains follow-up field=%u; "
+        "passing it to normal controller handler.",
+        static_cast<unsigned int>(
+            followupField));
+
+    fieldIndex = followupField;
+
+    // ВАЖНО: здесь continue НЕ ставить.
+    // Дальше должен выполниться обычный handler 392/419.
+}
+            
             if (fieldIndex == kFieldServerSelectSpawnZone)
     {
         std::vector<ApbUdp::ControllerActorField> decodedFields;
@@ -4459,16 +4737,55 @@ bool SendSocialLevelStreaming(
             continue;
         }
 
-        const std::uint32_t expectedSpawnZone =
-            GlobalNetIndex(
-                "rworldsocialdistrict_design",
-                283u);
+                const int districtType =
+            g_cfg != nullptr
+                ? g_cfg->GetDistrictType()
+                : 1;
 
-        Logger(
+                const char* expectedSpawnPackage = nullptr;
+                std::uint32_t expectedSpawnLocalNet = 0u;
+
+                switch (districtType)
+                {
+                case 1:
+                    // Existing proven Social path.
+                    expectedSpawnPackage =
+                        "rworldsocialdistrict_design";
+                    expectedSpawnLocalNet = 283u;
+                    break;
+
+                case 2:
+                    // APB 1.13.1 live-probed Financial faction-2 zone.
+                    expectedSpawnPackage =
+                        "financialdistrict_hubspawns";
+                    expectedSpawnLocalNet = 27u;
+                    break;
+
+                default:
+                    Logger(
+                        lERROR,
+                        "District Spawn",
+                        "ServerSelectSpawnZone unsupported districtType=%d",
+                        districtType);
+
+                    continue;
+                }
+
+                const std::uint32_t expectedSpawnZone =
+                    GlobalNetIndex(
+                        expectedSpawnPackage,
+                        expectedSpawnLocalNet);
+
+            Logger(
             lINFO,
             "District Spawn",
             "ServerSelectSpawnZone decoded: "
+            "districtType=%d package='%s' localNet=%u "
             "byChannel=%d reference=%u expected=%u",
+            districtType,
+            expectedSpawnPackage,
+            static_cast<unsigned int>(
+                expectedSpawnLocalNet),
             selectField->ObjectReferenceByChannel ? 1 : 0,
             static_cast<unsigned int>(
                 selectField->ObjectReferenceValue),
@@ -4505,6 +4822,23 @@ bool SendSocialLevelStreaming(
 
             continue;
         }
+                
+                if (districtType == 2)
+                {
+                    Logger(
+                        lSUCCESS,
+                        "District Spawn",
+                        "Financial spawn-zone selection CONFIRMED: "
+                        "package='%s' localNet=%u globalNet=%u. "
+                        "Pawn/GivePawn intentionally deferred for this probe.",
+                        expectedSpawnPackage,
+                        static_cast<unsigned int>(
+                            expectedSpawnLocalNet),
+                        static_cast<unsigned int>(
+                            expectedSpawnZone));
+
+                    continue;
+                }            
 
         bool startPossession = false;
 
@@ -4744,6 +5078,44 @@ bool SendSocialLevelStreaming(
 
                     continue;
                 }
+                
+                const int districtType =
+    g_cfg != nullptr
+        ? g_cfg->GetDistrictType()
+        : 1;
+
+                // Financial/Waterfront must not create a Pawn here.
+                // The spawn location is selected later through
+                // ServerSelectSpawnZone(field392).
+                //
+                // Current SendPlayerPawn() still contains the proven Social
+                // coordinates, which are invalid in Financial.
+                if (districtType != 1)
+                {
+                    Logger(
+                        lINFO,
+                        "District Bootstrap",
+                        "Post-load Pawn deferred for districtType=%d; "
+                        "waiting for ServerSelectSpawnZone(field392).",
+                        districtType);
+
+                    if (districtType == 2)
+                    {
+                        const bool spawnMarkerSent =
+                            SendSpawnZoneHudMarker(
+                                socket,
+                                endpoint,
+                                account);
+
+                        Logger(
+                            spawnMarkerSent ? lSUCCESS : lERROR,
+                            "District Spawn",
+                            "Financial initial Zone_Spawn HUD marker sent=%d",
+                            spawnMarkerSent ? 1 : 0);
+                    }
+
+                    continue;
+                }
 
                 // Дать клиенту обработать PRI actor-open + link.
                 Sleep(100);
@@ -4915,7 +5287,7 @@ bool SendSocialLevelStreaming(
                 // + ClientFlushLevelStreaming
                 // ---------------------------------------------------------
                 const bool streamingSent =
-                    SendSocialLevelStreaming(
+                    SendDistrictLevelStreaming(
                         socket,
                         endpoint,
                         account);
@@ -5522,25 +5894,49 @@ int main()
 {
     Log_Clear();
 
-    static_assert(
-    sizeof(kPackages) / sizeof(kPackages[0]) == 4,
-    "Expected Core/Engine/APBGame/rworldsocialdistrict_design");
-	// в инициализации сервера:
-    Logger(
-    lINFO,
-    "District Net",
-    "PackageMap plan: Core@0 Engine@%u APBGame@%u "
-    "rworldsocialdistrict_design@%u, "
-    "Default__cAPBPlayerController -> %u",
-    PackageFirstNetIndex("Engine"),
-    PackageFirstNetIndex("APBGame"),
-    PackageFirstNetIndex("rworldsocialdistrict_design"),
-    GlobalNetIndex(
-        "APBGame",
-        kPlayerControllerLocalNetIndex));
     g_cfg =
         new Configuration(
             "Configs\\District.conf");
+
+    static_assert(
+    std::size(kPackages) >= 5,
+    "Expected base packages + district-specific packages");
+
+    if (g_cfg->GetDistrictType() == 1)
+    {
+        Logger(
+            lINFO,
+            "District Net",
+            "PackageMap plan: "
+            "Core@0 Engine@%u APBGame@%u "
+            "rworldsocialdistrict_design@%u, "
+            "Default__cAPBPlayerController -> %u",
+            PackageFirstNetIndex("Engine"),
+            PackageFirstNetIndex("APBGame"),
+            PackageFirstNetIndex(
+                "rworldsocialdistrict_design"),
+            GlobalNetIndex(
+                "APBGame",
+                kPlayerControllerLocalNetIndex));
+    }
+    else
+    {
+        Logger(
+            lINFO,
+            "District Net",
+            "PackageMap plan: "
+            "Core@0 Engine@%u APBGame@%u "
+            "districtType=%d, "
+            "Default__cAPBPlayerController -> %u",
+            PackageFirstNetIndex("Engine"),
+            PackageFirstNetIndex("APBGame"),
+            g_cfg->GetDistrictType(),
+            GlobalNetIndex(
+                "APBGame",
+                kPlayerControllerLocalNetIndex));
+    }
+
+   
 
     char token[9] = {};
     if (!ReadDistrictToken(token))
