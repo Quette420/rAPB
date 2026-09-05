@@ -843,6 +843,18 @@ def probe_package_net(
         "   UPackage=0x%08X class=%s"
         % (package_obj, objs.class_name(package_obj))
     )
+    
+    name_index = mem.i32(package_obj + UO_NAME_INDEX)
+    name_number = mem.i32(package_obj + UO_NAME_NUMBER)
+    
+    print(
+        "   UPackage FName: index=%d number=%d text=%r"
+        % (
+            name_index,
+            name_number,
+            objs.names.fmt(name_index, name_number),
+        )
+    )
 
     by_index, duplicates = _collect_netindex_pairs(
         mem,
@@ -1033,7 +1045,7 @@ DEFAULT_MAP_PACKAGES = (
     "Core",
     "Engine",
     "APBGame",
-    "rworldsocialdistrict_design",
+    "financialdistrict_hubspawns",
 )
 KNOWN_CORE_GUID = (
     0x0FE825BC,
@@ -1950,8 +1962,8 @@ def probe_packagemap(
             ok_count = count == exp["object_count"]
             ok_local = local_gen == exp["local_generation"]
 
-           # Server sends the runtime generation for each package.
-           ok_remote = remote_gen == exp["local_generation"]
+            # Server sends the runtime generation for each package.
+            ok_remote = remote_gen == exp["local_generation"]
 
             ok = (
                 ok_parent
@@ -3139,6 +3151,94 @@ def probe_class_instances(
         "target_class": target_cls,
         "matches": matches,
     }
+
+
+def dump_spawn_zones(
+    objs,
+    mem,
+    groups,
+    package_name,
+    netindex_off,
+):
+    """Compact one-pass dump of cPlayerCharacterSpawnZone actors.
+
+    Offsets below are reflection-confirmed for APB 1.13.1 and match the
+    existing --instance-fields output:
+      Actor.Location                         +0x100 FVector
+      cPlayerCharacterSpawnZone master bits +0x2AC
+      m_eSpawnFactionOrdinal                +0x2C0 int32
+    """
+    package_name = package_name.lower()
+
+    print("\n== spawn-zone package metadata ==")
+    probe_package_guids(
+        objs,
+        mem,
+        groups,
+        package_names=("Core", package_name),
+    )
+    probe_package_net(
+        objs,
+        mem,
+        groups,
+        package_name,
+        netindex_off,
+    )
+
+    result = probe_class_instances(
+        objs,
+        mem,
+        groups,
+        "APBGame.cPlayerCharacterSpawnZone",
+        netindex_off,
+        include_subclasses=False,
+        limit=1000,
+    )
+
+    rows = []
+    if result:
+        rows = [
+            row for row in result["matches"]
+            if row["package"].lower() == package_name
+        ]
+
+    print(
+        "\n== compact spawn zones: %s (%d) =="
+        % (package_name, len(rows))
+    )
+
+    for row in rows:
+        obj = row["obj"]
+        try:
+            x, y, z = struct.unpack(
+                "<fff",
+                mem.read(obj + 0x100, 12),
+            )
+            master = bool(mem.u32(obj + 0x2AC) & 1)
+            faction = mem.i32(obj + 0x2C0)
+        except Exception as exc:
+            print(
+                "   0x%08X %s <read error: %s>"
+                % (obj, row["path"], exc)
+            )
+            continue
+
+        print(
+            "   addr=0x%08X localNet=%s name=%s "
+            "faction=%d master=%s location=(%.6f, %.6f, %.6f)"
+            % (
+                obj,
+                row["local_net"],
+                row["name"],
+                faction,
+                "true" if master else "false",
+                x,
+                y,
+                z,
+            )
+        )
+
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -10818,6 +10918,15 @@ def main():
     )
 
     ap.add_argument(
+        "--dump-spawn-zones",
+        metavar="PACKAGE",
+        help=(
+            "одним проходом вывести GUID/Generation/ObjectCount пакета "
+            "и compact state всех его cPlayerCharacterSpawnZone"
+        ),
+    )
+
+    ap.add_argument(
         "--probe-function-params",
         metavar="FUNCTION[,FUNCTION...]",
         help=(
@@ -10999,7 +11108,7 @@ def main():
                 % (UO_INDEX, internal)
             )
 
-        if not expects and not a.probe_package_net and not a.probe_packagemap and not a.probe_package_guids and not a.probe_playercontroller_open and not a.probe_playercontroller_netfields and not a.probe_function_params and not a.probe_live_classnetcache and not a.probe_class_instances and not a.dump_class and not a.instances and not a.instance_fields and not a.class_functions and not a.class_netfields and not a.sdd_scan and not a.sdd_dump_table and not a.sdd_discover and not a.nested_structs and not a.dump_struct and not a.discover_classes and not a.scan_struct_tarrays and not a.dump_struct_tarray and not a.scan_struct_csv and not a.scan_struct_csv_exact and not a.probe_known_struct_row and not a.dump_struct_run:
+        if not expects and not a.probe_package_net and not a.probe_packagemap and not a.probe_package_guids and not a.probe_playercontroller_open and not a.probe_playercontroller_netfields and not a.probe_function_params and not a.probe_live_classnetcache and not a.probe_class_instances and not a.dump_spawn_zones and not a.dump_class and not a.instances and not a.instance_fields and not a.class_functions and not a.class_netfields and not a.sdd_scan and not a.sdd_dump_table and not a.sdd_discover and not a.nested_structs and not a.dump_struct and not a.discover_classes and not a.scan_struct_tarrays and not a.dump_struct_tarray and not a.scan_struct_csv and not a.scan_struct_csv_exact and not a.probe_known_struct_row and not a.dump_struct_run:
             print(
                 "\n!! для фазы 2 нужен хотя бы "
                 "один --expect PKG=N"
@@ -11021,7 +11130,7 @@ def main():
 
             if off is None:
                 return 1
-        elif a.probe_package_net or a.probe_packagemap or a.probe_package_guids or a.probe_playercontroller_open or a.probe_playercontroller_netfields or a.probe_function_params or a.probe_live_classnetcache or a.probe_class_instances or a.dump_class or a.instances or a.instance_fields or a.class_functions or a.class_netfields or a.sdd_scan or a.sdd_dump_table or a.sdd_discover or a.nested_structs or a.dump_struct or a.discover_classes or a.scan_struct_tarrays or a.dump_struct_tarray or a.scan_struct_csv or a.scan_struct_csv_exact or a.probe_known_struct_row or a.dump_struct_run:
+        elif a.probe_package_net or a.probe_packagemap or a.probe_package_guids or a.probe_playercontroller_open or a.probe_playercontroller_netfields or a.probe_function_params or a.probe_live_classnetcache or a.probe_class_instances or a.dump_spawn_zones or a.dump_class or a.instances or a.instance_fields or a.class_functions or a.class_netfields or a.sdd_scan or a.sdd_dump_table or a.sdd_discover or a.nested_structs or a.dump_struct or a.discover_classes or a.scan_struct_tarrays or a.dump_struct_tarray or a.scan_struct_csv or a.scan_struct_csv_exact or a.probe_known_struct_row or a.dump_struct_run:
             # InternalIndex уже подтверждён фазой 1; runtime reflection
             # подтвердил UObject::NetIndex = +0x24.
             off = 0x24
@@ -11163,6 +11272,15 @@ def main():
             off,
             include_subclasses=not a.class_instances_exact,
             limit=max(1, class_instances_limit),
+        )
+
+    if a.dump_spawn_zones:
+        dump_spawn_zones(
+            objs,
+            mem,
+            groups,
+            a.dump_spawn_zones,
+            off,
         )
 
     if a.probe_function_params:
