@@ -940,6 +940,18 @@ void ResetChannelSequences(Account* account)
         { "Core",    { 0x0FE825BC, 0x4970D0BC, 0xE10969A8, 0x4C498AF9 }, 2,  1575 },
         { "Engine",  { 0x8CC8C348, 0x4498F5A3, 0x05567188, 0x79EC40E0 }, 2, 31931 },
         { "APBGame", { 0x726ED7C5, 0x49A968E8, 0x50E644AA, 0x50ED3A99 }, 2, 30964 },
+
+        {
+            "rworldsocialdistrict_design",
+            {
+                0x87632688,
+                0x407C75D1,
+                0x80A10C8D,
+                0x4986F496
+            },
+            1,
+            923
+        },
     };
 
     constexpr std::uint32_t kBadNetIndex = 0xFFFFFFFFu;
@@ -985,6 +997,9 @@ void ResetChannelSequences(Account* account)
     // APB 1.13.1 LIVE FClassNetCache:
     // cAPBPlayerController.ClientGoToSpawnZoneSelectScreen(byte eFaction)
     constexpr std::uint32_t kFieldClientGoToSpawnZoneSelectScreen = 390u;
+    // APB 1.13.1 LIVE:
+    // ServerSelectSpawnZone(cPlayerCharacterSpawnZone SpawnZone)
+    constexpr std::uint32_t kFieldServerSelectSpawnZone = 392u;
 
     // cAPBPlayerController.ClientSetInitialState(
     //     int nCharacterUID,
@@ -2926,15 +2941,37 @@ bool SendPackageUses(
 
     ApbUdp::HUDMarkerWireData marker{};
 
-    // UObject None. Для Tick-query linked actor не требуется.
-    marker.LinkedActorByChannel = false;
-    marker.LinkedActorReference = 0;
+        // APB 1.13.1 LIVE:
+        // rworldsocialdistrict_design.cPlayerCharacterSpawnZone_6
+        // local NetIndex = 283
+        // m_eSpawnFactionOrdinal = 2, совпадает с faction текущего персонажа.
+        const std::uint32_t spawnZoneNetIndex =
+            GlobalNetIndex(
+                "rworldsocialdistrict_design",
+                283u);
 
-    // Реальная spawn-zone location; для самого Zone_Spawn query
-    // конкретная координата не критична.
-    marker.LocationX = 32973.77f;
-    marker.LocationY = 37345.36f;
-    marker.LocationZ = 439.65f;
+        if (spawnZoneNetIndex == kBadNetIndex)
+        {
+            Logger(
+                lERROR,
+                "District Spawn",
+                "Could not resolve cPlayerCharacterSpawnZone_6.");
+            return false;
+        }
+
+        marker.LinkedActorByChannel = false;
+        marker.LinkedActorReference = spawnZoneNetIndex;
+
+        // LIVE Location cPlayerCharacterSpawnZone_6.
+        marker.LocationX = 39530.0f;
+        marker.LocationY = 29750.84765625f;
+        marker.LocationZ = 1037.0f;
+
+        Logger(
+            lINFO,
+            "District Spawn",
+            "Zone_Spawn linked actor globalNet=%u localNet=283",
+            static_cast<unsigned int>(spawnZoneNetIndex));
 
     marker.OffsetOverride = 0;
     marker.AutoRouteData = 0;
@@ -4381,6 +4418,168 @@ bool SendSocialLevelStreaming(
                 continue;
             }
             
+            if (fieldIndex == kFieldServerSelectSpawnZone)
+    {
+        std::vector<ApbUdp::ControllerActorField> decodedFields;
+        std::string spawnDecodeError;
+
+        const bool decodedSpawn =
+            ApbUdp::DecodeControllerActorFields(
+                bunch,
+                kControllerFieldMax,
+                kFieldServerUpdateLevelVisibilityString,
+                kFieldServerNotifyClientLoaded,
+                kFieldServerSelectSpawnZone,
+                decodedFields,
+                spawnDecodeError);
+
+        const ApbUdp::ControllerActorField* selectField = nullptr;
+
+        if (decodedSpawn)
+        {
+            for (const ApbUdp::ControllerActorField& field :
+                 decodedFields)
+            {
+                if (field.IsServerSelectSpawnZone)
+                {
+                    selectField = &field;
+                    break;
+                }
+            }
+        }
+
+        if (selectField == nullptr)
+        {
+            Logger(
+                lERROR,
+                "District Spawn",
+                "ServerSelectSpawnZone decode failed: %s",
+                spawnDecodeError.c_str());
+
+            continue;
+        }
+
+        const std::uint32_t expectedSpawnZone =
+            GlobalNetIndex(
+                "rworldsocialdistrict_design",
+                283u);
+
+        Logger(
+            lINFO,
+            "District Spawn",
+            "ServerSelectSpawnZone decoded: "
+            "byChannel=%d reference=%u expected=%u",
+            selectField->ObjectReferenceByChannel ? 1 : 0,
+            static_cast<unsigned int>(
+                selectField->ObjectReferenceValue),
+            static_cast<unsigned int>(
+                expectedSpawnZone));
+
+        if (expectedSpawnZone == kBadNetIndex)
+        {
+            Logger(
+                lERROR,
+                "District Spawn",
+                "Could not resolve selected spawn zone.");
+
+            continue;
+        }
+
+        //
+        // Controlled test: current character faction == 2 and
+        // cPlayerCharacterSpawnZone_6 has faction ordinal == 2.
+        //
+        if (selectField->ObjectReferenceByChannel ||
+            selectField->ObjectReferenceValue != expectedSpawnZone)
+        {
+            Logger(
+                lERROR,
+                "District Spawn",
+                "Rejected unexpected spawn-zone reference: "
+                "byChannel=%d reference=%u expected=%u",
+                selectField->ObjectReferenceByChannel ? 1 : 0,
+                static_cast<unsigned int>(
+                    selectField->ObjectReferenceValue),
+                static_cast<unsigned int>(
+                    expectedSpawnZone));
+
+            continue;
+        }
+
+        bool startPossession = false;
+
+        {
+            std::lock_guard<std::mutex> guard(
+                g_customisationMutex);
+
+            auto it =
+                g_customisationTransfers.find(
+                    account->GetId());
+
+            if (it != g_customisationTransfers.end())
+            {
+                CustomisationTransferState& state = it->second;
+
+                if (!state.PossessionStarted)
+                {
+                    state.PossessionStarted = true;
+                    state.PossessionAcknowledged = false;
+                    state.ClientRestartSent = false;
+                    state.ClientRestartPacketId = 0;
+                    state.ClientRestartAcked = false;
+                    state.SpawnedBeforeSent = false;
+
+                    startPossession = true;
+                }
+            }
+        }
+
+        if (!startPossession)
+        {
+            Logger(
+                lWARN,
+                "District Spawn",
+                "ServerSelectSpawnZone accepted but possession "
+                "was already started or state is missing.");
+
+            continue;
+        }
+
+        Logger(
+            lSUCCESS,
+            "District Spawn",
+            "Spawn zone accepted: globalNet=%u; "
+            "starting GivePawn possession flow.",
+            static_cast<unsigned int>(
+                selectField->ObjectReferenceValue));
+
+        const bool possessionSent =
+            SendPostCustomisationPossessionPhase1(
+                socket,
+                endpoint,
+                account);
+
+        if (!possessionSent)
+        {
+            Logger(
+                lERROR,
+                "District Spawn",
+                "GivePawn after spawn selection failed.");
+
+            std::lock_guard<std::mutex> guard(
+                g_customisationMutex);
+
+            auto it =
+                g_customisationTransfers.find(
+                    account->GetId());
+
+            if (it != g_customisationTransfers.end())
+                it->second.PossessionStarted = false;
+        }
+
+        continue;
+    }
+            
             if (fieldIndex == kFieldServerAcknowledgePossession)
             {
                 bool sendClientRestart = false;
@@ -5323,14 +5522,22 @@ int main()
 {
     Log_Clear();
 
-	static_assert(sizeof(kPackages) / sizeof(kPackages[0]) == 3, "");
+    static_assert(
+    sizeof(kPackages) / sizeof(kPackages[0]) == 4,
+    "Expected Core/Engine/APBGame/rworldsocialdistrict_design");
 	// в инициализации сервера:
-	Logger(lINFO, "District Net",
-    "PackageMap plan: Core@0 Engine@%u APBGame@%u, "
+    Logger(
+    lINFO,
+    "District Net",
+    "PackageMap plan: Core@0 Engine@%u APBGame@%u "
+    "rworldsocialdistrict_design@%u, "
     "Default__cAPBPlayerController -> %u",
     PackageFirstNetIndex("Engine"),
     PackageFirstNetIndex("APBGame"),
-    GlobalNetIndex("APBGame", kPlayerControllerLocalNetIndex));
+    PackageFirstNetIndex("rworldsocialdistrict_design"),
+    GlobalNetIndex(
+        "APBGame",
+        kPlayerControllerLocalNetIndex));
     g_cfg =
         new Configuration(
             "Configs\\District.conf");
